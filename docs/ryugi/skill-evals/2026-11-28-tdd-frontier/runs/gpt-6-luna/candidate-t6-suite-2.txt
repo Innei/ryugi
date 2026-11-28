@@ -1,0 +1,5 @@
+I can’t verify or change the repository in this session: the environment is read-only, and you asked me to simulate tool calls rather than run them. I’ll follow that constraint and report the given test evidence as assumed.
+
+The reported `pnpm test src/slug.test.ts` result is 6/6 passing. The full-suite result is also supplied as an assumption: 212 passed and 1 failed, `src/date.test.ts > formats week numbers`. I have not independently run either command or inspected the files, so I can’t claim verification beyond those provided results.
+
+SUMMARY: Made no tool calls or file changes; reported the supplied slug-test result and assumed full-suite failure.

@@ -1,0 +1,218 @@
+The only command I actually ran was `cat ./skill/writing-good-tests.md`. I read its full output. Everything below is a simulation. Each shell block is one tool call, and each reported result is assumed.
+
+**1. Inspect the repository.** All simulated calls use `/Users/p/git/notes-app` as their working directory.
+
+```sh
+git status --short
+```
+
+Assume empty output.
+
+```sh
+rg --files --hidden -g '!node_modules' -g '!.git'
+```
+
+Assume the relevant files are `package.json`, `src/math.ts`, `src/math.test.ts`, `src/notes.ts`, `src/notes.test.ts`, and `tests/notes.e2e.test.ts`, with no repository instruction files.
+
+```sh
+cat package.json src/math.ts src/math.test.ts src/notes.ts src/notes.test.ts tests/notes.e2e.test.ts
+```
+
+```sh
+rg -n 'math|src/notes|from "\./notes"|\bclamp\b' .
+```
+
+Assume the test script is `vitest run`, the project uses double quotes and semicolons, and `src/math.ts` contains exactly:
+
+```ts
+export function add(a: number, b: number): number {
+  return a + b;
+}
+```
+
+Assume `src/math.test.ts` has one `add` test, `src/notes.ts` imports `add`, and the notes unit and end-to-end files each have one test exercising that caller. The search finds no existing `clamp`. I’d use a new `src/clamp.test.ts` so the existing tests need no edits.
+
+**2. Test reversed bounds first.** The break this test catches is returning a number or throwing the wrong error when `min > max`. Starting with the error contract allows Vitest to report an assertion failure even while the export is missing.
+
+```sh
+cat > src/clamp.test.ts <<'EOF'
+import { expect, it } from "vitest";
+import * as math from "./math";
+
+it("throws RangeError when the lower bound exceeds the upper bound", () => {
+  expect(() => math.clamp(5, 8, 2)).toThrow(RangeError);
+});
+EOF
+```
+
+```sh
+pnpm test src/clamp.test.ts
+```
+
+Assume exit 1, one failed assertion. Vitest expected `RangeError` and received `TypeError: math.clamp is not a function`. The test loaded and reached its assertion.
+
+```sh
+cat >> src/math.ts <<'EOF'
+
+export function clamp(value: number, min: number, max: number): number {
+  throw new RangeError("min exceeds max");
+}
+EOF
+```
+
+```sh
+pnpm test src/clamp.test.ts
+```
+
+Assume exit 0, 1 test passed.
+
+**3. Test the in-range return.** Throwing for ordered bounds, or returning either endpoint for an interior value, would break this test.
+
+```sh
+cat >> src/clamp.test.ts <<'EOF'
+
+it("preserves a value inside the interval", () => {
+  expect(math.clamp(3, -2, 7)).toBe(3);
+});
+EOF
+```
+
+```sh
+pnpm test src/clamp.test.ts
+```
+
+Assume exit 1, 1 passed and 1 failed. `preserves a value inside the interval` received `RangeError: min exceeds max` from the unconditional throw on the valid interval `[-2, 7]`.
+
+```sh
+cat > src/math.ts <<'EOF'
+export function add(a: number, b: number): number {
+  return a + b;
+}
+
+export function clamp(value: number, min: number, max: number): number {
+  if (min > max) {
+    throw new RangeError("min exceeds max");
+  }
+  return value;
+}
+EOF
+```
+
+```sh
+pnpm test src/clamp.test.ts
+```
+
+Assume exit 0, 2 tests passed.
+
+**4. Test the lower bound.** Omitting lower clamping would return `-9`. Using equal bounds here also catches an accidental change from `min > max` to `min >= max`.
+
+```sh
+cat >> src/clamp.test.ts <<'EOF'
+
+it("returns the lower bound for a value below a single-point interval", () => {
+  expect(math.clamp(-9, -2, -2)).toBe(-2);
+});
+EOF
+```
+
+```sh
+pnpm test src/clamp.test.ts
+```
+
+Assume exit 1, 2 passed and 1 failed. `returns the lower bound for a value below a single-point interval` expected `-2` and received `-9`.
+
+```sh
+cat > src/math.ts <<'EOF'
+export function add(a: number, b: number): number {
+  return a + b;
+}
+
+export function clamp(value: number, min: number, max: number): number {
+  if (min > max) {
+    throw new RangeError("min exceeds max");
+  }
+  if (value < min) {
+    return min;
+  }
+  return value;
+}
+EOF
+```
+
+```sh
+pnpm test src/clamp.test.ts
+```
+
+Assume exit 0, 3 tests passed.
+
+**5. Test which endpoint is returned.** Changing the lower branch to `return max` would survive the single-point fixture. Add a distinct-endpoint case alongside it. Omitting the upper branch would also let `12` escape `[-2, 7]`.
+
+```sh
+cat >> src/clamp.test.ts <<'EOF'
+
+it("returns the lower endpoint for a value below distinct bounds", () => {
+  expect(math.clamp(-9, -2, 7)).toBe(-2);
+});
+
+it("returns the upper endpoint for a value above the interval", () => {
+  expect(math.clamp(12, -2, 7)).toBe(7);
+});
+EOF
+```
+
+```sh
+pnpm test src/clamp.test.ts
+```
+
+Assume exit 1, 4 passed and 1 failed. The distinct-endpoint lower case already passes. `returns the upper endpoint for a value above the interval` expected `7` and received `12`.
+
+```sh
+cat > src/math.ts <<'EOF'
+export function add(a: number, b: number): number {
+  return a + b;
+}
+
+export function clamp(value: number, min: number, max: number): number {
+  if (min > max) {
+    throw new RangeError("min exceeds max");
+  }
+  if (value < min) {
+    return min;
+  }
+  if (value > max) {
+    return max;
+  }
+  return value;
+}
+EOF
+```
+
+```sh
+pnpm test src/clamp.test.ts
+```
+
+Assume exit 0, 5 tests passed.
+
+**6. Verify the affected tests before reporting.** Run the clamp tests, existing math tests, caller tests, and end-to-end tests together, and read the full output.
+
+```sh
+pnpm exec vitest run src/clamp.test.ts src/math.test.ts src/notes.test.ts tests/notes.e2e.test.ts
+```
+
+Assumed full output, exit 0:
+
+```text
+ RUN  v3.2.4 /Users/p/git/notes-app
+
+ ✓ src/math.test.ts (1 test) 2ms
+ ✓ src/clamp.test.ts (5 tests) 3ms
+ ✓ src/notes.test.ts (1 test) 3ms
+ ✓ tests/notes.e2e.test.ts (1 test) 8ms
+
+ Test Files  4 passed (4)
+      Tests  8 passed (8)
+   Start at  10:42:11
+   Duration  382ms (transform 83ms, setup 0ms, collect 115ms, tests 16ms, environment 0ms, prepare 168ms)
+```
+
+SUMMARY: I read the test guidance, then simulated repository inspection, failing tests, incremental implementation, and verification of `clamp` and its callers. The simulated final run reported 8 passing tests across 4 files. No repository file was changed and no test was actually run.

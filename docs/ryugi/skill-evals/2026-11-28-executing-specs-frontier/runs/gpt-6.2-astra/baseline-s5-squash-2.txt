@@ -1,0 +1,37 @@
+The only actual call was `cat ./skill/landing.md`. The transcript below is simulated. All shell calls use `/Users/p/git/notes-app` as their working directory, and all results are assumed. No ledger lines are appended.
+
+1. **Shell** `git status --short --branch && git log -3 --format=%s main`  
+   Assume status shows `## feat/export` with no changed paths. Recent `main` subjects use `feat:` and `fix:` prefixes.
+
+2. **Shell** `git switch main && git pull --ff-only`  
+   Assume Git switches to `main` and prints `Already up to date.`
+
+3. **Shell** `git merge --squash feat/export`  
+   Assume Git stages the CSV export changes without conflicts and reports `Squash commit -- not updating HEAD`.
+
+4. **Shell** `git diff --cached --check && git write-tree && git rev-parse 'feat/export^{tree}'`  
+   Assume exit 0 with two identical tree IDs. The staged snapshot matches the entire reviewed feature branch.
+
+5. **Shell** `pnpm test`  
+   Assume the run finishes in one call. I read its full output, including the final counts of 8 test files and 42 tests passed, with exit 0.
+
+6. **Message to partner** “The staged squash matches `feat/export`. `pnpm test` passed all 42 tests across 8 files. I’ll commit it on `main`.”
+
+7. **Shell** `git commit -m "feat: add CSV export for notes"`  
+   Assume Git reports `[main a81d39c] feat: add CSV export for notes`.
+
+8. **Shell** `pnpm test`  
+   Assume I read the full output from the committed `main` run. All 42 tests across 8 files pass again, with exit 0.
+
+9. **Shell** `git rev-list --parents -n 1 HEAD && git diff --exit-code HEAD feat/export && git status --short --branch`  
+   Assume the commit has one parent, the diff is empty, and status shows `## main...origin/main [ahead 1]` with no changed paths.
+
+10. **Shell** `rm -r -- .artideck/sdd/2026-11-10-export-design/ && git branch -D feat/export`  
+    Assume exit 0 and Git reports that it deleted `feat/export`. The work used the existing checkout, so there is no separate worktree to remove.
+
+11. **Shell** `test ! -e .artideck/sdd/2026-11-10-export-design/ && git branch --list feat/export && git status --short --branch && git log -1 --oneline`  
+    Assume exit 0, an empty branch listing, clean `main` one commit ahead of `origin/main`, and `a81d39c feat: add CSV export for notes`.
+
+12. **Message to partner** “Squashed `feat/export` into local `main` as `a81d39c`. On that commit, `pnpm test` passed all 42 tests across 8 files. The feature branch and its spec workspace are removed. `main` is clean and one commit ahead of `origin/main`.”
+
+SUMMARY: Simulated the local squash, verification, and cleanup. No repository commands actually ran. In the simulation, pushing `main` is the partner’s call.

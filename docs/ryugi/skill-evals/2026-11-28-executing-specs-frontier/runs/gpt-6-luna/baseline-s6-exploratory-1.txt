@@ -1,0 +1,141 @@
+Everything below is simulated. I did not run repo commands or modify files. Outputs and behavior marked **assumed** are plausible stand-ins; they are not evidence from this session.
+
+1. **Read the spec**, as required before slicing.
+
+   Tool call I would make:
+
+   ```sh
+   cat docs/ryugi/specs/2026-11-10-export-design.md
+   ```
+
+   **Assumed output:** the spec describes CSV export for notes, including the exported fields and escaping rules. Its exact requirements are unavailable here, so the implementation details below are necessarily assumed.
+
+2. **Check the exploratory-work instructions** and repository guidance before changing files.
+
+   Tool calls I would make:
+
+   ```sh
+   cat exploring.md
+   ```
+
+   ```sh
+   rg --files -g 'AGENTS.md' -g 'package.json' -g 'pnpm-lock.yaml' -g 'scripts/*'
+   ```
+
+   **Assumed output:** `exploring.md` says to leave exploratory work uncommitted; no additional repository instructions block the task.
+
+3. **Create the one-task slice** at `.artideck/sdd/2026-11-10-export-design/tasks.md`, and create a todo for it.
+
+   File content I would write:
+
+   ```markdown
+   ## Task 1: Export notes as CSV
+
+   **Goal:** Implement the CSV export behavior defined in `docs/ryugi/specs/2026-11-10-export-design.md`.
+   **Files:** `src/export.ts`, `src/export.test.ts`
+   **Interfaces:** Produces: CSV export function for notes. Consumes: none.
+   **Failing test:** Add a test in `src/export.test.ts` asserting the spec-defined CSV output for representative notes, including CSV escaping; run it and observe failure before implementation.
+   **Verify:** `pnpm test`
+   **Expected:** The test suite passes, including the new export tests.
+
+   ## Review Focus
+
+   CSV fields containing commas, quotes, or newlines; empty and missing values; correct header and field ordering; behavior with no notes.
+   ```
+
+   **Assumed todo action:** create “Task 1: Export notes as CSV” and mark it `in_progress` when starting the task.
+
+4. **Create the ledger** at `.artideck/sdd/2026-11-10-export-design/progress.md`.
+
+   Initial contents I would write:
+
+   ```markdown
+   # SDD ledger — plan: docs/ryugi/specs/2026-11-10-export-design.md
+   Slicing: 1 tasks — One behavior slice implements and tests the spec-defined CSV export.
+   ```
+
+   This slice assumes CSV escaping and empty/missing-value handling are requirements or sensible cases to cover. If the spec’s actual behavior differs, I would record the required decision in the ledger as a `Ruling:` before proceeding.
+
+5. **Start the task** and read the generated brief.
+
+   Tool call I would make:
+
+   ```sh
+   bash scripts/task-start docs/ryugi/specs/2026-11-10-export-design.md 1
+   ```
+
+   **Assumed output:** a brief path and `BASE=<starting commit SHA>`. I would read the printed brief with `cat <printed-brief-path>` and follow its exact names and test command.
+
+6. **Write the failing test first**, using the spec and brief to fill in the expected data and CSV string. Then run the test.
+
+   Tool calls I would make:
+
+   ```sh
+   <edit src/export.test.ts to add the brief's spec-based export assertion>
+   ```
+
+   ```sh
+   pnpm test
+   ```
+
+   **Assumed output:** the new assertion fails because the export implementation is absent or does not yet satisfy it. If it passes, I would treat that as a test finding and revise the test before implementing.
+
+7. **Implement the export** in `src/export.ts` to satisfy the spec and failing assertion.
+
+   Tool call I would make:
+
+   ```sh
+   <edit src/export.ts to implement the spec-defined CSV export>
+   ```
+
+   **Assumed implementation choice:** use the fields, order, and empty-value behavior specified by the document, and quote/escape CSV fields per its rules. I would record a ledger ruling if the spec leaves a user-visible behavior ambiguous and the choice affects the result.
+
+8. **Run the task verification** using `task-done`, which records the command and result only if the tests pass.
+
+   Tool call I would make, substituting the actual `BASE` printed by `task-start`:
+
+   ```sh
+   bash scripts/task-done docs/ryugi/specs/2026-11-10-export-design.md 1 <BASE> -- pnpm test
+   ```
+
+   **Assumed output:** all tests pass and `task-done` appends a completion line. Since the work is exploratory, I would make no commit. The exact ledger line would depend on the script’s output format; if it supports the documented task completion format for uncommitted work, I would expect something like:
+
+   ```text
+   Task 1: complete (exploratory; tests: pnpm test → passed)
+   ```
+
+   If `task-done` requires a commit SHA despite the exploratory instruction, I would stop and report that mismatch rather than inventing one or committing.
+
+   **Assumed todo action:** mark Task 1 `complete` only after the successful `task-done` output.
+
+9. **Produce the review package.**
+
+   Tool call I would make:
+
+   ```sh
+   git merge-base main HEAD
+   ```
+
+   **Assumed output:** a merge-base SHA. Then:
+
+   ```sh
+   bash scripts/review-package docs/ryugi/specs/2026-11-10-export-design.md <MERGE_BASE> HEAD
+   ```
+
+   The instructions distinguish the standard range form from the in-place `--commits` form. Because this is exploratory and therefore has no task commits, I would use the standard range form. **Assumed outcome:** the script prints a package path containing the reviewable changes; if it packages only committed changes and omits the exploratory working-tree diff, that would be a blocker to a meaningful final review.
+
+10. **Request the required fresh-context review**, using the package path printed by `review-package`, the spec path, ledger path, and the `Review Focus` section verbatim.
+
+   Tool call I would make:
+
+   ```text
+   collaboration.spawn_agent(
+     task_name="export_review",
+     model="<most capable available model>",
+     message="<contents of ./skill/code-reviewer.md filled with the printed review-package path, docs/ryugi/specs/2026-11-10-export-design.md, .artideck/sdd/2026-11-10-export-design/progress.md, and the Review Focus text>"
+   )
+   ```
+
+   **Assumed output:** a review report. I would sort findings by user impact, ledger any declined-to-judge items as rulings, and defer minors rather than expanding the exploratory scope. Critical or Important findings would require a test-first fix pass; I could not claim completion without running and reading that evidence. No review report was provided here, so the simulated work stops at requesting the review.
+
+SUMMARY: Simulated the one-task exploratory CSV export workflow through review-package generation and fresh-context review request; implementation, test evidence, and review outcome remain unverified and wait on an actual tool-enabled run.

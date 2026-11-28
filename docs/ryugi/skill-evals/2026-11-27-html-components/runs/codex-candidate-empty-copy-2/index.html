@@ -1,0 +1,449 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Search Empty State · Copy Review</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #29231f;
+      --muted: #655d56;
+      --line: #e6ddd5;
+      --paper: #fcfaf7;
+      --accent: #a3442e;
+      --accent-soft: #f6e9e2;
+      --lobe-color-primary: var(--accent);
+    }
+
+    * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font: 14px/1.5 system-ui, sans-serif;
+    }
+
+    .masthead { border-bottom: 1px solid var(--line); }
+    .masthead-inner, main {
+      width: min(1180px, calc(100% - 80px));
+      margin-inline: auto;
+    }
+    .masthead-inner {
+      display: flex;
+      min-height: 63px;
+      align-items: center;
+      gap: 10px;
+      font-weight: 700;
+    }
+    .masthead-mark {
+      display: grid;
+      width: 32px;
+      height: 32px;
+      place-items: center;
+      background: var(--accent);
+      color: white;
+      border-radius: 9px;
+    }
+    .masthead-path {
+      border-inline-start: 1px solid var(--line);
+      padding-inline-start: 12px;
+      margin-inline-start: 5px;
+      color: var(--muted);
+      font-weight: 500;
+    }
+
+    main { padding: 42px 0 48px; }
+    h1, h2, h3, p, dl, dd { margin: 0; }
+    h1, h2 {
+      font-family: Georgia, serif;
+      font-weight: 400;
+      line-height: 1.08;
+    }
+    h1 {
+      margin: 6px 0 12px;
+      font-size: clamp(2.7rem, 5.2vw, 4.6rem);
+      letter-spacing: -.062em;
+    }
+    h2 { font-size: 30px; letter-spacing: -.045em; }
+    .intro { margin-bottom: 32px; }
+    .eyebrow {
+      font-size: 11px;
+      font-weight: 750;
+      letter-spacing: .13em;
+      text-transform: uppercase;
+      color: var(--accent);
+    }
+    .intro p:last-child { font-size: 15px; color: var(--muted); }
+    .section-heading {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 6px 18px;
+      margin-bottom: 14px;
+    }
+    .section-heading p { color: var(--muted); font-size: 13px; }
+    .options {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+      margin-bottom: 14px;
+    }
+
+    .option {
+      display: block;
+      min-width: 0;
+      background: white;
+      border: 1px solid var(--line);
+      border-radius: 15px;
+      box-shadow: 0 2px 4px #51261008;
+    }
+    .option[data-selected] {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 1px var(--accent);
+    }
+    .option-heading {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      min-height: 36px;
+      margin-bottom: 12px;
+    }
+    .option-heading h3 { font-size: 15px; }
+    .option-heading .eyebrow { margin-bottom: 2px; letter-spacing: .1em; }
+    .product {
+      border: 1px solid #e7e8ef;
+      border-radius: 10px;
+      overflow: hidden;
+      color: #242a3a;
+      background: #f8f9fc;
+    }
+    .product-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 43px;
+      padding: 7px 12px;
+      background: white;
+      border-bottom: 1px solid #e7e8ef;
+    }
+    .product-logo { display: flex; color: #4a568b; }
+    .product-query {
+      display: flex;
+      gap: 7px;
+      align-items: center;
+      min-width: 0;
+      flex: 1;
+      padding: 4px 8px;
+      border: 1px solid #e7e8ef;
+      border-radius: 6px;
+      background: #f8f9fc;
+      color: #444c64;
+      font-size: 11px;
+      line-height: 1.5;
+    }
+    .product-query span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    ryugi-icon { display: inline-flex; flex-shrink: 0; }
+    .product-results {
+      padding: 8px 12px;
+      border-bottom: 1px solid #e7e8ef;
+      color: #535b72;
+      font-size: 11px;
+      font-weight: 650;
+    }
+    .empty {
+      display: grid;
+      align-content: start;
+      justify-items: center;
+      gap: 6px;
+      min-height: 174px;
+      padding: 20px 12px 16px;
+      text-align: center;
+    }
+    .empty-icon {
+      display: grid;
+      place-items: center;
+      width: 45px;
+      height: 45px;
+      margin-bottom: 3px;
+      border: 1px solid #dce1f1;
+      border-radius: 13px;
+      background: #eef0fa;
+      color: #4a568b;
+    }
+    .empty-title { font-size: 15px; font-weight: 700; letter-spacing: -.025em; }
+    .empty-description { max-width: 25ch; color: #535b72; font-size: 12px; }
+
+    .review-control { margin-top: 15px; }
+    .rating-heading, .rating-key {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 8px;
+    }
+    .rating-heading { margin-bottom: 6px; }
+    .rating-heading p, .note-label { font-size: 13px; font-weight: 700; }
+    .rating-key { margin-top: 5px; color: var(--muted); font-size: 11px; }
+    .review-control ryugi-segmented { display: block; width: 100%; }
+    .preference {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px 14px;
+      padding: 10px 14px;
+      margin-bottom: 22px;
+      border-block: 1px solid var(--line);
+    }
+    .preference-label { font-size: 13px; font-weight: 700; }
+
+    .note {
+      display: block;
+      margin-bottom: 22px;
+      background: white;
+      border: 1px solid var(--line);
+      border-radius: 15px;
+    }
+    .note-label { display: block; margin-bottom: 7px; }
+    .note ryugi-textarea { display: block; width: 100%; }
+
+    .summary {
+      padding: 21px 22px 22px;
+      border: 1px solid #e8d7cb;
+      border-radius: 15px;
+      background: #f5ebe3;
+    }
+    .summary h2 { margin-bottom: 15px; }
+    .summary dl {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr) minmax(0, 1fr);
+      gap: 14px 20px;
+    }
+    .summary dl > div { border-top: 1px solid #ddcabe; padding-top: 10px; min-width: 0; }
+    .summary dt { font-size: 12px; font-weight: 750; }
+    .summary dd { margin-top: 4px; color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }
+    #note-summary { white-space: pre-wrap; }
+    .summary ul { padding: 0; margin: 0; list-style: none; }
+    .summary li {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      max-width: 240px;
+    }
+    .summary li + li { margin-top: 3px; }
+
+    @media (max-width: 850px) {
+      .masthead-inner, main { width: min(720px, calc(100% - 40px)); }
+      .options { gap: 12px; }
+      .option-heading { flex-wrap: wrap; }
+      .empty { min-height: 205px; }
+    }
+    @media (max-width: 680px) {
+      .masthead-inner, main { width: calc(100% - 32px); }
+      main { padding-top: 30px; }
+      .intro { margin-bottom: 24px; }
+      .options, .summary dl { grid-template-columns: minmax(0, 1fr); }
+      .empty { min-height: 153px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="masthead">
+    <div class="masthead-inner">
+      <span class="masthead-mark" aria-hidden="true"><ryugi-icon name="file-text" size="16"></ryugi-icon></span>
+      <span>Copy review</span>
+      <span class="masthead-path">Search</span>
+    </div>
+  </header>
+
+  <main id="review">
+    <div class="intro">
+      <p class="eyebrow">Search results</p>
+      <h1>Empty state copy</h1>
+      <p>Compare the three previews, rate each option’s tone, and choose the copy you’d use.</p>
+    </div>
+
+    <section aria-labelledby="options-heading">
+      <div class="section-heading">
+        <h2 id="options-heading">Copy options</h2>
+        <p>Sample copy and search interface</p>
+      </div>
+      <div class="options">
+        <ryugi-card id="option-a" class="option" variant="borderless">
+          <div class="option-heading">
+            <div><p class="eyebrow">Option A</p><h3>Direct</h3></div>
+            <ryugi-tag id="selected-a" size="small" shape="round" color="#a3442e" hidden>Preferred</ryugi-tag>
+          </div>
+          <div class="product" role="group" aria-label="Option A search results preview">
+            <div class="product-bar">
+              <span class="product-logo" aria-hidden="true"><ryugi-icon name="layers" size="15"></ryugi-icon></span>
+              <div class="product-query"><ryugi-icon name="search" size="12" aria-hidden="true"></ryugi-icon><span>Q4 planning</span></div>
+            </div>
+            <p class="product-results">Search results · 0 matches</p>
+            <div class="empty">
+              <div class="empty-icon" aria-hidden="true"><ryugi-icon name="search" size="21" stroke-width="1.65"></ryugi-icon></div>
+              <p class="empty-title">No results found</p>
+              <p class="empty-description">Try a different search term.</p>
+            </div>
+          </div>
+          <div class="review-control">
+            <div class="rating-heading"><p id="rating-label-a">Tone rating</p></div>
+            <ryugi-segmented id="tone-a" value="" size="small" block aria-label="Tone rating for option A" aria-describedby="rating-key-a">
+              <ryugi-segment value="1">1</ryugi-segment><ryugi-segment value="2">2</ryugi-segment><ryugi-segment value="3">3</ryugi-segment><ryugi-segment value="4">4</ryugi-segment><ryugi-segment value="5">5</ryugi-segment>
+            </ryugi-segmented>
+            <div id="rating-key-a" class="rating-key"><span>1 · Poor fit</span><span>5 · Great fit</span></div>
+          </div>
+        </ryugi-card>
+
+        <ryugi-card id="option-b" class="option" variant="borderless">
+          <div class="option-heading">
+            <div><p class="eyebrow">Option B</p><h3>Conversational</h3></div>
+            <ryugi-tag id="selected-b" size="small" shape="round" color="#a3442e" hidden>Preferred</ryugi-tag>
+          </div>
+          <div class="product" role="group" aria-label="Option B search results preview">
+            <div class="product-bar">
+              <span class="product-logo" aria-hidden="true"><ryugi-icon name="layers" size="15"></ryugi-icon></span>
+              <div class="product-query"><ryugi-icon name="search" size="12" aria-hidden="true"></ryugi-icon><span>Q4 planning</span></div>
+            </div>
+            <p class="product-results">Search results · 0 matches</p>
+            <div class="empty">
+              <div class="empty-icon" aria-hidden="true"><ryugi-icon name="search" size="21" stroke-width="1.65"></ryugi-icon></div>
+              <p class="empty-title">We couldn’t find a match</p>
+              <p class="empty-description">Try a shorter phrase or a different keyword.</p>
+            </div>
+          </div>
+          <div class="review-control">
+            <div class="rating-heading"><p id="rating-label-b">Tone rating</p></div>
+            <ryugi-segmented id="tone-b" value="" size="small" block aria-label="Tone rating for option B" aria-describedby="rating-key-b">
+              <ryugi-segment value="1">1</ryugi-segment><ryugi-segment value="2">2</ryugi-segment><ryugi-segment value="3">3</ryugi-segment><ryugi-segment value="4">4</ryugi-segment><ryugi-segment value="5">5</ryugi-segment>
+            </ryugi-segmented>
+            <div id="rating-key-b" class="rating-key"><span>1 · Poor fit</span><span>5 · Great fit</span></div>
+          </div>
+        </ryugi-card>
+
+        <ryugi-card id="option-c" class="option" variant="borderless">
+          <div class="option-heading">
+            <div><p class="eyebrow">Option C</p><h3>Guided</h3></div>
+            <ryugi-tag id="selected-c" size="small" shape="round" color="#a3442e" hidden>Preferred</ryugi-tag>
+          </div>
+          <div class="product" role="group" aria-label="Option C search results preview">
+            <div class="product-bar">
+              <span class="product-logo" aria-hidden="true"><ryugi-icon name="layers" size="15"></ryugi-icon></span>
+              <div class="product-query"><ryugi-icon name="search" size="12" aria-hidden="true"></ryugi-icon><span>Q4 planning</span></div>
+            </div>
+            <p class="product-results">Search results · 0 matches</p>
+            <div class="empty">
+              <div class="empty-icon" aria-hidden="true"><ryugi-icon name="search" size="21" stroke-width="1.65"></ryugi-icon></div>
+              <p class="empty-title">No matches for “Q4 planning”</p>
+              <p class="empty-description">Check the spelling or search for a broader term.</p>
+            </div>
+          </div>
+          <div class="review-control">
+            <div class="rating-heading"><p id="rating-label-c">Tone rating</p></div>
+            <ryugi-segmented id="tone-c" value="" size="small" block aria-label="Tone rating for option C" aria-describedby="rating-key-c">
+              <ryugi-segment value="1">1</ryugi-segment><ryugi-segment value="2">2</ryugi-segment><ryugi-segment value="3">3</ryugi-segment><ryugi-segment value="4">4</ryugi-segment><ryugi-segment value="5">5</ryugi-segment>
+            </ryugi-segmented>
+            <div id="rating-key-c" class="rating-key"><span>1 · Poor fit</span><span>5 · Great fit</span></div>
+          </div>
+        </ryugi-card>
+      </div>
+      <div class="preference">
+        <p class="preference-label" id="preference-label">Which copy would you use?</p>
+        <ryugi-segmented id="preferred-copy" value="" size="small" aria-labelledby="preference-label">
+          <ryugi-segment value="a">Option A</ryugi-segment>
+          <ryugi-segment value="b">Option B</ryugi-segment>
+          <ryugi-segment value="c">Option C</ryugi-segment>
+        </ryugi-segmented>
+      </div>
+    </section>
+
+    <section aria-labelledby="note-heading">
+      <ryugi-card id="note-card" class="note" variant="borderless">
+        <label id="note-heading" class="note-label" for="review-note">Review note</label>
+        <ryugi-textarea id="review-note" rows="2" aria-label="Review note" placeholder="What worked, or what would you change?"></ryugi-textarea>
+      </ryugi-card>
+    </section>
+
+    <section class="summary" id="summary" aria-labelledby="summary-heading">
+      <h2 id="summary-heading">Review summary</h2>
+      <dl>
+        <div>
+          <dt>Preferred copy</dt>
+          <dd id="choice-summary" aria-live="polite">No option selected</dd>
+        </div>
+        <div>
+          <dt>Tone ratings</dt>
+          <dd>
+            <ul aria-live="polite">
+              <li><span>A · Direct</span><span id="score-a">Not rated</span></li>
+              <li><span>B · Conversational</span><span id="score-b">Not rated</span></li>
+              <li><span>C · Guided</span><span id="score-c">Not rated</span></li>
+            </ul>
+          </dd>
+        </div>
+        <div>
+          <dt>Note</dt>
+          <dd id="note-summary">No note yet</dd>
+        </div>
+      </dl>
+    </section>
+  </main>
+
+  <script>
+    document.addEventListener('ryugi-ui:ready', () => {
+      const byId = (id) => document.getElementById(id);
+      const options = ['a', 'b', 'c'].map((key) => ({
+        key,
+        card: byId('option-' + key),
+        tag: byId('selected-' + key),
+        rating: byId('tone-' + key),
+        score: byId('score-' + key),
+      }));
+      const note = byId('review-note');
+      const noteSummary = byId('note-summary');
+      const choiceSummary = byId('choice-summary');
+
+      const preference = byId('preferred-copy');
+
+      function displayPreference(value) {
+        const option = options.find((candidate) => candidate.key === value);
+        for (const candidate of options) {
+          const selected = candidate === option;
+          candidate.card.toggleAttribute('data-selected', selected);
+          candidate.tag.hidden = !selected;
+        }
+        if (!option) {
+          choiceSummary.textContent = 'No option selected';
+          return;
+        }
+        const name = option.card.querySelector('h3').textContent;
+        const title = option.card.querySelector('.empty-title').textContent;
+        choiceSummary.textContent = 'Option ' + option.key.toUpperCase() + ' · ' + name + ' — ' + title;
+      }
+
+      preference.addEventListener('ryugi-change', (event) => displayPreference(event.detail.value));
+      displayPreference(preference.value);
+
+      for (const option of options) {
+        const displayRating = (value) => {
+          const rating = Number(value);
+          option.score.textContent = Number.isInteger(rating) && rating >= 1 && rating <= 5
+            ? rating + ' / 5'
+            : 'Not rated';
+        };
+        option.rating.addEventListener('ryugi-change', (event) => displayRating(event.detail.value));
+        displayRating(option.rating.value);
+      }
+
+      const displayNote = (value) => {
+        noteSummary.textContent = value?.trim() || 'No note yet';
+      };
+      note.addEventListener('ryugi-change', (event) => displayNote(event.detail.value));
+      displayNote(note.value);
+    }, { once: true });
+  </script>
+</body>
+</html>

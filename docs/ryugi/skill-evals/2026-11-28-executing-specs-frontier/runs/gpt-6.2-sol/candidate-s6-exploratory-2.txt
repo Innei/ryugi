@@ -1,0 +1,195 @@
+Only the reads under `./skill/` were executed. The repository commands, edits, and results below are simulated. I stop after inspecting the review package, as requested.
+
+1. **Message to my partner** — “I’ll use the executing-specs skill and read the local exploratory instructions before writing the simulated transcript.”
+
+2. **Shell calls, executed.**
+
+   ```sh
+   cat ./skill/exploring.md
+   rg --files ./skill/
+   ```
+
+   `exploring.md` requires an `EXPLORING` manifest, uncommitted task closure, and `review-package --exploring`.
+
+3. **Shell call, simulated.** All remaining shell calls use `/Users/p/git/notes-app` as their working directory. The workspace command already ran in the supplied situation.
+
+   ```sh
+   git status --short --branch &&
+   cat docs/ryugi/specs/2026-11-10-export-design.md &&
+   cat package.json src/export.ts &&
+   rg --files src -g '*export*'
+   ```
+
+   Assumed result: `main` is clean. The spec is inline and calls for a `title,body` header, input order, CRLF record endings, and CSV quoting for commas, quotes, and line breaks. Empty input returns the header alone, with its record ending. `package.json` runs `vitest run` through `pnpm test`. `src/export.ts` contains the following stub, and `src/export.test.ts` does not exist.
+
+   ```ts
+   type Note = { title: string; body: string }
+
+   export function exportNotesCsv(_notes: readonly Note[]): string {
+     return ''
+   }
+   ```
+
+4. **Shell call, simulated.** Write the task list, then the exploratory manifest, then the ledger.
+
+   ```sh
+   cat > .artideck/sdd/2026-11-10-export-design/tasks.md <<'EOF'
+   ## Task 1: Export notes as CSV
+
+   **Goal:** Implement the approved CSV export format in the spec's CSV Format section.
+   **Files:** `src/export.ts`, `src/export.test.ts`
+   **Test:** Assert the serialized header, note order, empty input, and escaping of commas, quotes, and line breaks.
+   **Verify:** `pnpm test`
+   **Expected:** Exit 0, with both CSV tests and the existing suite passing.
+
+   ## Review Focus
+
+   Check compatibility with callers of `exportNotesCsv` and inspect how the export handles non-ASCII text and line breaks within quoted fields.
+   EOF
+   cat > .artideck/sdd/2026-11-10-export-design/EXPLORING <<'EOF'
+   Exploratory: may be thrown away.
+   src/export.ts
+   src/export.test.ts
+   EOF
+   cat > .artideck/sdd/2026-11-10-export-design/progress.md <<'EOF'
+   # SDD ledger — plan: docs/ryugi/specs/2026-11-10-export-design.md
+   Slicing: 1 task — cover the CSV format and its regression tests together.
+   EOF
+   ```
+
+5. **Todo call, simulated.**
+
+   ```json
+   {"todos":[{"id":"1","content":"Export notes as CSV","status":"pending"}]}
+   ```
+
+6. **Shell call, simulated.**
+
+   ```sh
+   bash scripts/task-start docs/ryugi/specs/2026-11-10-export-design.md 1
+   ```
+
+   Assumed result: exit `0`, brief `.artideck/sdd/2026-11-10-export-design/task-1-brief.md`, and `BASE=4f72c19a8b39d76fba1e7a1e327c923178ed120a`.
+
+7. **Shell call, simulated.**
+
+   ```sh
+   cat .artideck/sdd/2026-11-10-export-design/task-1-brief.md
+   ```
+
+   Assumed result: the brief confirms both paths, the CSV assertions, and `pnpm test` as the task verification command.
+
+8. **Todo call, simulated.**
+
+   ```json
+   {"todos":[{"id":"1","content":"Export notes as CSV","status":"in_progress"}]}
+   ```
+
+9. **Shell call, simulated.** Write the regression tests.
+
+   ```sh
+   cat > src/export.test.ts <<'EOF'
+   import { describe, expect, it } from 'vitest'
+   import { exportNotesCsv } from './export'
+
+   describe('exportNotesCsv', () => {
+     it('includes the header when there are no notes', () => {
+       expect(exportNotesCsv([])).toBe('title,body\r\n')
+     })
+
+     it('keeps note order and escapes CSV fields', () => {
+       expect(exportNotesCsv([
+         { title: 'One, two', body: 'She said "hi".\nNext line.' },
+         { title: 'Three', body: '' },
+       ])).toBe(
+         'title,body\r\n"One, two","She said ""hi"".\nNext line."\r\nThree,\r\n',
+       )
+     })
+   })
+   EOF
+   ```
+
+10. **Shell calls, simulated.** Run the focused test, then read the full captured output.
+
+    ```sh
+    pnpm test src/export.test.ts > .artideck/sdd/2026-11-10-export-design/task-1-red.log 2>&1
+    ```
+
+    ```sh
+    cat .artideck/sdd/2026-11-10-export-design/task-1-red.log
+    ```
+
+    Assumed result: exit `1`, two failed assertions. Both received an empty string from the stub. One expected the header and the other expected the header and two serialized rows.
+
+11. **Shell call, simulated.** Replace the stub.
+
+    ```sh
+    cat > src/export.ts <<'EOF'
+    type Note = { title: string; body: string }
+
+    function escapeCsvField(value: string): string {
+      if (/[",\r\n]/.test(value)) {
+        return `"${value.replace(/"/g, '""')}"`
+      }
+      return value
+    }
+
+    export function exportNotesCsv(notes: readonly Note[]): string {
+      const rows = notes.map(({ title, body }) =>
+        `${escapeCsvField(title)},${escapeCsvField(body)}\r\n`,
+      )
+      return `title,body\r\n${rows.join('')}`
+    }
+    EOF
+    ```
+
+12. **Shell calls, simulated.** Run the focused test again and read the full output.
+
+    ```sh
+    pnpm test src/export.test.ts > .artideck/sdd/2026-11-10-export-design/task-1-green.log 2>&1
+    ```
+
+    ```sh
+    cat .artideck/sdd/2026-11-10-export-design/task-1-green.log
+    ```
+
+    Assumed result: exit `0`, two tests passed.
+
+13. **Shell calls, simulated.** Close the task in exploratory mode. The close script runs the whole-suite Verify command.
+
+    ```sh
+    bash scripts/task-done docs/ryugi/specs/2026-11-10-export-design.md 1 4f72c19a8b39d76fba1e7a1e327c923178ed120a --uncommitted -- pnpm test
+    ```
+
+    ```sh
+    cat .artideck/sdd/2026-11-10-export-design/task-1-verify.log .artideck/sdd/2026-11-10-export-design/progress.md
+    ```
+
+    Assumed result: the close script exits `0` and reports `task-1-verify.log` as the full log. The log shows six test files and 28 tests passed, including both CSV tests. The script appends this assumed completion line:
+
+    ```text
+    Task 1: complete (uncommitted, tests: pnpm test → 28 passed)
+    ```
+
+14. **Todo call, simulated.**
+
+    ```json
+    {"todos":[{"id":"1","content":"Export notes as CSV","status":"completed"}]}
+    ```
+
+15. **Shell calls, simulated.** Produce the exploratory review package and confirm it includes the implementation and the new test.
+
+    ```sh
+    bash scripts/review-package docs/ryugi/specs/2026-11-10-export-design.md --exploring
+    ```
+
+    ```sh
+    rg -n 'src/export\.ts|src/export\.test\.ts|escapeCsvField|keeps note order and escapes CSV fields' .artideck/sdd/2026-11-10-export-design/review-package.md &&
+    git status --short --branch
+    ```
+
+    Assumed result: the package command exits `0` and prints `.artideck/sdd/2026-11-10-export-design/review-package.md`. The inspection finds both paths and their changed content. Git reports `main`, with `src/export.ts` modified and `src/export.test.ts` untracked.
+
+16. **Final message to my partner, simulated** — “The CSV export and its tests are uncommitted on `main`. The focused run failed both tests against the stub and passed both after implementation. The task-close run of `pnpm test` exited `0` with 28 tests passed. The exploratory review package contains both changed files and is ready for the reviewer.”
+
+SUMMARY: Simulated closing the single uncommitted task and producing its review package. The fresh-context reviewer is next, followed by your keep-or-discard decision.

@@ -1,0 +1,1 @@
+SUMMARY: Simulated the squash landing of `feat/export` onto `main`, followed by `pnpm test` and cleanup. Nothing was actually run or changed; the assumed successful outputs would need to be confirmed in a real execution.

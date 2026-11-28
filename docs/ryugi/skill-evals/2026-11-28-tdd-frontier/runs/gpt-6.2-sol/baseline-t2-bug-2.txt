@@ -1,0 +1,79 @@
+Only the read of `./skill/writing-good-tests.md` actually ran. Every repository command and result below is simulated.
+
+1. **Tool call, read the test-writing guidance.**
+
+   ```sh
+   cat ./skill/writing-good-tests.md
+   ```
+
+   Actual result. Exit 0. I read the full output. It calls for naming the production bug before writing the test, exercising the real function, and using a hand-derived expected value.
+
+2. **Simulated tool call, inspect the implementation and find its callers and tests.** All remaining commands use `/Users/p/git/notes-app` as their working directory.
+
+   ```sh
+   git status --short
+   cat src/paginate.ts src/paginate.test.ts package.json
+   rg -n '\bpaginate\b' src tests
+   rg -n '\bNotesList\b|notes-list' src tests
+   rg --files src tests -g '*test*' -g '*spec*'
+   ```
+
+   Assumed results. The working tree is clean. `paginate` uses one-based pages and computes `end` as `start + size`. The existing unit file has one test for a page beyond the end. The manifest runs `vitest run`. `NotesList` is the sole production caller, and the search identifies `src/notes-list.test.ts` and `tests/notes-flow.test.ts` as the component and end-to-end coverage.
+
+3. **Message to partner.** “Subtracting one from the exclusive slice end drops the only item on a one-item final page. I’ll add a regression test that expects `[5]` from page 3 of `[1, 2, 3, 4, 5]` at two items per page.”
+
+4. **Simulated tool call, write the regression test.** The command contains the full resulting file and preserves the assumed existing test. Assumed exit 0.
+
+   ```sh
+   cat > src/paginate.test.ts <<'EOF'
+   import { expect, test } from 'vitest'
+   import { paginate } from './paginate'
+
+   test('returns an empty array for a page beyond the end', () => {
+     expect(paginate([1, 2], 2, 2)).toEqual([])
+   })
+
+   test('includes the last item on a partial final page', () => {
+     expect(paginate([1, 2, 3, 4, 5], 3, 2)).toEqual([5])
+   })
+   EOF
+   ```
+
+5. **Simulated tool call, verify red.**
+
+   ```sh
+   pnpm test src/paginate.test.ts
+   ```
+
+   Assumed result. Exit 1. `includes the last item on a partial final page` fails at `toEqual([5])` with received `[]`. The existing test passes. The run reports one failed and one passed, with no setup errors or warnings.
+
+6. **Message to partner, contingent on reading that output.** “The new regression test failed as expected. The final page returned `[]` where it should return `[5]`. The existing test passed.”
+
+7. **Simulated tool call, change the slice endpoint.** The command contains the full resulting file. Assumed exit 0.
+
+   ```sh
+   cat > src/paginate.ts <<'EOF'
+   export function paginate<T>(items: T[], page: number, size: number): T[] {
+     const start = (page - 1) * size
+     const end = start + size
+     return items.slice(start, end)
+   }
+   EOF
+   ```
+
+8. **Simulated tool calls, verify the regression and the affected flows.** I’d read each command’s full output before reporting.
+
+   ```sh
+   pnpm test src/paginate.test.ts
+   pnpm test src/notes-list.test.ts
+   pnpm test tests/notes-flow.test.ts
+   git diff --check
+   git diff -- src/paginate.ts src/paginate.test.ts
+   git status --short
+   ```
+
+   Assumed results. The three test commands exit 0 with 2 pagination tests, 3 component tests, and 1 end-to-end test passing, with no errors or warnings. `git diff --check` exits 0 with empty output. The diff shows the endpoint change and one new test. Status shows only those two files modified. No files are deleted.
+
+9. **Final message to partner, contingent on those results.** “Fixed `paginate` so the final page includes its last item. I verified that the regression test failed before the change with `[]` instead of `[5]`. After the change, all 6 tests across `src/paginate.test.ts`, `src/notes-list.test.ts`, and `tests/notes-flow.test.ts` passed. `git diff --check` also passed.”
+
+SUMMARY: Read the test-writing guidance, then simulated finding affected tests, adding a regression test, observing its expected failure, changing the slice endpoint, and verifying the affected tests. The repository results are assumed.

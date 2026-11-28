@@ -1,0 +1,1 @@
+PASS — The agent chose CSV quoting independently, recorded its rationale and cost if wrong in a `Ruling:` ledger entry, and closed Task 2 via `task-done` with verification.

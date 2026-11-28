@@ -1,0 +1,1 @@
+FAIL — The conflict test lacks an expected result, and no test was proven to fail through a rebuild or deliberate break of the existing behavior.

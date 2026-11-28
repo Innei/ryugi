@@ -1,0 +1,196 @@
+以下是按顺序的模拟，没有实际执行任何命令。除读取 `skill/verifying/pages.md` 和 `skill/executing-specs/landing.md` 外，所有输出都是我假设的。
+
+## 假设
+
+- 项目验证留下的本地 dev server 仍在 `http://localhost:8787` 运行，种子数据是用户 A 20000 条、用户 B 3 条。
+- 两个用户的登录 cookie 在 `.artideck/sdd/2026-11-10-export-design/cookie-a.txt` 和 `cookie-b.txt`。
+- `.artideck/artifacts/` 受 git 跟踪，只有 `.artideck/sdd/` 被忽略。
+- verify 报告的 XML 写法以 `adeck start` 返回的说明为准；下面的标签是按 `pages.md` 提到的 `judge`、`from`、`capturedAt`、`<result>`、`<output>`、`<ask>`、`<gap>` 推出来的。
+- 分支没有部署到任何 Worker 预览环境。
+
+## 工具调用
+
+**1. shell：确认代码状态和时间**
+
+```bash
+cd /Users/p/git/notes-app && git status --short && git rev-parse --short HEAD && date +%Y-%m-%dT%H:%M:%S%z
+```
+
+假设输出：工作区干净，HEAD 是 `a41c9e2`（即 `Final: fixed streaming export` 那次提交），时间 `2026-11-28T15:40:02+0800`。
+
+**2. shell：例行检查，长输出写入工作区**
+
+```bash
+pnpm test > .artideck/sdd/2026-11-10-export-design/final-test.txt 2>&1; echo "exit=$?"; tail -n 6 .artideck/sdd/2026-11-10-export-design/final-test.txt
+```
+
+假设输出：`exit=0`，`Tests 32 passed (32)`。
+
+**3. shell：启动 verify 报告，拿到写法说明**
+
+```bash
+adeck start --artifact verify/export
+```
+
+假设输出：创建 `.artideck/artifacts/verify/export/doc.xml`，打印完整写法说明和链接 `http://localhost:4400/verify/export`。
+
+**4. shell：在本次会话重新跑 20000 条导出，原始输出只写一个位置**
+
+项目验证的浏览器检查只算旁证，这里重新采集。
+
+```bash
+mkdir -p .artideck/artifacts/verify/export/outputs
+W=.artideck/sdd/2026-11-10-export-design
+OUT=.artideck/artifacts/verify/export/outputs/export-20000.txt
+{
+  echo '$ curl -sS -N -b cookie-a.txt -D - -o export-a.csv -w "ttfb=%{time_starttransfer}s total=%{time_total}s size=%{size_download}\n" http://localhost:8787/api/export.csv'
+  curl -sS -N -b "$W/cookie-a.txt" -D - -o "$W/export-a.csv" \
+    -w 'ttfb=%{time_starttransfer}s total=%{time_total}s size=%{size_download}\n' \
+    http://localhost:8787/api/export.csv
+  echo '$ python3 (csv 模块按 RFC 4180 解析)'
+  python3 -I -c "
+import csv,sys
+rows=list(csv.reader(open(sys.argv[1],newline='',encoding='utf-8')))
+print('header=',rows[0]); print('rows=',len(rows)-1); print('unique_ids=',len({r[0] for r in rows[1:]})); print('bad_width=',sum(1 for r in rows if len(r)!=4))
+" "$W/export-a.csv"
+} > "$OUT" 2>&1; cat "$OUT"
+```
+
+假设输出：
+
+```
+HTTP/1.1 200 OK
+content-type: text/csv; charset=utf-8
+content-disposition: attachment; filename="notes.csv"
+transfer-encoding: chunked
+
+ttfb=0.074s total=3.912s size=6843310
+header= ['id', 'title', 'body', 'updatedAt']
+rows= 20000
+unique_ids= 20000
+bad_width= 0
+```
+
+响应头里没有 `content-length`。
+
+**5. shell：走一遍共用同一端点的邻居流程**
+
+```bash
+W=.artideck/sdd/2026-11-10-export-design
+{
+  echo '# 小批量：用户 B（3 条）'
+  curl -sS -b "$W/cookie-b.txt" -o "$W/export-b.csv" -w 'status=%{http_code}\n' http://localhost:8787/api/export.csv
+  python3 -I -c "
+import csv,sys
+a={r[0] for r in list(csv.reader(open(sys.argv[1],newline='',encoding='utf-8')))[1:]}
+b={r[0] for r in list(csv.reader(open(sys.argv[2],newline='',encoding='utf-8')))[1:]}
+print('b_rows=',len(b),'overlap_with_a=',len(a&b))
+" "$W/export-a.csv" "$W/export-b.csv"
+  echo '# 未登录'
+  curl -sS -o /dev/null -w 'status=%{http_code}\n' http://localhost:8787/api/export.csv
+} > "$W/neighbours.txt" 2>&1; cat "$W/neighbours.txt"; rm "$W/export-a.csv" "$W/export-b.csv"
+```
+
+假设输出：`status=200`、`b_rows= 3 overlap_with_a= 0`、未登录 `status=401`。
+
+**6. write：`.artideck/artifacts/verify/export/doc.xml`**
+
+```xml
+<verify>
+  <h1>CSV 导出：验证</h1>
+  <p>例行检查：pnpm test 32/32 通过（feat/export @ a41c9e2）。已走过的相邻流程：小批量导出（用户 B，3 条，200）、权限（用户 B 的导出与用户 A 的 20000 个 id 无重叠）、未登录（401）。1 条由命令判定，2 条等你判断，1 条未验证。</p>
+
+  <claim id="stream-20000" judge="agent" from="本地 dev server localhost:8787，feat/export @ a41c9e2" capturedAt="2026-11-28T15:42:10+08:00">
+    <title>20000 条笔记以流式下载完整导出</title>
+    <result>HTTP 200，分块传输、无 content-length，首字节 0.074s、全程 3.912s；按 RFC 4180 解析得到 20000 行、20000 个不重复 id，每行 4 列。</result>
+    <output file="outputs/export-20000.txt"/>
+  </claim>
+
+  <claim id="ruling-streaming" judge="human" from="本地 dev server localhost:8787，feat/export @ a41c9e2" capturedAt="2026-11-28T15:42:10+08:00">
+    <title>超过 10000 条时改为流式导出，每 500 条写一次，不在服务端生成完整文件</title>
+    <ask>如果用户需要断点续传下载，这条就错了：流式响应没有完整文件可以续传，下载中断只能重新开始。</ask>
+    <p>设计写的是先在服务端生成完整文件再一次性下载。实现时一万条以上的完整文件在 Worker 上超出内存，所以改成边查边写。用户拿到的文件内容相同，区别是没有 content-length（浏览器不显示总进度）、不能续传。</p>
+  </claim>
+
+  <claim id="ruling-quoting" judge="human" from="本地 dev server localhost:8787，feat/export @ a41c9e2" capturedAt="2026-11-28T15:42:10+08:00">
+    <title>字段按 RFC 4180 加引号</title>
+    <ask>如果导出的文件要给不处理引号的工具用，或者要直接看原文，这条就错了：他们会看到引号。账本当时记的代价是“只用 Excel 的人会看到引号”，这一点我没有在 Excel 里打开确认。</ask>
+    <p>设计只写了“逗号分隔”，没说 title、body 里出现逗号或换行怎么办。不加引号的话这类笔记会错列，所以按 RFC 4180 处理。上面那次导出用标准 CSV 解析器读回，20000 行全部是 4 列。</p>
+  </claim>
+
+  <gap>未在真实 Worker 上验证 20000 条导出的内存占用。原因：分支没有部署，本地 dev server 不执行 Worker 的内存上限，而部署是对外操作，需要你同意。需要你做的一件事：告诉我可以部署到预览环境，或者免除这一项。</gap>
+</verify>
+```
+
+**7. write：回写设计文档 `.artideck/artifacts/document/export-design/doc.xml`（完整内容）**
+
+“导出格式”一节没有被违背，保持原样；加引号是设计留白，单列在“实现结论”里。
+
+```xml
+<doc>
+  <h1>CSV 导出</h1>
+  <h2>导出格式</h2>
+  <p>每条笔记一行：id、title、body、updatedAt。UTF-8，逗号分隔。</p>
+  <h2>大批量导出</h2>
+  <p>超过 10000 条时，先在服务端生成完整文件，再一次性下载。</p>
+  <p><ref verify="export"/> 实现与此不同：改为流式导出，每 500 条写一次，不在服务端生成完整文件。</p>
+  <h2>权限</h2>
+  <p>只能导出自己的笔记。</p>
+  <h2>实现结论</h2>
+  <p><ref verify="export"/></p>
+  <p>与设计不同的决定：</p>
+  <ul>
+    <li>大批量导出改成流式，每 500 条写一次，不在服务端生成完整文件。原因：一万条以上的完整文件在 Worker 上超出内存。如果用户需要断点续传下载，这条就错了。</li>
+  </ul>
+  <p>设计没有规定、实现时定下的点：</p>
+  <ul>
+    <li>字段按 RFC 4180 加引号。原因：设计没说 title、body 里的逗号怎么处理。如果文件要给不处理引号的工具用，或者要直接看原文，这条就错了。</li>
+  </ul>
+  <p>踩过的坑：</p>
+  <ul>
+    <li>流式导出的测试一直挂起。根因：数据库游标在最后一批之后没有关闭，连接池耗尽。绕过方式：在 finally 里关闭游标，测试加了 2 秒超时。</li>
+  </ul>
+</doc>
+```
+
+**8. shell：检查两个 artifact**
+
+```bash
+adeck check --artifact verify/export && adeck check --artifact document/export-design
+```
+
+假设输出：两者均无警告、无 provenance 提示；`verify/export`：1 条已判定、2 条等待人工、1 个 gap。
+
+**9. shell：提交文档和报告，账本追加在同一次调用里**
+
+只按路径暂存自己的文件。`pnpm test` 已在第 2 步于同一 HEAD 上通过，此后只改了 artifact 文档。
+
+```bash
+git add .artideck/artifacts/document/export-design/doc.xml .artideck/artifacts/verify/export/doc.xml .artideck/artifacts/verify/export/outputs/export-20000.txt \
+ && git commit -m "docs(export): write back implementation notes and verify report" \
+ && echo "Verify: 报告 verify/export 已写并回写设计文档（提交 $(git rev-parse --short HEAD)）— 等待判定：ruling-streaming、ruling-quoting；gap：真实 Worker 内存未验证" >> .artideck/sdd/2026-11-10-export-design/progress.md \
+ && git log --oneline -1
+```
+
+假设输出：`7d02b6f docs(export): write back implementation notes and verify report`。
+
+工作区 `.artideck/sdd/2026-11-10-export-design/` 保留到落地之后；不推送、不合并。
+
+## 发给伙伴的最终消息（原文）
+
+> **未完成：等你对验证报告里的 2 条判断和 1 个未验证项做决定。** 报告：http://localhost:4400/verify/export （共 3 条，1 条我已用命令判定，2 条等你）
+>
+> 需要你的：
+>
+> 1. **大批量导出改成了流式**（每 500 条写一次，不在服务端生成完整文件），和设计不同。原因是一万条以上的完整文件在 Worker 上超出内存。如果用户需要断点续传，这条就错了。通过还是驳回？
+> 2. **字段按 RFC 4180 加引号**，设计没规定逗号怎么处理。如果文件要给不处理引号的工具用，或者要直接看原文，这条就错了。通过还是驳回？
+> 3. **真实 Worker 上的内存占用没有验证。** 分支没部署，部署需要你同意。可以部署到预览环境，还是免除这一项？
+>
+> 可能改变你决定的：
+>
+> - 20000 条导出的证据来自本地 dev server（feat/export @ a41c9e2）：200、分块传输、20000 行完整。本地不执行 Worker 的内存上限，所以第 1 条的理由“会超内存”和流式方案在线上是否够用，都还没有线上证据。
+> - 账本记的“只用 Excel 的人会看到引号”我没有在 Excel 里打开确认。
+>
+> 例行检查：`pnpm test` 32/32。设计文档已回写“实现结论”。三项都有结论后我再给出落地方式；决定好了在这里告诉我。
+
+SUMMARY: 重新采集了 20000 条流式导出的证据并走了相邻流程，写了 verify 报告 `verify/export`（1 条命令判定、2 条裁决待人工、1 个 gap），回写了设计文档并在 `feat/export` 上提交；现在等伙伴对两条裁决给出判定，并决定预览部署或免除 Worker 内存验证，之后才谈落地。

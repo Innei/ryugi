@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Search empty state: copy review</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --surface: #fff; --text: #1d2129; --muted: #6b7280;
+    --border: #e3e6eb; --primary: #3b5bdb; --primary-soft: #edf2ff;
+    color-scheme: light dark;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #111317; --surface: #1a1d23; --text: #e8eaee; --muted: #9aa1ad;
+      --border: #2c313a; --primary: #7c9cff; --primary-soft: #1e2640; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+    background: var(--bg); color: var(--text); }
+  main { max-width: 1180px; margin: 0 auto; padding: 28px 24px 48px; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .lede { color: var(--muted); margin: 0 0 24px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; }
+
+  .option { background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    overflow: hidden; display: flex; flex-direction: column; transition: border-color .15s, box-shadow .15s; }
+  .option.picked { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); }
+  .option-head { display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 14px; border-bottom: 1px solid var(--border); }
+  .option-head strong { font-size: 13px; }
+  .pick { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; font-size: 13px; }
+  .pick input { accent-color: var(--primary); width: 16px; height: 16px; }
+
+  /* Product preview */
+  .preview { padding: 14px; background: var(--bg); }
+  .app { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .searchbar { display: flex; align-items: center; gap: 8px; margin: 12px; padding: 8px 10px;
+    border: 1px solid var(--border); border-radius: 8px; color: var(--muted); }
+  .searchbar span.q { color: var(--text); }
+  .tabs { display: flex; gap: 16px; padding: 0 14px; border-bottom: 1px solid var(--border);
+    font-size: 12px; color: var(--muted); }
+  .tabs span { padding: 6px 0; }
+  .tabs span.on { color: var(--text); border-bottom: 2px solid var(--primary); }
+  .empty { text-align: center; padding: 34px 22px 30px; }
+  .empty .icon-wrap { width: 52px; height: 52px; border-radius: 50%; background: var(--primary-soft);
+    color: var(--primary); display: grid; place-items: center; margin: 0 auto 14px; }
+  .empty h2 { font-size: 16px; margin: 0 0 6px; }
+  .empty p { color: var(--muted); margin: 0 auto 16px; max-width: 280px; font-size: 13px; }
+  .empty .actions { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+  .btn { font: inherit; font-size: 13px; padding: 6px 12px; border-radius: 6px; cursor: default;
+    border: 1px solid var(--border); background: var(--surface); color: var(--text); }
+  .btn.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+
+  .feedback { padding: 14px; display: grid; gap: 12px; border-top: 1px solid var(--border); }
+  .field-label { font-size: 12px; color: var(--muted); display: block; margin-bottom: 4px; }
+  .rating { display: flex; gap: 4px; border: 0; padding: 0; margin: 0; }
+  .rating legend { font-size: 12px; color: var(--muted); margin-bottom: 4px; padding: 0; }
+  .rating label { flex: 1; }
+  .rating input { position: absolute; opacity: 0; pointer-events: none; }
+  .rating span { display: block; text-align: center; padding: 5px 0; border: 1px solid var(--border);
+    border-radius: 6px; cursor: pointer; font-size: 13px; }
+  .rating input:checked + span { background: var(--primary); border-color: var(--primary); color: #fff; }
+  .rating input:focus-visible + span { outline: 2px solid var(--primary); outline-offset: 2px; }
+  .scale { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); margin-top: 2px; }
+  textarea { width: 100%; font: inherit; font-size: 13px; padding: 8px; border-radius: 6px;
+    border: 1px solid var(--border); background: var(--surface); color: var(--text); resize: vertical; }
+
+  .summary { margin-top: 28px; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 18px 20px; }
+  .summary h2 { font-size: 15px; margin: 0 0 12px; display: flex; justify-content: space-between; align-items: center; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { color: var(--muted); font-weight: 500; font-size: 12px; }
+  tr.chosen td { background: var(--primary-soft); }
+  .badge { display: inline-block; font-size: 11px; padding: 1px 7px; border-radius: 10px;
+    background: var(--primary); color: #fff; margin-left: 6px; }
+  .muted { color: var(--muted); }
+  .verdict { margin: 0 0 12px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Search results empty state: pick a copy</h1>
+  <p class="lede">Each option is shown in the results page after a search for “quarterly roadmap” that returned nothing. Pick one, rate its tone, and leave notes. The three copies here are drafts I wrote; swap in your real ones if they differ.</p>
+
+  <div class="grid" id="options"></div>
+
+  <section class="summary" aria-live="polite">
+    <h2>Your choices <button class="btn" id="copy-summary" type="button">Copy summary</button></h2>
+    <p class="verdict" id="verdict"></p>
+    <table>
+      <thead><tr><th>Option</th><th>Headline</th><th>Tone</th><th>Note</th></tr></thead>
+      <tbody id="summary-body"></tbody>
+    </table>
+  </section>
+</main>
+
+<script>
+const OPTIONS = [
+  { id: 'a', name: 'A · Neutral & helpful', icon: 'search-x',
+    title: 'No results for “quarterly roadmap”',
+    body: 'Try different keywords, check your spelling, or remove some filters.',
+    actions: ['Clear filters'] },
+  { id: 'b', name: 'B · Warm & conversational', icon: 'telescope',
+    title: 'We looked everywhere…',
+    body: 'Nothing matched “quarterly roadmap” this time. A shorter or broader search usually does the trick.',
+    actions: ['Clear filters', 'Browse all'] },
+  { id: 'c', name: 'C · Action-first', icon: 'file-plus',
+    title: 'Nothing here yet',
+    body: 'No pages match “quarterly roadmap”. Create one now, or search across all workspaces.',
+    actions: ['Create page', 'Search all workspaces'] },
+];
+const TONE = ['', 'Off', 'Weak', 'OK', 'Good', 'Spot on'];
+
+const grid = document.getElementById('options');
+grid.innerHTML = OPTIONS.map(o => `
+  <article class="option" id="card-${o.id}">
+    <div class="option-head">
+      <strong>${o.name}</strong>
+      <label class="pick"><input type="radio" name="choice" id="pick-${o.id}" value="${o.id}"> Pick this</label>
+    </div>
+    <div class="preview" aria-label="Product preview for option ${o.id.toUpperCase()}">
+      <div class="app">
+        <div class="searchbar"><ryugi-icon name="search" size="15"></ryugi-icon><span class="q">quarterly roadmap</span></div>
+        <div class="tabs"><span class="on">All</span><span>Pages</span><span>Files</span><span>People</span></div>
+        <div class="empty">
+          <div class="icon-wrap"><ryugi-icon name="${o.icon}" size="24"></ryugi-icon></div>
+          <h2>${o.title}</h2>
+          <p>${o.body}</p>
+          <div class="actions">${o.actions.map((a, i) =>
+            `<span class="btn ${i === 0 && o.id === 'c' ? 'primary' : ''}">${a}</span>`).join('')}</div>
+        </div>
+      </div>
+    </div>
+    <div class="feedback">
+      <fieldset class="rating">
+        <legend>Tone</legend>
+        ${[1,2,3,4,5].map(n => `<label title="${TONE[n]}"><input type="radio" name="tone-${o.id}" id="tone-${o.id}-${n}" value="${n}"><span>${n}</span></label>`).join('')}
+      </fieldset>
+      <div class="scale"><span>1 · off-brand</span><span>5 · spot on</span></div>
+      <div>
+        <label class="field-label" for="note-${o.id}">Note</label>
+        <textarea id="note-${o.id}" rows="3" placeholder="What works, what doesn’t…"></textarea>
+      </div>
+    </div>
+  </article>`).join('');
+
+const esc = s => s.replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function state() {
+  const picked = document.querySelector('input[name="choice"]:checked')?.value || null;
+  return OPTIONS.map(o => ({
+    ...o,
+    picked: picked === o.id,
+    tone: Number(document.querySelector(`input[name="tone-${o.id}"]:checked`)?.value || 0),
+    note: document.getElementById('note-' + o.id).value.trim(),
+  }));
+}
+function render() {
+  const s = state();
+  s.forEach(o => document.getElementById('card-' + o.id).classList.toggle('picked', o.picked));
+  const chosen = s.find(o => o.picked);
+  const rated = s.filter(o => o.tone);
+  const top = rated.length ? rated.reduce((a, b) => b.tone > a.tone ? b : a) : null;
+  let v = chosen ? `You picked <strong>${esc(chosen.name)}</strong>.` : '<span class="muted">No option picked yet.</span>';
+  if (chosen && top && top.id !== chosen.id && top.tone > chosen.tone)
+    v += ` <span class="muted">Note: you rated ${esc(top.name.split(' ·')[0])}'s tone higher (${top.tone} vs ${chosen.tone || '–'}).</span>`;
+  document.getElementById('verdict').innerHTML = v;
+  document.getElementById('summary-body').innerHTML = s.map(o => `
+    <tr class="${o.picked ? 'chosen' : ''}">
+      <td>${esc(o.name)}${o.picked ? '<span class="badge">Picked</span>' : ''}</td>
+      <td>${esc(o.title)}</td>
+      <td>${o.tone ? `${o.tone}/5 · ${TONE[o.tone]}` : '<span class="muted">—</span>'}</td>
+      <td>${o.note ? esc(o.note) : '<span class="muted">—</span>'}</td>
+    </tr>`).join('');
+}
+function summaryText() {
+  const s = state(), c = s.find(o => o.picked);
+  return [`Search empty state — picked: ${c ? c.name : 'none'}`,
+    ...s.map(o => `- ${o.name}: tone ${o.tone || '–'}/5${o.note ? ' — ' + o.note : ''}`)].join('\n');
+}
+document.addEventListener('input', render);
+document.addEventListener('change', render);
+document.getElementById('copy-summary').addEventListener('click', async e => {
+  try { await navigator.clipboard.writeText(summaryText()); e.target.textContent = 'Copied'; }
+  catch { e.target.textContent = 'Copy failed'; }
+  setTimeout(() => (e.target.textContent = 'Copy summary'), 1500);
+});
+render();
+</script>
+</body>
+</html>

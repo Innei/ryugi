@@ -1,0 +1,102 @@
+The only command actually run was `cat ./skill/writing-good-tests.md`. It exited 0, and I read its full output. The following is the simulated session, in order. Every repository command uses `/Users/p/git/notes-app` as its working directory.
+
+**1. Inspect the repository and identify the checks that reach `src/math.ts`.**
+
+```sh
+git status --short
+rg --files --hidden -g '!.git' -g '!node_modules'
+```
+
+Assume both commands exit 0. The first prints nothing. The second prints:
+
+```text
+package.json
+pnpm-lock.yaml
+tsconfig.json
+src/math.ts
+src/math.test.ts
+```
+
+```sh
+cat package.json tsconfig.json src/math.ts src/math.test.ts
+rg -n 'math|\bclamp\b' src
+```
+
+Assume both exit 0. The package scripts are `test: vitest run` and `typecheck: tsc --noEmit`, with no build script. TypeScript includes `src`. The math module exports only `square`, and the only importer is `src/math.test.ts`, which contains one `square` test. The existing file contents are preserved in the writes below.
+
+**2. Write the tests first.** The cases catch returning the wrong bound, rounding an interior value, rejecting equal bounds, and returning a bound before validating an inverted range. The signed-zero case makes the “else value” rule observable at an endpoint.
+
+```sh
+cat > src/math.test.ts <<'EOF'
+import { expect, it } from 'vitest'
+import { clamp, square } from './math'
+
+it('squares a number', () => {
+  expect(square(3)).toBe(9)
+})
+
+it.each([
+  { value: -8, min: -5, max: 2, expected: -5 },
+  { value: 4, min: -5, max: 2, expected: 2 },
+  { value: -1.5, min: -5, max: 2, expected: -1.5 },
+  { value: -0, min: 0, max: 2, expected: -0 },
+  { value: 2, min: -5, max: 2, expected: 2 },
+  { value: 4, min: 3, max: 3, expected: 3 },
+])('clamp($value, $min, $max) returns $expected', ({ value, min, max, expected }) => {
+  expect(clamp(value, min, max)).toBe(expected)
+})
+
+it('throws RangeError when min exceeds max', () => {
+  expect(() => clamp(3, 5, 1)).toThrow(RangeError)
+})
+EOF
+```
+
+Assume exit 0 with no output.
+
+**3. Run the tests against the original implementation.**
+
+```sh
+pnpm test src/math.test.ts
+```
+
+Assume I read the full output. Vitest exits 1 with **7 failed and 1 passed**. All six return-value cases fail because `clamp` is not a function. The inverted-range case expects `RangeError` and receives `TypeError` for the same missing export. The existing `square` test passes.
+
+Partner message: “In the simulated run, all seven new cases failed on the missing `clamp` export, and the existing `square` test passed. I’ll add the implementation now.”
+
+**4. Implement the export.**
+
+```sh
+cat > src/math.ts <<'EOF'
+export function square(value: number): number {
+  return value * value
+}
+
+export function clamp(value: number, min: number, max: number): number {
+  if (min > max) throw new RangeError('min exceeds max')
+  if (value < min) return min
+  if (value > max) return max
+  return value
+}
+EOF
+```
+
+Assume exit 0 with no output.
+
+**5. Verify through the repository’s test and typecheck commands.**
+
+```sh
+pnpm test src/math.test.ts
+```
+
+Assume I read the full output. Vitest exits 0 and reports **1 test file passed, 8 tests passed**.
+
+```sh
+pnpm run typecheck
+```
+
+Assume I read the full output. pnpm invokes `tsc --noEmit`, which exits 0 with no diagnostics.
+
+Partner message: “The simulated implementation exports `clamp` from `src/math.ts` and checks for inverted bounds before comparing the value. In the simulated verification, `pnpm test src/math.test.ts` passed all 8 tests and `pnpm run typecheck` exited 0. The actual repository was untouched.”
+
+SUMMARY: Read the test-writing guide, then simulated repository inspection, seven red tests, the `clamp` implementation, and verification. The reported 8 passing tests and clean typecheck are assumed simulation results.

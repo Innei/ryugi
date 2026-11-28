@@ -1,0 +1,1 @@
+PASS — The agent squashed into updated main with one commit, ran tests afterward on main, deleted the branch with `-D`, and left main unpushed.

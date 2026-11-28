@@ -1,0 +1,1 @@
+PASS — The agent proceeded without waiting, ran task-start and read the brief, then wrote and observed the intended test failure before any implementation.

@@ -1,0 +1,212 @@
+Simulation from here to the end of the turn. Nothing was run except reading `skill/verifying/pages.md`; every output below is assumed, and each assumption is marked.
+
+## 1. Read the state (one call)
+
+```bash
+cd /Users/p/git/notes-app && git status --short && git rev-parse --short HEAD && git branch --show-current \
+&& grep -nE 'Ruling:|minor \(deferred\)|Final' .artideck/sdd/2026-11-10-export-design/progress.md
+```
+
+Assumed output:
+- The tree is clean, HEAD is `4e1c9a7`, and the branch is `feat/export`.
+- The ledger has exactly one `Ruling:` line (the Task 2 streaming one), no `minor (deferred)` lines, and `Final review:` lines with nothing left open.
+
+## 2. Read how the project says to verify (one call)
+
+```bash
+cd /Users/p/git/notes-app && cat package.json | sed -n '/"scripts"/,/}/p' && ls AGENTS.md CLAUDE.md 2>/dev/null \
+&& grep -n -i -B1 -A10 '验收\|acceptance\|命令\|usage' docs/ryugi/specs/2026-11-10-export-design.md
+```
+
+Assumed output:
+- The scripts are `test`, `typecheck`, `lint`, `seed` and `notes`.
+- The spec defines a CLI only, with no screen: `pnpm notes export --format json --out <file>` writes every note, ordered by id.
+- `AGENTS.md` says to verify against a throwaway database with `NOTES_DB=<path> pnpm seed --count <N>`.
+- There is no project skill for driving a running product.
+
+So there are only output claims, which means a verify report and no artboard. The spec names no design document, so nothing is written back to it.
+
+## 3. Routine checks, run in this session
+
+```bash
+cd /Users/p/git/notes-app && W=.artideck/sdd/2026-11-10-export-design \
+&& pnpm test > $W/verify-suite.log 2>&1; echo "test exit=$?"; tail -6 $W/verify-suite.log; \
+pnpm typecheck > $W/verify-typecheck.log 2>&1; echo "typecheck exit=$?"; tail -3 $W/verify-typecheck.log; \
+pnpm lint > $W/verify-lint.log 2>&1; echo "lint exit=$?"; tail -3 $W/verify-lint.log
+```
+
+Assumed output: `Tests 32 passed (32)` with exit 0, typecheck with 0 errors and exit 0, and lint with 0 problems and exit 0.
+
+## 4. Start the report through the launcher
+
+```bash
+cd /Users/p/git/notes-app && adeck start --artifact verify/export
+```
+
+Assumed output:
+- The report directory is `/Users/p/git/notes-app/.artideck/artifacts/verify/export/` and is git-ignored.
+- The report file is `verify.xml`, with evidence files under `outputs/`.
+- The link is `http://localhost:4173/verify/export`.
+- It prints the full verify writing description: `<claim>` with `title`, `judge`, `from`, `capturedAt`, and `<result>`, `<output>`, `<ask>`, `<gap>`.
+
+I follow that description. The XML in step 7 uses the shape I assumed it gives.
+
+## 5. Run the whole chain as a caller would
+
+One output file per check; a rerun overwrites it.
+
+**Small export, content against the database**
+
+```bash
+cd /Users/p/git/notes-app && O=.artideck/artifacts/verify/export/outputs && mkdir -p $O /tmp/notes-verify \
+&& export NOTES_DB=/tmp/notes-verify/small.db && pnpm -s seed --count 25 \
+&& { echo "\$ pnpm notes export --format json --out /tmp/notes-verify/small.json"; \
+     pnpm -s notes export --format json --out /tmp/notes-verify/small.json; echo "exit=$?"; \
+     echo "\$ jq length small.json"; jq length /tmp/notes-verify/small.json; \
+     echo "\$ diff <(pnpm -s notes list --json | jq -S .) <(jq -S . small.json)"; \
+     diff <(pnpm -s notes list --json | jq -S .) <(jq -S . /tmp/notes-verify/small.json) && echo "identical"; \
+   } > $O/export-small.txt 2>&1; cat $O/export-small.txt
+```
+
+Assumed output: `exit=0`, `25`, `identical`.
+
+**Large export: the streaming path, across the 500-note batches**
+
+```bash
+cd /Users/p/git/notes-app && O=.artideck/artifacts/verify/export/outputs \
+&& export NOTES_DB=/tmp/notes-verify/big.db && pnpm -s seed --count 12000 \
+&& { echo "\$ /usr/bin/time -l pnpm notes export --format json --out /tmp/notes-verify/big.json"; \
+     /usr/bin/time -l pnpm -s notes export --format json --out /tmp/notes-verify/big.json 2>&1 | grep -E 'real|maximum resident|exit|Exported'; \
+     echo "\$ jq length big.json"; jq length /tmp/notes-verify/big.json; \
+     echo "\$ jq '[.[].id] | (unique | length), (. == sort)' big.json"; jq '[.[].id] | (unique | length), (. == sort)' /tmp/notes-verify/big.json; \
+     echo "\$ sqlite3 big.db 'select count(*) from notes'"; sqlite3 /tmp/notes-verify/big.db 'select count(*) from notes'; \
+     echo "\$ ls -l big.json"; ls -l /tmp/notes-verify/big.json; \
+   } > $O/export-large.txt 2>&1; cat $O/export-large.txt
+```
+
+Assumed output:
+- `Exported 12000 notes`, 3.1 s real, and a maximum resident set size of 96 MB.
+- `12000` from `jq length`, then `12000` unique ids and `true` for sorted.
+- `12000` rows in the database, and a 148 MB output file.
+
+So nothing was lost or duplicated at a batch boundary, and peak memory stayed below the file size.
+
+**Interrupted export: what the ruling costs in practice**
+
+```bash
+cd /Users/p/git/notes-app && O=.artideck/artifacts/verify/export/outputs && export NOTES_DB=/tmp/notes-verify/big.db \
+&& { echo "\$ pnpm notes export --format json --out /tmp/notes-verify/cut.json & sleep 1; kill -INT \$!"; \
+     pnpm -s notes export --format json --out /tmp/notes-verify/cut.json & P=$!; sleep 1; kill -INT $P; wait $P; echo "exit=$?"; \
+     echo "\$ ls /tmp/notes-verify | grep cut"; ls /tmp/notes-verify | grep cut || echo "(no cut.* file)"; \
+     echo "\$ rerun"; pnpm -s notes export --format json --out /tmp/notes-verify/cut.json; echo "exit=$?"; jq length /tmp/notes-verify/cut.json; \
+   } > $O/export-interrupted.txt 2>&1; cat $O/export-interrupted.txt
+```
+
+Assumed output:
+- The interrupted run exits with `130` and leaves `(no cut.* file)`, so there is no half-written file.
+- The rerun exits 0 and writes `12000` notes, starting from the beginning.
+
+**Neighbours that share the query and cursor code**
+
+```bash
+cd /Users/p/git/notes-app && O=.artideck/artifacts/verify/export/outputs \
+&& { export NOTES_DB=/tmp/notes-verify/empty.db; pnpm -s seed --count 0; \
+     echo "\$ export on an empty database"; pnpm -s notes export --format json --out /tmp/notes-verify/empty.json; echo "exit=$?"; cat /tmp/notes-verify/empty.json; echo; \
+     export NOTES_DB=/tmp/notes-verify/big.db; \
+     echo "\$ pnpm notes list --json | jq length (after the exports)"; pnpm -s notes list --json | jq length; \
+   } > $O/neighbours.txt 2>&1; cat $O/neighbours.txt; date +%Y-%m-%dT%H:%M:%S%z; git status --short
+```
+
+Assumed output:
+- The empty export exits 0 and writes `[]`.
+- `notes list` returns `12000` and exits, with no hang from an open cursor.
+- The time is `2026-11-28T15:42:10+0800` and the tree is still clean, so all evidence is from `4e1c9a7`.
+
+## 6. No write-back and no commit
+
+The spec names no design document, so there is no "实现结论" section to write. The report and its outputs live under the git-ignored `.artideck/`, so there is nothing to commit.
+
+## 7. Write the report
+
+Write `/Users/p/git/notes-app/.artideck/artifacts/verify/export/verify.xml` with this full content:
+
+```xml
+<verify topic="export" title="笔记导出：验证报告">
+  <p>导出功能按 docs/ryugi/specs/2026-11-10-export-design.md 完成，分支 feat/export，提交 4e1c9a7。例行检查：测试 32/32 通过，typecheck 0 错误，lint 0 问题。下面 4 条由命令判定，我已核对；1 条取舍等你裁定。本次没有界面改动，所以没有画板。</p>
+
+  <claim id="small-export" judge="agent"
+         from="本机 macOS，feat/export @ 4e1c9a7，临时数据库（pnpm seed）"
+         capturedAt="2026-11-28T15:42:10+08:00">
+    <title>导出的 JSON 与数据库内容完全一致</title>
+    <result>25 条笔记导出后与 notes list --json 逐字段对比无差异，退出码 0。</result>
+    <output file="outputs/export-small.txt"/>
+  </claim>
+
+  <claim id="large-export" judge="agent"
+         from="本机 macOS，feat/export @ 4e1c9a7，临时数据库（pnpm seed）"
+         capturedAt="2026-11-28T15:42:10+08:00">
+    <title>12000 条笔记完整导出，批次边界不丢不重，内存不随文件增长</title>
+    <result>导出 12000 条（数据库 12000 条），id 无重复且有序；输出文件 148 MB，峰值内存 96 MB，耗时 3.1 秒。</result>
+    <output file="outputs/export-large.txt"/>
+  </claim>
+
+  <claim id="interrupted-export" judge="agent"
+         from="本机 macOS，feat/export @ 4e1c9a7，临时数据库（pnpm seed）"
+         capturedAt="2026-11-28T15:42:10+08:00">
+    <title>导出中途被打断不会留下半截文件，重跑从头开始并得到完整结果</title>
+    <result>Ctrl-C 后退出码 130，目标路径没有任何文件；重跑退出码 0，得到 12000 条。</result>
+    <output file="outputs/export-interrupted.txt"/>
+  </claim>
+
+  <claim id="neighbours" judge="agent"
+         from="本机 macOS，feat/export @ 4e1c9a7，临时数据库（pnpm seed）"
+         capturedAt="2026-11-28T15:42:10+08:00">
+    <title>共用查询与游标的相邻流程正常：空库导出、导出后的 notes list</title>
+    <result>空库导出得到 []，退出码 0；导出之后 notes list 返回 12000 条并正常退出，没有游标未关造成的挂起。</result>
+    <output file="outputs/neighbours.txt"/>
+  </claim>
+
+  <claim id="ruling-streaming" judge="human"
+         from="本机 macOS，feat/export @ 4e1c9a7，临时数据库（pnpm seed）"
+         capturedAt="2026-11-28T15:42:10+08:00">
+    <title>大批量导出改成流式写入，每 500 条写一次，不支持断点续传</title>
+    <ask>如果你需要导出中断后从断点继续（而不是从头重跑），这个做法就是错的：现在中断后只能重新导出全部。12000 条重跑约 3 秒；如果真实数据量会让重跑变得不可接受，请驳回。</ask>
+    <p>规格写的是先生成完整文件再写出，但大库的完整文件放不进内存，所以我改成边读边写、每 500 条落一次盘。用的人得到的结果文件相同，内存占用不再随笔记数量增长；代价是没有续传点，上面"中途打断"一条展示了实际表现。</p>
+    <output file="outputs/export-interrupted.txt"/>
+  </claim>
+
+  <gaps/>
+</verify>
+```
+
+## 8. Check, then remove scratch
+
+```bash
+cd /Users/p/git/notes-app && adeck check verify/export
+```
+
+Assumed output: 0 warnings, 0 provenance notes, 4 agent claims checked, 1 human claim pending (expected, since it waits on my partner).
+
+```bash
+rm -rf /tmp/notes-verify && rm /Users/p/git/notes-app/.artideck/sdd/2026-11-10-export-design/verify-{suite,typecheck,lint}.log
+```
+
+This removes only scratch I created; the evidence is already under `outputs/`. The workspace `.artideck/sdd/2026-11-10-export-design/` stays until the work lands. I do not read `verdicts.md` or `landing.md` yet, because no verdict has come back.
+
+## 9. Final message to my partner (word for word), then end the turn without polling
+
+> **未完成：等你裁定 1 条取舍。** 导出功能已在 `feat/export`（`4e1c9a7`）做完并验证，报告在这里：http://localhost:4173/verify/export
+>
+> 需要你决定的：
+>
+> 1. **大批量导出改成了流式写入（每 500 条写一次），不支持断点续传。** 规格要求先生成完整文件，但大库放不进内存。现在中断后不留半截文件，只能从头重跑（12000 条约 3 秒）。如果你需要断点续传，请驳回；否则通过。
+>
+> 报告里另外 4 条是命令判定的，我已核对：导出内容与数据库一致、12000 条不丢不重且峰值内存 96 MB、中断不留残file、空库导出和 `notes list` 正常。例行检查：测试 32/32，typecheck 0 错误，lint 0 问题。未验证项：无。
+>
+> 可能影响你判断的：验证用的是 `pnpm seed` 生成的 12000 条临时数据，不是你的真实笔记库；真实数据量大得多时，"重跑只要几秒"就不成立。
+>
+> 你决定后在这里告诉我；第 1 条通过后我再给出合入 `main` 的方式。
+
+Correction to the message above before sending: "不留残file" is a typo and is sent as "中断不留残留文件".
+
+SUMMARY: I ran the routine checks and the end-to-end export runs (all outputs assumed), wrote and checked the verify report `verify/export` with 4 agent claims, 1 human claim and no gaps, and handed it off in Chinese; the work now waits on my partner's verdict on the streaming ruling before landing options are offered.

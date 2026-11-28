@@ -1,0 +1,84 @@
+Only `./skill/writing-good-tests.md` was actually read. Everything below is a simulation. The working directory for each simulated shell call is `/Users/p/git/notes-app`.
+
+1. **Tool call** — Find the implementation, callers, and tests.
+
+   ```sh
+   rg -n '\bpaginat(e|ion)\b|"typecheck"' src package.json
+   ```
+
+   **Assumed output** — `src/paginate.ts` exports `paginate`, `src/notes.ts` calls it, and `src/notes.test.ts` covers that caller. There is no existing `src/paginate.test.ts`. `package.json` defines `typecheck` as `tsc --noEmit`. No other callers or end-to-end tests use pagination.
+
+2. **Tool call** — Read the implementation and caller coverage.
+
+   ```sh
+   cat src/paginate.ts src/notes.ts src/notes.test.ts
+   ```
+
+   **Assumed output** — `paginate` is a named export, uses one-based page numbers, and clamps `end` to the number of items. `src/notes.test.ts` exercises the caller through its normal entry point.
+
+3. **Tool call** — Write `src/paginate.test.ts` with a partial final page. The existing `end - 1` should omit `'e'`.
+
+   ```sh
+   cat > src/paginate.test.ts <<'EOF'
+   import { expect, it } from 'vitest';
+   import { paginate } from './paginate';
+
+   it('includes the last item on a partial final page', () => {
+     expect(paginate(['a', 'b', 'c', 'd', 'e'], 2, 3)).toEqual(['d', 'e']);
+   });
+   EOF
+   ```
+
+   **Assumed result** — The write exits 0.
+
+4. **Tool call** — Run the regression against the original implementation.
+
+   ```sh
+   pnpm test src/paginate.test.ts
+   ```
+
+   **Assumed result after reading the full output** — Exit 1. The only test, `includes the last item on a partial final page`, fails because it expected `['d', 'e']` and received `['d']`.
+
+   **Message to partner** — “The regression reproduced the bug. The final page returned `['d']` and dropped `'e'`. I’ll correct the slice endpoint and rerun the affected tests.”
+
+5. **Tool call** — Change the slice endpoint. Given the assumed source, this is the complete resulting file.
+
+   ```sh
+   cat > src/paginate.ts <<'EOF'
+   export function paginate<T>(items: T[], page: number, size: number): T[] {
+     const start = (page - 1) * size;
+     const end = Math.min(start + size, items.length);
+     return items.slice(start, end);
+   }
+   EOF
+   ```
+
+   **Assumed result** — The write exits 0.
+
+6. **Tool call** — Rerun the regression.
+
+   ```sh
+   pnpm test src/paginate.test.ts
+   ```
+
+   **Assumed result after reading the full output** — Exit 0. The same test passes, 1 of 1.
+
+7. **Tool call** — Check the caller.
+
+   ```sh
+   pnpm test src/notes.test.ts
+   ```
+
+   **Assumed result after reading the full output** — Exit 0. Both caller tests pass, 2 of 2.
+
+8. **Tool call** — Type-check the project.
+
+   ```sh
+   pnpm run typecheck
+   ```
+
+   **Assumed result after reading the full output** — `tsc --noEmit` exits 0 with no diagnostics.
+
+**Final message to partner, simulated** — “`paginate` now passes `end` to `slice`, so the final page includes its last item. The regression failed before the edit with `['d']` instead of `['d', 'e']` and passed afterward. Both caller tests passed, and the type check exited 0.”
+
+SUMMARY: Read the test guide, then simulated finding callers, reproducing the missing item, correcting the slice endpoint, and verifying the regression, caller tests, and type check. No repo commands or edits actually ran.

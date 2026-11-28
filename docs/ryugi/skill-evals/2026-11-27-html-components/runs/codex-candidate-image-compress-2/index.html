@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Image Compressor</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --background: #f6f7f9;
+      --surface: #fff;
+      --preview: #eef0f4;
+      --line: #dde1e8;
+      --text: #1b2434;
+      --muted: #526077;
+      --lobe-color-primary: #345bc5;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --background: #171a21;
+        --surface: #20242d;
+        --preview: #191c24;
+        --line: #363c49;
+        --text: #edf0f7;
+        --muted: #b2bdd0;
+        --lobe-color-primary: #85a5ff;
+      }
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+
+    body {
+      margin: 0;
+      background: var(--background);
+      color: var(--text);
+      font: 14px/1.5 system-ui, sans-serif;
+    }
+
+    main { width: min(100%, 940px); margin: auto; padding: 44px 24px; }
+    header { margin-bottom: 24px; }
+    h1 { margin: 0; font-size: clamp(28px, 5vw, 40px); letter-spacing: -.045em; line-height: 1.15; }
+    h2 { margin: 0 0 16px; font-size: 16px; }
+    p { margin: 0; }
+    header p { margin-top: 8px; color: var(--muted); }
+    .workspace { display: grid; grid-template-columns: minmax(230px, 288px) minmax(0, 1fr); gap: 16px; }
+    .settings, .preview-panel { display: block; min-width: 0; }
+    .section { padding: 16px; }
+    .file-name { display: block; margin-top: 8px; color: var(--muted); overflow-wrap: anywhere; }
+    .options { display: grid; gap: 18px; }
+    .field { display: grid; min-width: 0; gap: 6px; }
+    .field label { font-weight: 600; }
+    .hint, #dimensions { color: var(--muted); font-size: 12px; }
+    .preview-heading { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+    .preview-heading h2 { margin-bottom: 12px; }
+
+    .stage {
+      display: grid;
+      place-items: center;
+      height: clamp(230px, 42vw, 390px);
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      background: var(--preview);
+      text-align: center;
+      color: var(--muted);
+    }
+
+    .stage img { display: block; width: 100%; height: 100%; min-height: 0; object-fit: contain; }
+    .stage p { padding: 10px; }
+    #error { display: block; margin-top: 12px; }
+
+    .results {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: end;
+      justify-content: space-between;
+      gap: 14px;
+      margin-top: 16px;
+    }
+
+    dl { display: flex; flex-wrap: wrap; gap: 12px 26px; margin: 0; }
+    dt { color: var(--muted); font-size: 12px; }
+    dd { margin: 2px 0 0; font-size: 17px; font-weight: 650; font-variant-numeric: tabular-nums; }
+    #size-change { margin-top: 6px; color: var(--muted); font-size: 12px; }
+
+    @media (max-width: 650px) {
+      main { padding: 28px 14px; }
+      .workspace { grid-template-columns: minmax(0, 1fr); }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>Image Compressor</h1>
+      <p>Resize an image and export it as a JPEG. Your file stays on this device.</p>
+    </header>
+
+    <div class="workspace">
+      <ryugi-card class="settings" variant="outlined">
+        <section class="section" aria-labelledby="settings-heading">
+          <h2 id="settings-heading">Settings</h2>
+          <div class="options">
+            <div>
+              <input id="image-file" type="file" accept="image/*" hidden>
+              <ryugi-button id="choose-image" variant="outlined" icon="image" block>Choose image</ryugi-button>
+              <span id="file-name" class="file-name">No file selected</span>
+            </div>
+
+            <div class="field">
+              <label id="quality-label" for="quality">JPEG quality (%)</label>
+              <ryugi-slider-input id="quality" aria-labelledby="quality-label" min="1" max="100" step="1" value="80"></ryugi-slider-input>
+            </div>
+
+            <div class="field">
+              <label id="width-label" for="max-width">Max width (px)</label>
+              <ryugi-slider-input id="max-width" aria-labelledby="width-label" min="1" max="8192" step="1" value="1600"></ryugi-slider-input>
+              <p class="hint">Smaller images keep their original width.</p>
+            </div>
+          </div>
+        </section>
+      </ryugi-card>
+
+      <ryugi-card class="preview-panel" variant="outlined">
+        <section class="section" aria-labelledby="preview-heading">
+          <div class="preview-heading">
+            <h2 id="preview-heading">JPEG preview</h2>
+            <span id="dimensions"></span>
+          </div>
+
+          <div class="stage">
+            <p id="preview-status" role="status">Choose an image to see the compressed preview.</p>
+            <img id="preview" alt="Compressed JPEG preview" hidden>
+          </div>
+
+          <ryugi-alert id="error" type="error" variant="soft" showIcon hidden></ryugi-alert>
+
+          <div class="results">
+            <div aria-live="polite" aria-atomic="true">
+              <dl>
+                <div><dt>Original size</dt><dd id="original-size">—</dd></div>
+                <div><dt>JPEG size</dt><dd id="jpeg-size">—</dd></div>
+              </dl>
+              <p id="size-change" hidden></p>
+            </div>
+            <ryugi-button id="download" variant="filled" icon="download" disabled>Download JPEG</ryugi-button>
+          </div>
+        </section>
+      </ryugi-card>
+    </div>
+  </main>
+
+  <script>
+    document.addEventListener('ryugi-ui:ready', () => {
+      const fileInput = document.getElementById('image-file');
+      const quality = document.getElementById('quality');
+      const maxWidth = document.getElementById('max-width');
+      const download = document.getElementById('download');
+      const preview = document.getElementById('preview');
+      const status = document.getElementById('preview-status');
+      const error = document.getElementById('error');
+      const fileName = document.getElementById('file-name');
+      const originalSize = document.getElementById('original-size');
+      const jpegSize = document.getElementById('jpeg-size');
+      const dimensions = document.getElementById('dimensions');
+      const sizeChange = document.getElementById('size-change');
+      const number = new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 });
+
+      let file;
+      let source;
+      let resultUrl;
+      let revision = 0;
+      let timer;
+
+      function formatSize(bytes) {
+        if (bytes < 1024) return number.format(bytes) + ' B';
+        if (bytes < 1024 ** 2) return number.format(bytes / 1024) + ' KiB';
+        return number.format(bytes / 1024 ** 2) + ' MiB';
+      }
+
+      function clearResult(message) {
+        preview.hidden = true;
+        preview.removeAttribute('src');
+        if (resultUrl) URL.revokeObjectURL(resultUrl);
+        resultUrl = undefined;
+        download.setAttribute('disabled', '');
+        jpegSize.textContent = '—';
+        dimensions.textContent = '';
+        sizeChange.hidden = true;
+        error.hidden = true;
+        status.textContent = message;
+        status.hidden = false;
+      }
+
+      function showError(title) {
+        clearResult('Preview unavailable.');
+        error.setAttribute('title', title);
+        error.hidden = false;
+      }
+
+      async function compress(version, widthLimit, jpegQuality) {
+        if (version !== revision) return;
+
+        const width = Math.min(source.naturalWidth, widthLimit);
+        const height = Math.max(1, Math.round(source.naturalHeight * width / source.naturalWidth));
+        const canvas = document.createElement('canvas');
+
+        try {
+          canvas.width = width;
+          canvas.height = height;
+          const context = canvas.getContext('2d');
+          context.fillStyle = '#fff';
+          context.fillRect(0, 0, width, height);
+          context.imageSmoothingQuality = 'high';
+          context.drawImage(source, 0, 0, width, height);
+
+          const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', jpegQuality));
+          if (version !== revision) return;
+          if (!blob || blob.type !== 'image/jpeg') throw new Error('JPEG encoding failed');
+
+          resultUrl = URL.createObjectURL(blob);
+          preview.src = resultUrl;
+          preview.hidden = false;
+          dimensions.textContent = number.format(width) + ' × ' + number.format(height) + ' px';
+          jpegSize.textContent = formatSize(blob.size);
+          const change = Math.abs(1 - blob.size / file.size) * 100;
+          if (blob.size === file.size) {
+            sizeChange.textContent = 'Same size as the original';
+          } else if (change < 0.1) {
+            sizeChange.textContent = blob.size < file.size ? 'Less than 0.1% smaller' : 'Less than 0.1% larger';
+          } else {
+            sizeChange.textContent = number.format(change) + (blob.size < file.size ? '% smaller' : '% larger');
+          }
+          sizeChange.hidden = false;
+          status.hidden = true;
+          download.removeAttribute('disabled');
+        } catch {
+          if (version === revision) showError('Could not create a JPEG. Try a smaller max width.');
+        } finally {
+          canvas.width = 0;
+          canvas.height = 0;
+        }
+      }
+
+      function queueCompression() {
+        if (!source) return;
+        clearTimeout(timer);
+        const version = ++revision;
+        clearResult('Compressing image…');
+        const width = Math.min(8192, Math.max(1, Math.round(Number(maxWidth.value) || 1600)));
+        const jpegQuality = Math.min(100, Math.max(1, Number(quality.value) || 80)) / 100;
+        timer = setTimeout(() => compress(version, width, jpegQuality), 140);
+      }
+
+      document.getElementById('choose-image').addEventListener('click', () => fileInput.click());
+
+      fileInput.addEventListener('change', async () => {
+        const selected = fileInput.files[0];
+        if (!selected) return;
+        fileInput.value = '';
+
+        clearTimeout(timer);
+        const version = ++revision;
+        file = selected;
+        source = undefined;
+        fileName.textContent = selected.name;
+        originalSize.textContent = formatSize(selected.size);
+        clearResult('Loading image…');
+
+        const image = new Image();
+        const url = URL.createObjectURL(selected);
+        try {
+          image.src = url;
+          await image.decode();
+          if (version !== revision) return;
+          source = image;
+          queueCompression();
+        } catch {
+          if (version === revision) showError('Could not open this image. Try another file.');
+        } finally {
+          URL.revokeObjectURL(url);
+        }
+      });
+
+      quality.addEventListener('ryugi-change', queueCompression);
+      maxWidth.addEventListener('ryugi-change', queueCompression);
+
+      download.addEventListener('click', () => {
+        if (!resultUrl) return;
+        const link = document.createElement('a');
+        link.href = resultUrl;
+        link.download = (file.name.replace(/\.[^.]+$/, '') || 'image') + '-compressed.jpg';
+        document.body.append(link);
+        link.click();
+        link.remove();
+      });
+    }, { once: true });
+  </script>
+</body>
+</html>

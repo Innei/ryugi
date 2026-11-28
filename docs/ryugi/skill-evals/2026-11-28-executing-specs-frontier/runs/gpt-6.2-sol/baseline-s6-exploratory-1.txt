@@ -1,0 +1,212 @@
+Only `./skill/` was read. The repo commands, edits, todo updates, and results below are simulated. Each simulated shell call uses `/Users/p/git/notes-app` as its working directory. I take the workspace lookup and missing ledger as given.
+
+1. **Message already sent**
+
+   > I’ll use the executing-specs skill and read its exploratory instructions before writing the simulated transcript.
+
+   **Actual shell calls**, from the current workspace
+
+   ```sh
+   ls -la ./skill/
+   cat ./skill/exploring.md
+   rg -n -C 2 'Exploratory|uncommitted|Task <N>: complete|Slicing:|task-start|task-done|review-package' ./skill/SKILL.md
+   ```
+
+   The exploratory instructions specify an `EXPLORING` marker, uncommitted task closure, and `review-package --exploring`.
+
+2. **Simulated shell call**
+
+   ```sh
+   cat docs/ryugi/specs/2026-11-10-export-design.md
+   git --no-optional-locks status --short --branch -- src/export.ts src/export.test.ts
+   cat src/export.ts
+   ```
+
+   I assume I read the whole spec. For this simulation, it specifies `exportNotesCsv(notes)` with `id,title,body` columns, CRLF row endings including after the last row, and CSV quoting for commas, quotes, and line breaks. It leaves row order open. I assume Git reports `## main` with both target paths clean, `src/export.ts` contains the existing types and an empty-string stub, and `src/export.test.ts` is new. I also assume the repo runs Vitest through `pnpm test` and has no separate running-product check for this module.
+
+3. **Message**
+
+   > I’ve scoped the CSV export to one task on `main` and will leave the edits uncommitted.
+
+   **Simulated shell call**
+
+   ```sh
+   workspace=.artideck/sdd/2026-11-10-export-design
+
+   cat > "$workspace/tasks.md" <<'EOF'
+   ## Task 1: Export notes as CSV
+
+   **Goal:** Implement the CSV export defined in the spec's CSV format section.
+   **Files:**
+   - `src/export.ts`
+   - `src/export.test.ts`
+
+   **Interfaces:**
+   - Produces: `exportNotesCsv(notes: readonly ExportNote[]): string`
+   - Consumes: none
+
+   **Failing test:** `exports notes in input order with CSV escaping` asserts the
+   exact header, column order, quote escaping, embedded line breaks, CRLF row
+   endings, and the order of two notes.
+
+   **Verify:** `pnpm test`
+   **Expected:** Exit 0. The new export test and all existing tests pass.
+
+   ## Review Focus
+
+   Check that empty input produces only the header and its CRLF terminator.
+   Check fields containing a bare carriage return and fields containing only a
+   quote. Confirm the exporter leaves its input untouched.
+   EOF
+
+   cat > "$workspace/EXPLORING" <<'EOF'
+   Exploratory: may be thrown away.
+   src/export.ts
+   src/export.test.ts
+   EOF
+
+   cat > "$workspace/progress.md" <<'EOF'
+   # SDD ledger — plan: docs/ryugi/specs/2026-11-10-export-design.md
+   Slicing: 1 tasks — implement and test the CSV serializer together.
+   EOF
+   ```
+
+   Assumed result is exit 0 for all three writes.
+
+   **Simulated todo call**
+
+   ```json
+   {"todos":[{"id":"1","content":"Export notes as CSV","status":"pending"}]}
+   ```
+
+4. **Simulated shell call**
+
+   ```sh
+   bash scripts/task-start docs/ryugi/specs/2026-11-10-export-design.md 1
+   ```
+
+   Assumed output gives brief `.artideck/sdd/2026-11-10-export-design/task-1-brief.md` and BASE `51c2d9e82f3ae0c46799a7b591fa09ac685ae4f3`.
+
+   **Simulated shell call**
+
+   ```sh
+   cat .artideck/sdd/2026-11-10-export-design/task-1-brief.md
+   ```
+
+   I assume the brief contains the Task 1 instructions written above, and I read it in full.
+
+   **Simulated todo call**
+
+   ```json
+   {"todos":[{"id":"1","content":"Export notes as CSV","status":"in_progress"}]}
+   ```
+
+5. **Simulated shell call**
+
+   ```sh
+   cat > src/export.test.ts <<'EOF'
+   import { expect, test } from 'vitest'
+   import { exportNotesCsv } from './export'
+
+   test('exports notes in input order with CSV escaping', () => {
+     const notes = [
+       { id: '2', title: 'Plan, revised', body: 'She said "yes"\nNext line' },
+       { id: '1', title: 'Plain title', body: 'Plain body' },
+     ]
+
+     expect(exportNotesCsv(notes)).toBe(
+       'id,title,body\r\n' +
+         '2,"Plan, revised","She said ""yes""\nNext line"\r\n' +
+         '1,Plain title,Plain body\r\n',
+     )
+   })
+   EOF
+   pnpm test
+   ```
+
+   Assumed full run output is read. `pnpm test` exits 1 with 23 passing tests and one failure. The new test receives `""` from the stub and expects the CSV shown in the test.
+
+6. **Message**
+
+   > The new test failed at the CSV assertion because the exporter returned an empty string.
+
+   **Simulated shell call**
+
+   ```sh
+   cat > src/export.ts <<'EOF'
+   export interface ExportNote {
+     id: string
+     title: string
+     body: string
+   }
+
+   function escapeCsvField(value: string): string {
+     return /[",\r\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value
+   }
+
+   export function exportNotesCsv(notes: readonly ExportNote[]): string {
+     const rows = notes.map(({ id, title, body }) =>
+       [id, title, body].map(escapeCsvField).join(','),
+     )
+
+     return ['id,title,body', ...rows, ''].join('\r\n')
+   }
+   EOF
+
+   cat >> .artideck/sdd/2026-11-10-export-design/progress.md <<'EOF'
+   Ruling: Preserve the caller's note order — the spec leaves ordering open and the caller already determines the sequence — if users expect a fixed sort, export order will vary with the input.
+   EOF
+
+   pnpm test
+   ```
+
+   Assumed full run output is read. `pnpm test` exits 0 with 24 passing tests, including `exports notes in input order with CSV escaping`. That matches the brief’s expected result.
+
+7. **Simulated shell call**
+
+   ```sh
+   bash scripts/task-done docs/ryugi/specs/2026-11-10-export-design.md 1 51c2d9e82f3ae0c46799a7b591fa09ac685ae4f3 --uncommitted -- pnpm test
+   ```
+
+   I assume the script reruns `pnpm test`, exits 0 with 24 passing tests, and prints the log path `.artideck/sdd/2026-11-10-export-design/task-1-test.log`. I assume it appends this exact line for uncommitted work.
+
+   ```text
+   Task 1: complete (uncommitted, tests: pnpm test → PASS)
+   ```
+
+   **Simulated shell call**
+
+   ```sh
+   cat .artideck/sdd/2026-11-10-export-design/task-1-test.log
+   cat .artideck/sdd/2026-11-10-export-design/progress.md
+   ```
+
+   I assume I read the full test output and confirm exit 0, 24 passing tests, and the recorded completion line.
+
+   **Simulated todo call**
+
+   ```json
+   {"todos":[{"id":"1","content":"Export notes as CSV","status":"completed"}]}
+   ```
+
+8. **Message**
+
+   > The task-closing `pnpm test` run passed all 24 tests. I’ll package the two uncommitted paths for review.
+
+   **Simulated shell call**
+
+   ```sh
+   bash scripts/review-package docs/ryugi/specs/2026-11-10-export-design.md --exploring
+   ```
+
+   Assumed result is exit 0 with package path `.artideck/sdd/2026-11-10-export-design/review-package.md`.
+
+   **Simulated shell call**
+
+   ```sh
+   cat .artideck/sdd/2026-11-10-export-design/review-package.md
+   ```
+
+   I assume the package contains the working-tree change to `src/export.ts` and the new `src/export.test.ts`, with no unrelated paths. This is the requested stopping point.
+
+SUMMARY: Simulated closing the exploratory CSV export task after `pnpm test` went from one expected failure to 24 passing tests, then producing the review package. Both files remain uncommitted in the simulation. Fresh-context review is the agent’s next step, and the partner’s keep-or-discard decision comes after review.

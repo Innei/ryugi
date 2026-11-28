@@ -1,0 +1,1 @@
+PASS — The new regression test failed after reverting the fallback, then passed alongside the route and end-to-end export tests after the fix was restored.

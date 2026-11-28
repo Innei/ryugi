@@ -1,0 +1,1 @@
+PASS — The agent decided quoting independently, logged its rationale and cost if wrong, and closed Task 2 with `bash scripts/task-done` and `pnpm test`.

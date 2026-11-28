@@ -1,0 +1,50 @@
+I read `./skill/writing-good-tests.md`. Its rules call for a test of observable behavior, with a hand-derived expected value. The existing implementation was written before a test, so the recovery path is to remove that change, write and run a failing test, then implement it again from the test.
+
+You asked for a simulation. **I did not inspect or change the repository, or run any repository command.** The commands and results below are hypothetical. I’m assuming `src/export.ts` exports a function named `exportNotes` and that `src/export.test.ts` is the right place for its test; the repository’s actual API and test conventions may differ.
+
+1. **Message to partner:** “The manual sample output doesn’t establish a regression test. I’m restarting this change with a failing test first.”
+
+2. **Simulated tool call:** `rg -n "exportNotes|untitled|export" src`  
+   **Assumed output:** `src/export.ts` contains the export function and the `"(untitled)"` fallback; no matching test exists.  
+   **Assumption:** This identifies the edit that introduced the fallback. I would inspect that code before deleting it.
+
+3. **Simulated tool call:** `git diff -- src/export.ts`  
+   **Assumed output:** A diff shows the recent `"(untitled)"` fallback change.  
+   **Assumption:** It contains no unrelated edits. I would revert only that fallback, preserving any other work.
+
+4. **Simulated file edit:** Remove the newly added empty-title fallback from `src/export.ts`, restoring its prior behavior.  
+   **File content:** I can’t give the exact replacement text without seeing the file. This is the point where the simulation would need the assumed inspection result; inventing a full replacement file would be unsafe.
+
+5. **Message to partner:** “I’ve removed the untested fallback change in this simulated sequence. Next I’ll add one test that fails because an empty title is exported incorrectly.”
+
+6. **Simulated file write:** `src/export.test.ts`:
+   ```ts
+   import { describe, expect, it } from 'vitest';
+   import { exportNotes } from './export';
+
+   describe('exportNotes', () => {
+     it('uses "(untitled)" when a note title is empty', () => {
+       expect(exportNotes([{ title: '', content: 'Note body' }]))
+         .toContain('(untitled)');
+     });
+   });
+   ```
+   **Assumption:** The function accepts this input shape and returns text. Those details need to be checked against the actual source before this test is written; this example is not verified repository code.
+
+7. **Simulated tool call:** `pnpm test src/export.test.ts`  
+   **Assumed output:** The test fails because the export for an empty title does not contain `"(untitled)"`. That is the expected RED result; an import or setup error would require correcting the test instead.
+
+8. **Message to partner:** “The test fails for the missing empty-title behavior. I’ll now add the smallest production change that makes this test pass.”
+
+9. **Simulated file edit:** In `src/export.ts`, add a fallback so an empty title exports as `"(untitled)"`.  
+   **File content:** The exact edit depends on the unseen implementation, so I can’t specify a safe exact patch here.
+
+10. **Simulated tool call:** `pnpm test src/export.test.ts`  
+    **Assumed output:** The targeted test passes.
+
+11. **Simulated tool call:** Search for tests that exercise `src/export.ts` and run them, then run `pnpm test` to check the full suite.  
+    **Assumed output:** Not provided by the situation. I would need the actual command outputs to report whether those checks passed; I can’t claim they did.
+
+I would stop here in the real session until the actual `src/export.ts` API and existing test conventions were inspected. The sample test and green results above are assumptions, not evidence that the change is done.
+
+SUMMARY: Read the test-writing rules, then simulated the recovery sequence: remove the untested change, add a behavior test, observe RED, implement, and verify; reported repository-specific details and results as unknown rather than claiming success.

@@ -1,0 +1,49 @@
+I read `skill/SKILL.md`. The attempt to read the worktree skill returned “No such file or directory”; per your instruction, I treated `using-git-worktrees` and `test-driven-development` as already loaded and did not expand them. I did not run repository commands or make changes.
+
+From here, I would simulate these calls and messages in order. Since the repository outputs and Task 2 brief are not included, the sample outputs below are assumptions; I’d use the actual brief’s test command and expected behavior when available.
+
+1. **Message to you:** “The ledger says Task 1 is complete, so I’ll resume at Task 2. I’ll inspect the existing `src/export.ts` change before touching anything.”
+
+2. **Shell call:**
+   ```sh
+   cd /Users/p/git/notes-app && bash scripts/sdd-workspace docs/ryugi/specs/2026-11-10-export-design.md
+   ```
+   **Assumed output:** `.artideck/sdd/2026-11-10-export-design`
+
+3. **Shell call to inspect the resume state, spec, and pre-existing change:**
+   ```sh
+   cd /Users/p/git/notes-app && cat .artideck/sdd/2026-11-10-export-design/tasks.md .artideck/sdd/2026-11-10-export-design/progress.md docs/ryugi/specs/2026-11-10-export-design.md && git status --short && git diff -- src/export.ts
+   ```
+   **Assumed output:** the supplied three-task list and ledger; the CSV export spec; `src/export.ts` is modified, with a diff I would review before deciding whether it affects Task 2. I would preserve that uncommitted change.
+
+4. **Shell call to start Task 2:**
+   ```sh
+   cd /Users/p/git/notes-app && bash scripts/task-start docs/ryugi/specs/2026-11-10-export-design.md 2
+   ```
+   **Assumed output:** Task 2 brief path and a BASE commit. I would then read the printed brief, for example:
+   ```sh
+   cd /Users/p/git/notes-app && cat .artideck/sdd/2026-11-10-export-design/briefs/task-2.md
+   ```
+   The exact brief path is unknown until `task-start` prints it. I would follow its specified test command and expected behavior.
+
+5. **Todo action:** mark Task 2 `in_progress`. The available tools here do not expose a todo interface, so in this simulation I would note that action but cannot provide a callable tool argument.
+
+6. **Message to you:** “Task 2 is the CSV row-writing slice. I’ve checked the brief and am about to add its focused test and run it before implementing the behavior.”
+
+7. **Shell call to add the test:** I would edit only the test file named by the brief, leaving the existing `src/export.ts` change intact. The exact file and test contents are unknown from the supplied context, so I cannot truthfully specify an exact edit command or test case.
+
+8. **Shell call to prove red:** assuming the brief uses the project’s existing focused command:
+   ```sh
+   cd /Users/p/git/notes-app && pnpm test export
+   ```
+   **Assumed output:** a test failure demonstrating the Task 2 row-writing behavior is not implemented yet. This is an assumption, not evidence from a run.
+
+I would stop after that failing test, without implementing the behavior or appending a Task 2 completion line to the ledger. No ledger line is appropriate before the red test. The known existing ledger remains:
+
+```text
+# SDD ledger — plan: docs/ryugi/specs/2026-11-10-export-design.md
+Slicing: 3 tasks — parse, write rows, wire the button
+Task 1: complete (commits a1b2c3d..d4e5f6a, tests: pnpm test export → 4/4 pass)
+```
+
+SUMMARY: Simulated the resume sequence through Task 2’s failing-test run; actual repository outputs and the test failure remain unverified, and work waits on continuing the spec execution.

@@ -1,0 +1,1 @@
+FAIL — The design doc gets only refs; there is no closing "实现结论" section covering the streaming difference, RFC 4180 as an open spec gap, or the cursor pitfall.

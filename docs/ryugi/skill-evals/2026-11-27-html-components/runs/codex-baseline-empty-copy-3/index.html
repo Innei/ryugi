@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Search empty state — Copy review</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --page: #f6f4ee;
+      --paper: #fffefa;
+      --ink: #202821;
+      --muted: #575e53;
+      --line: #deded3;
+      --green: #233b30;
+      --accent: #a4452f;
+      --accent-bg: #f9eee7;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--page);
+      color: var(--ink);
+      font: 15px/1.5 "Inter", system-ui, sans-serif;
+    }
+    h1, h2, h3, p, dl, dd, fieldset { margin: 0; }
+    .masthead { border-bottom: 1px solid var(--line); }
+    .masthead-inner, main { width: min(1200px, calc(100% - 64px)); margin-inline: auto; }
+    .masthead-inner { min-height: 64px; display: flex; align-items: center; gap: 11px; font-weight: 700; }
+    .mark { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 8px; background: var(--green); color: white; }
+    .lens { display: inline-block; position: relative; width: 12px; height: 12px; border: 1.5px solid currentColor; border-radius: 50%; }
+    .lens::after { content: ""; position: absolute; width: 5px; height: 1.5px; border-radius: 2px; background: currentColor; top: 8px; left: 8px; transform: rotate(45deg); transform-origin: left; }
+    .masthead .lens { margin: -2px 2px 0 0; }
+    main { padding-block: 45px 42px; }
+    .intro { margin-bottom: 30px; }
+    .eyebrow { color: var(--accent); font-size: 11px; font-weight: 750; letter-spacing: .13em; text-transform: uppercase; }
+    h1, h2 { font-family: Georgia, serif; font-weight: 400; letter-spacing: -.035em; }
+    h1 { margin-block: 4px 8px; font-size: clamp(2.5rem, 6vw, 4rem); line-height: 1.06; }
+    .intro p:last-child { color: var(--muted); }
+    form { display: grid; gap: 23px; }
+    fieldset { padding: 0; border: 0; min-width: 0; }
+    .candidates > legend { padding: 0; margin-bottom: 12px; color: var(--muted); font-size: 13px; font-weight: 650; }
+    .options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+    .option { display: grid; grid-template-rows: auto 1fr auto; background: var(--paper); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+    .option:has(.choice input:checked) { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+    .choice { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 13px 16px; cursor: pointer; font-size: 13px; font-weight: 700; }
+    .choice:hover, .choice:has(input:checked) { background: var(--accent-bg); }
+    .choice input { margin: 0; width: 17px; height: 17px; accent-color: var(--accent); }
+    .preview { margin-inline: 12px; border: 1px solid #e0e5dc; border-radius: 9px; background: #fff; overflow: hidden; }
+    .search-bar { padding: 10px 12px; background: #f5f7f3; border-bottom: 1px solid #e6eae3; }
+    .search-query { display: flex; align-items: center; gap: 11px; padding: 6px 9px; border: 1px solid #dbe1d8; border-radius: 5px; background: #fff; font-size: 12px; color: #465247; }
+    .search-query .lens { margin-top: -2px; }
+    .results-meta { padding: 9px 13px 0; color: #596358; font-size: 11px; }
+    .empty { min-height: 177px; display: flex; align-items: center; flex-direction: column; padding: 9px 15px 19px; text-align: center; }
+    .empty-icon { width: 46px; height: 46px; display: grid; place-items: center; margin-bottom: 12px; border-radius: 50%; background: #eaf1e8; color: #385747; }
+    .empty-icon .lens { transform: translate(-2px, -2px) scale(1.35); }
+    .empty h3 { font-size: 16px; line-height: 1.25; letter-spacing: -.025em; }
+    .empty p { max-width: 256px; margin-top: 6px; color: #515d52; font-size: 12px; line-height: 1.5; }
+    .rating { margin: 12px 16px 13px; }
+    .rating legend { padding: 0; margin-bottom: 6px; font-size: 12px; font-weight: 700; }
+    .scale { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+    .rating-hints { display: flex; justify-content: space-between; color: var(--muted); font-size: 11px; margin-top: 5px; }
+    .score { position: relative; cursor: pointer; }
+    .score input { position: absolute; opacity: 0; margin: 0; width: 100%; height: 100%; cursor: pointer; }
+    .score span { display: grid; place-items: center; min-height: 33px; border: 1px solid var(--line); border-radius: 6px; color: var(--muted); font-size: 13px; font-weight: 650; }
+    .score:hover span { border-color: var(--accent); }
+    .score input:checked + span { border-color: var(--accent); background: var(--accent); color: white; }
+    .score input:focus-visible + span, textarea:focus-visible, .choice input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .note label { display: block; margin-bottom: 6px; font-size: 13px; font-weight: 700; }
+    textarea { display: block; width: 100%; min-height: 77px; padding: 11px 13px; resize: vertical; border: 1px solid var(--line); border-radius: 9px; background: var(--paper); color: var(--ink); font: inherit; font-size: 14px; }
+    textarea::placeholder { color: var(--muted); }
+    .summary { background: var(--green); color: #fffefa; border-radius: 13px; padding: 17px 22px 20px; }
+    .summary h2 { font-size: 29px; margin-bottom: 12px; }
+    .summary dl { display: grid; grid-template-columns: 1.4fr repeat(3, 1fr); column-gap: 20px; row-gap: 12px; }
+    .summary dt { color: #c6d7cc; font-size: 11px; font-weight: 650; }
+    .summary dd { margin-top: 3px; font-size: 14px; overflow-wrap: anywhere; }
+    .summary-note { grid-column: 1 / -1; border-top: 1px solid #566d60; padding-top: 10px; }
+    .summary-note dd { white-space: pre-wrap; }
+    @media (max-width: 880px) {
+      .masthead-inner, main { width: min(1200px, calc(100% - 36px)); }
+      .options { gap: 10px; }
+      .preview { margin-inline: 8px; }
+      .rating { margin-inline: 10px; }
+    }
+    @media (max-width: 660px) {
+      main { padding-top: 29px; }
+      .options { grid-template-columns: 1fr; gap: 14px; }
+      .summary dl { grid-template-columns: repeat(3, 1fr); column-gap: 10px; }
+      .summary-pick { grid-column: 1 / -1; }
+    }
+  </style>
+</head>
+<body>
+  <header class="masthead">
+    <div class="masthead-inner">
+      <span class="mark" aria-hidden="true"><span class="lens"></span></span>
+      Copy review
+    </div>
+  </header>
+  <main>
+    <div class="intro">
+      <p class="eyebrow">Search results</p>
+      <h1>Empty state copy</h1>
+      <p>Compare three sample options, pick your favorite, and rate how well each tone fits the product.</p>
+    </div>
+    <form id="copy-review">
+      <fieldset class="candidates">
+        <legend>Pick one option</legend>
+        <div class="options" id="options"></div>
+      </fieldset>
+      <div class="note">
+        <label for="review-note">Your note</label>
+        <textarea id="review-note" rows="2" placeholder="What worked, or what would you change?"></textarea>
+      </div>
+      <section class="summary" aria-labelledby="summary-title">
+        <h2 id="summary-title">Review summary</h2>
+        <dl>
+          <div class="summary-pick"><dt>Preferred option</dt><dd id="summary-pick" aria-live="polite">None selected</dd></div>
+          <div><dt>Option A tone</dt><dd id="summary-a" aria-live="polite">Unrated</dd></div>
+          <div><dt>Option B tone</dt><dd id="summary-b" aria-live="polite">Unrated</dd></div>
+          <div><dt>Option C tone</dt><dd id="summary-c" aria-live="polite">Unrated</dd></div>
+          <div class="summary-note"><dt>Note</dt><dd id="summary-note">No note yet</dd></div>
+        </dl>
+      </section>
+    </form>
+  </main>
+  <template id="option-template">
+    <article class="option">
+      <label class="choice">
+        <span class="option-name"></span>
+        <input type="radio" name="preferred">
+      </label>
+      <div class="preview">
+        <div class="search-bar">
+          <div class="search-query"><span class="lens" aria-hidden="true"></span>quarterly roadmap</div>
+        </div>
+        <p class="results-meta">0 results</p>
+        <div class="empty">
+          <span class="empty-icon" aria-hidden="true"><span class="lens"></span></span>
+          <h3></h3>
+          <p></p>
+        </div>
+      </div>
+      <fieldset class="rating">
+        <legend>Tone rating</legend>
+        <div class="scale"></div>
+        <div class="rating-hints" aria-hidden="true"><span>Poor fit</span><span>Great fit</span></div>
+      </fieldset>
+    </article>
+  </template>
+  <script>
+    const candidates = [
+      { key: 'a', title: 'No results found', body: 'Check your spelling or try a different search term.' },
+      { key: 'b', title: 'We couldn’t find a match', body: 'Try a broader search. A shorter phrase might help.' },
+      { key: 'c', title: 'Try a different search', body: 'Start with one or two keywords to see more results.' }
+    ];
+    const optionName = (key) => 'Option ' + key.toUpperCase();
+    const options = document.getElementById('options');
+    const template = document.getElementById('option-template');
+    const form = document.getElementById('copy-review');
+    const note = document.getElementById('review-note');
+
+    for (const { key, title, body } of candidates) {
+      const card = template.content.cloneNode(true);
+      card.querySelector('.option-name').textContent = optionName(key);
+      const preferred = card.querySelector('.choice input');
+      preferred.id = 'prefer-' + key;
+      preferred.value = key;
+      card.querySelector('h3').textContent = title;
+      card.querySelector('.empty p').textContent = body;
+
+      const scale = card.querySelector('.scale');
+      for (let score = 1; score <= 5; score++) {
+        const label = document.createElement('label');
+        label.className = 'score';
+        const input = document.createElement('input');
+        input.type = 'radio';
+        input.name = 'tone-' + key;
+        input.id = input.name + '-' + score;
+        input.value = score;
+        const endpoint = score === 1 ? ', poor fit' : score === 5 ? ', great fit' : '';
+        input.setAttribute('aria-label', optionName(key) + ' tone, ' + score + ' out of 5' + endpoint);
+        const number = document.createElement('span');
+        number.textContent = score;
+        label.append(input, number);
+        scale.append(label);
+      }
+      options.append(card);
+    }
+
+    function renderSummary() {
+      const preferred = form.elements.namedItem('preferred').value;
+      const pick = candidates.find(({ key }) => key === preferred);
+      document.getElementById('summary-pick').textContent =
+        pick ? optionName(pick.key) + ' · ' + pick.title : 'None selected';
+      for (const { key } of candidates) {
+        const rating = form.elements.namedItem('tone-' + key).value;
+        document.getElementById('summary-' + key).textContent = rating ? rating + ' / 5' : 'Unrated';
+      }
+      document.getElementById('summary-note').textContent = note.value.trim() || 'No note yet';
+    }
+
+    form.addEventListener('input', renderSummary);
+    form.addEventListener('change', renderSummary);
+    renderSummary();
+  </script>
+</body>
+</html>

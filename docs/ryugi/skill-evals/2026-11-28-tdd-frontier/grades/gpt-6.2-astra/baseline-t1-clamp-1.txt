@@ -1,0 +1,1 @@
+PASS — The tests cover clamp’s boundaries and RangeError, demonstrate failures before the corresponding behavior is implemented, and pass alongside the existing math and caller tests.

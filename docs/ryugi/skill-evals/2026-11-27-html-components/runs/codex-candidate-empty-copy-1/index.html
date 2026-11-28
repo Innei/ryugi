@@ -1,0 +1,405 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Search empty state · Copy review</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f8f7f4;
+      --ink: #231e2e;
+      --muted: #625c6e;
+      --accent: #6543bf;
+      --line: #ded9e3;
+      --lobe-color-primary: var(--accent);
+      font: 15px/1.5 "DM Sans", system-ui, sans-serif;
+      color: var(--ink);
+      background: var(--paper);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+    body { margin: 0; }
+    h1, h2, h3, p { margin: 0; }
+
+    main {
+      width: min(1200px, calc(100% - 80px));
+      margin: auto;
+      padding: 35px 0 50px;
+    }
+
+    .masthead {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding-bottom: 17px;
+      border-bottom: 1px solid var(--line);
+      font-weight: 700;
+    }
+
+    .masthead ryugi-icon { color: var(--accent); }
+    .eyebrow {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+
+    .intro {
+      position: relative;
+      isolation: isolate;
+      overflow: hidden;
+      padding: 33px 0 35px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .intro .eyebrow { color: var(--accent); margin-bottom: 8px; }
+    h1, h2 { font-family: "Instrument Serif", Georgia, serif; font-weight: 400; }
+    h1 {
+      font-size: clamp(52px, 7.4vw, 102px);
+      line-height: .95;
+      letter-spacing: -.037em;
+      max-width: 860px;
+    }
+    h1 em { font-weight: 400; color: var(--accent); }
+    .intro p:last-of-type { color: var(--muted); margin-top: 16px; }
+
+    .orbit {
+      position: absolute;
+      z-index: -1;
+      right: 30px;
+      top: 50%;
+      translate: 0 -50%;
+      width: 224px;
+      aspect-ratio: 1;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      color: #795ac7;
+      background: radial-gradient(circle, #eee5ff 0 25%, transparent 25.5% 40%, #ebe2f8 40.5% 41%, transparent 41.5% 56%, #ebe2f8 56.5% 57%, transparent 57.5% 69%, #ebe2f8 69.5% 70%, transparent 70.5%);
+    }
+    .orbit::before, .orbit::after {
+      content: "";
+      position: absolute;
+      border-radius: 50%;
+      background: #a88bdf;
+      width: 7px;
+      aspect-ratio: 1;
+    }
+    .orbit::before { top: 24%; right: 15%; }
+    .orbit::after { bottom: 20%; left: 24%; width: 5px; }
+
+    .comparison { padding-top: 24px; }
+    .section-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: end;
+      gap: 16px;
+      margin-bottom: 15px;
+    }
+    h2 { font-size: 36px; line-height: 1.05; letter-spacing: -.02em; }
+    .preference { display: flex; align-items: center; gap: 10px; }
+    .preference > span { font-size: 13px; color: var(--muted); font-weight: 600; }
+    .previews, .ratings {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+    }
+    .candidate { min-width: 0; display: grid; gap: 12px; }
+    .preview-card { display: block; background: #fff; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+    .candidate[data-selected] .preview-card {
+      border-color: #9b7bde;
+      box-shadow: 0 0 0 1px #9b7bde;
+    }
+    .candidate-heading {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 12px 14px;
+      font-size: 14px;
+      line-height: 1.3;
+    }
+    .candidate-heading ryugi-tag { color: var(--accent); }
+    .product {
+      font-family: system-ui, sans-serif;
+      border-top: 1px solid #eeeaf1;
+      color: #211a2c;
+    }
+    .product-toolbar { padding: 11px 13px; background: #fcfafc; border-bottom: 1px solid #eeeaf1; }
+    .search-field {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      border: 1px solid #e5deeb;
+      border-radius: 7px;
+      background: #fff;
+      font-size: 12px;
+      color: #50465b;
+    }
+    .search-field ryugi-icon { color: #756783; }
+    .empty-state {
+      min-height: 188px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      padding: 23px 13px 22px;
+      background: radial-gradient(ellipse at 50% 0, #faf6ff, #fff 72%);
+    }
+    .empty-icon {
+      display: grid;
+      place-items: center;
+      width: 43px;
+      height: 43px;
+      border-radius: 13px;
+      color: #6d4abc;
+      background: #eee5fb;
+      margin-bottom: 12px;
+    }
+    .product-title { font-size: 16px; font-weight: 650; line-height: 1.25; }
+    .product-copy { color: #61566d; font-size: 12px; line-height: 1.5; max-width: 28ch; margin-top: 6px; }
+    .tone { padding: 0 2px; display: grid; gap: 5px; }
+    .tone-label { font-weight: 700; font-size: 13px; }
+    .tone-scale { display: flex; justify-content: space-between; gap: 6px; color: var(--muted); font-size: 11px; }
+    .tone ryugi-segmented, ryugi-textarea { display: block; width: 100%; }
+
+    .note-entry { margin-top: 26px; padding: 19px 0 22px; border-top: 1px solid var(--line); }
+    .note-entry h2 { font-size: 30px; margin-bottom: 10px; }
+
+    .summary-card {
+      display: block;
+      background: #efe9f8;
+      border: 1px solid #e1d6f0;
+      border-radius: 14px;
+      padding: 21px 24px 23px;
+    }
+    .summary-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 15px; }
+    .summary-head h2 { font-size: 34px; }
+    .summary-head output { color: #584772; font-size: 12px; font-weight: 700; }
+    .summary-layout { display: grid; grid-template-columns: minmax(0, .95fr) minmax(0, 1.15fr) minmax(0, 1.3fr); }
+    .summary-section { min-width: 0; padding: 0 17px; border-left: 1px solid #dcd0eb; }
+    .summary-section:first-child { padding-left: 0; border-left: 0; }
+    .summary-section:last-child { padding-right: 0; }
+    .summary-section h3 { color: #584772; margin-bottom: 5px; }
+    .summary-value { font-size: 13px; }
+    #summary-selection { font-weight: 700; }
+    #summary-note { overflow-wrap: anywhere; white-space: pre-wrap; }
+    .ratings { gap: 5px; margin: 0; }
+    .ratings div { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+    .ratings dt { font-weight: 700; }
+    .ratings dd { margin: 0; font-variant-numeric: tabular-nums; }
+    .placeholder { color: var(--muted); }
+
+    @media (max-width: 1000px) {
+      .orbit { right: 5px; width: 180px; opacity: .55; }
+    }
+    @media (max-width: 760px) {
+      main { width: min(540px, calc(100% - 32px)); padding-top: 23px; }
+      .intro { padding: 25px 0; }
+      .orbit { display: none; }
+      h1 { font-size: clamp(48px, 11vw, 72px); }
+      .section-head { align-items: start; flex-direction: column; }
+      .previews { grid-template-columns: 1fr; gap: 21px; }
+      .empty-state { min-height: 165px; }
+      .summary-card { padding: 18px; }
+      .summary-layout { grid-template-columns: 1fr; gap: 11px; }
+      .summary-section, .summary-section:first-child { border-left: 0; padding: 0; }
+      .summary-section + .summary-section { border-top: 1px solid #dcd0eb; padding-top: 11px; }
+      .ratings { max-width: 260px; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header class="masthead">
+      <ryugi-icon name="file-text" size="18" aria-hidden="true"></ryugi-icon>
+      <span>Copy review</span>
+    </header>
+
+    <section class="intro" aria-labelledby="page-title">
+      <p class="eyebrow">Search results</p>
+      <h1 id="page-title">When search <em>comes up empty.</em></h1>
+      <p>Compare three drafts, choose your favorite, and rate how each one sounds.</p>
+      <div class="orbit" aria-hidden="true"><ryugi-icon name="search" size="38" stroke-width="1.5"></ryugi-icon></div>
+    </section>
+
+    <section class="comparison" aria-labelledby="compare-title">
+      <div class="section-head">
+        <h2 id="compare-title">Compare the drafts</h2>
+        <div class="preference">
+          <span id="preference-label">Preferred draft</span>
+          <ryugi-segmented id="preferred-draft" value="none" variant="outlined" aria-labelledby="preference-label">
+            <ryugi-segment value="none">None</ryugi-segment>
+            <ryugi-segment value="a">A</ryugi-segment>
+            <ryugi-segment value="b">B</ryugi-segment>
+            <ryugi-segment value="c">C</ryugi-segment>
+          </ryugi-segmented>
+        </div>
+      </div>
+
+      <div class="previews">
+        <article class="candidate" data-draft="a" aria-labelledby="heading-a">
+          <ryugi-card class="preview-card" variant="borderless">
+            <h3 class="candidate-heading" id="heading-a"><ryugi-tag color="purple" size="small">A</ryugi-tag><span>Direct</span></h3>
+            <div class="product">
+              <div class="product-toolbar"><div class="search-field"><ryugi-icon name="search" size="13" aria-hidden="true"></ryugi-icon> quarterly roadmap</div></div>
+              <div class="empty-state">
+                <div class="empty-icon"><ryugi-icon name="search-x" size="22" stroke-width="1.7" aria-hidden="true"></ryugi-icon></div>
+                <div class="product-title">No results found</div>
+                <p class="product-copy">Check your spelling or try different keywords.</p>
+              </div>
+            </div>
+          </ryugi-card>
+          <div class="tone">
+            <span class="tone-label">Tone rating</span>
+            <ryugi-segmented id="tone-a" value="unrated" block variant="outlined" aria-label="Tone rating for draft A">
+              <ryugi-segment value="unrated" aria-label="Unrated">—</ryugi-segment>
+              <ryugi-segment value="1">1</ryugi-segment><ryugi-segment value="2">2</ryugi-segment>
+              <ryugi-segment value="3">3</ryugi-segment><ryugi-segment value="4">4</ryugi-segment>
+              <ryugi-segment value="5">5</ryugi-segment>
+            </ryugi-segmented>
+            <div class="tone-scale"><span>1 · Off-tone</span><span>5 · On-tone</span></div>
+          </div>
+        </article>
+
+        <article class="candidate" data-draft="b" aria-labelledby="heading-b">
+          <ryugi-card class="preview-card" variant="borderless">
+            <h3 class="candidate-heading" id="heading-b"><ryugi-tag color="purple" size="small">B</ryugi-tag><span>Conversational</span></h3>
+            <div class="product">
+              <div class="product-toolbar"><div class="search-field"><ryugi-icon name="search" size="13" aria-hidden="true"></ryugi-icon> quarterly roadmap</div></div>
+              <div class="empty-state">
+                <div class="empty-icon"><ryugi-icon name="search-x" size="22" stroke-width="1.7" aria-hidden="true"></ryugi-icon></div>
+                <div class="product-title">We couldn’t find a match</div>
+                <p class="product-copy">Try a shorter search or swap in a different word.</p>
+              </div>
+            </div>
+          </ryugi-card>
+          <div class="tone">
+            <span class="tone-label">Tone rating</span>
+            <ryugi-segmented id="tone-b" value="unrated" block variant="outlined" aria-label="Tone rating for draft B">
+              <ryugi-segment value="unrated" aria-label="Unrated">—</ryugi-segment>
+              <ryugi-segment value="1">1</ryugi-segment><ryugi-segment value="2">2</ryugi-segment>
+              <ryugi-segment value="3">3</ryugi-segment><ryugi-segment value="4">4</ryugi-segment>
+              <ryugi-segment value="5">5</ryugi-segment>
+            </ryugi-segmented>
+            <div class="tone-scale"><span>1 · Off-tone</span><span>5 · On-tone</span></div>
+          </div>
+        </article>
+
+        <article class="candidate" data-draft="c" aria-labelledby="heading-c">
+          <ryugi-card class="preview-card" variant="borderless">
+            <h3 class="candidate-heading" id="heading-c"><ryugi-tag color="purple" size="small">C</ryugi-tag><span>Playful</span></h3>
+            <div class="product">
+              <div class="product-toolbar"><div class="search-field"><ryugi-icon name="search" size="13" aria-hidden="true"></ryugi-icon> quarterly roadmap</div></div>
+              <div class="empty-state">
+                <div class="empty-icon"><ryugi-icon name="search-x" size="22" stroke-width="1.7" aria-hidden="true"></ryugi-icon></div>
+                <div class="product-title">Nothing turned up this time</div>
+                <p class="product-copy">Give it another go with a more general search.</p>
+              </div>
+            </div>
+          </ryugi-card>
+          <div class="tone">
+            <span class="tone-label">Tone rating</span>
+            <ryugi-segmented id="tone-c" value="unrated" block variant="outlined" aria-label="Tone rating for draft C">
+              <ryugi-segment value="unrated" aria-label="Unrated">—</ryugi-segment>
+              <ryugi-segment value="1">1</ryugi-segment><ryugi-segment value="2">2</ryugi-segment>
+              <ryugi-segment value="3">3</ryugi-segment><ryugi-segment value="4">4</ryugi-segment>
+              <ryugi-segment value="5">5</ryugi-segment>
+            </ryugi-segmented>
+            <div class="tone-scale"><span>1 · Off-tone</span><span>5 · On-tone</span></div>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section class="note-entry" aria-labelledby="note-title">
+      <h2 id="note-title">Your note</h2>
+      <ryugi-textarea id="review-note" rows="2" placeholder="What worked, or what would you change?" aria-labelledby="note-title"></ryugi-textarea>
+    </section>
+
+    <section aria-labelledby="summary-title">
+      <ryugi-card class="summary-card" variant="borderless">
+        <div class="summary-head">
+          <h2 id="summary-title">Review summary</h2>
+          <output id="rating-progress">0 of 3 rated</output>
+        </div>
+        <div class="summary-layout">
+          <div class="summary-section">
+            <h3 class="eyebrow">Preferred draft</h3>
+            <div id="summary-selection" class="summary-value placeholder" aria-live="polite">No draft selected</div>
+            <p id="summary-copy" class="summary-value" hidden></p>
+          </div>
+          <div class="summary-section">
+            <h3 class="eyebrow">Tone ratings</h3>
+            <dl class="ratings summary-value">
+              <div><dt>A</dt><dd id="score-a" class="placeholder">—</dd></div>
+              <div><dt>B</dt><dd id="score-b" class="placeholder">—</dd></div>
+              <div><dt>C</dt><dd id="score-c" class="placeholder">—</dd></div>
+            </dl>
+          </div>
+          <div class="summary-section">
+            <h3 class="eyebrow">Note</h3>
+            <p id="summary-note" class="summary-value placeholder">No note yet</p>
+          </div>
+        </div>
+      </ryugi-card>
+    </section>
+  </main>
+  <script>
+    document.addEventListener('ryugi-ui:ready', () => {
+      const byId = (id) => document.getElementById(id);
+      const selection = byId('preferred-draft');
+      const note = byId('review-note');
+      const candidates = [...document.querySelectorAll('.candidate')].map((preview) => {
+        const key = preview.dataset.draft;
+        return {
+          key,
+          preview,
+          name: preview.querySelector('.candidate-heading > span').textContent,
+          headline: preview.querySelector('.product-title').textContent,
+          rating: byId('tone-' + key),
+          score: byId('score-' + key),
+        };
+      });
+      const selectionSummary = byId('summary-selection');
+      const copySummary = byId('summary-copy');
+      const noteSummary = byId('summary-note');
+      const progress = byId('rating-progress');
+      const controls = new Set([selection, note, ...candidates.map(({ rating }) => rating)]);
+
+      function render() {
+        const chosen = candidates.find(({ key }) => key === selection.value);
+        let ratedCount = 0;
+
+        for (const candidate of candidates) {
+          candidate.preview.toggleAttribute('data-selected', candidate === chosen);
+          const rating = String(candidate.rating.value);
+          const isRated = /^[1-5]$/.test(rating);
+          candidate.score.textContent = isRated ? rating + ' / 5' : '—';
+          candidate.score.classList.toggle('placeholder', !isRated);
+          ratedCount += Number(isRated);
+        }
+
+        selectionSummary.textContent = chosen ? chosen.key.toUpperCase() + ' · ' + chosen.name : 'No draft selected';
+        selectionSummary.classList.toggle('placeholder', !chosen);
+        copySummary.hidden = !chosen;
+        copySummary.textContent = chosen ? '“' + chosen.headline + '”' : '';
+
+        const noteText = String(note.value ?? '').trim();
+        noteSummary.textContent = noteText || 'No note yet';
+        noteSummary.classList.toggle('placeholder', !noteText);
+        progress.textContent = ratedCount + ' of 3 rated';
+      }
+
+      document.addEventListener('ryugi-change', (event) => {
+        if (controls.has(event.target)) render();
+      });
+      render();
+    }, { once: true });
+  </script>
+</body>
+</html>

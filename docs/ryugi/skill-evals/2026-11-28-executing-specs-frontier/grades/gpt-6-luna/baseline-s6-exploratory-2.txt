@@ -1,0 +1,1 @@
+PASS — The agent wrote EXPLORING after tasks.md with the required header and paths, used both required flags, and neither staged nor committed changes.

@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>JPEG compressor — quality, max width, before/after size</title>
+    <style>
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        padding: 24px;
+        font: 14px/1.5 system-ui, -apple-system, sans-serif;
+        display: grid;
+        gap: 20px;
+        max-width: 1100px;
+        margin-inline: auto;
+      }
+      h1 { font-size: 18px; margin: 0; }
+      .controls {
+        display: grid;
+        grid-template-columns: minmax(220px, 1fr) minmax(220px, 1fr) minmax(220px, 1fr);
+        gap: 20px;
+        align-items: end;
+      }
+      .field { display: grid; gap: 6px; }
+      .field label { font-weight: 600; font-size: 13px; }
+      .drop {
+        border: 1.5px dashed color-mix(in srgb, currentColor 30%, transparent);
+        border-radius: 10px;
+        padding: 10px 12px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        cursor: pointer;
+        min-height: 40px;
+      }
+      .drop.over { border-color: var(--lobe-color-primary, #1677ff); }
+      .drop input { display: none; }
+      .drop .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; opacity: 0.8; }
+      .stats {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px 28px;
+        align-items: center;
+      }
+      .stat { display: grid; }
+      .stat .k { font-size: 12px; opacity: 0.65; }
+      .stat .v { font-size: 20px; font-weight: 650; font-variant-numeric: tabular-nums; }
+      .stat .d { font-size: 12px; opacity: 0.65; font-variant-numeric: tabular-nums; }
+      .spacer { flex: 1; }
+      .previews {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+      }
+      .pane { display: grid; gap: 8px; }
+      .pane header { display: flex; justify-content: space-between; align-items: center; font-weight: 600; }
+      .frame {
+        border-radius: 10px;
+        overflow: auto;
+        height: 520px;
+        display: grid;
+        place-items: center;
+        background:
+          repeating-conic-gradient(#8881 0% 25%, transparent 0% 50%) 0 0 / 20px 20px;
+        border: 1px solid color-mix(in srgb, currentColor 12%, transparent);
+      }
+      .frame img { max-width: 100%; max-height: 100%; object-fit: contain; display: block; }
+      .frame.actual img { max-width: none; max-height: none; }
+      .empty { opacity: 0.5; text-align: center; padding: 20px; }
+      @media (max-width: 800px) {
+        .controls, .previews { grid-template-columns: 1fr; }
+        .frame { height: 340px; }
+      }
+    </style>
+  </head>
+  <body>
+    <h1>JPEG compressor</h1>
+
+    <div class="controls">
+      <div class="field">
+        <label for="file">Image</label>
+        <label class="drop" id="drop">
+          <ryugi-icon name="image-up" size="18"></ryugi-icon>
+          <span class="name" id="fileName">Choose or drop an image…</span>
+          <input type="file" id="file" accept="image/*" />
+        </label>
+      </div>
+      <div class="field">
+        <label>JPEG quality (%)</label>
+        <ryugi-slider-input id="quality" value="80" min="1" max="100" step="1"></ryugi-slider-input>
+      </div>
+      <div class="field">
+        <label>Max width (px)</label>
+        <ryugi-slider-input id="maxWidth" value="1920" min="64" max="6000" step="16"></ryugi-slider-input>
+      </div>
+    </div>
+
+    <ryugi-card variant="outlined">
+      <div class="stats">
+        <div class="stat">
+          <span class="k">Original</span>
+          <span class="v" id="sizeBefore">—</span>
+          <span class="d" id="dimBefore">&nbsp;</span>
+        </div>
+        <ryugi-icon name="arrow-right" size="20"></ryugi-icon>
+        <div class="stat">
+          <span class="k">Compressed</span>
+          <span class="v" id="sizeAfter">—</span>
+          <span class="d" id="dimAfter">&nbsp;</span>
+        </div>
+        <div class="stat">
+          <span class="k">Change</span>
+          <span class="v"><ryugi-tag id="saving" variant="filled">—</ryugi-tag></span>
+          <span class="d">&nbsp;</span>
+        </div>
+        <div class="spacer"></div>
+        <ryugi-switch id="actual" size="small"></ryugi-switch>
+        <span>Actual pixels</span>
+        <ryugi-button id="download" variant="filled" icon="download" disabled>Download JPEG</ryugi-button>
+      </div>
+    </ryugi-card>
+
+    <ryugi-alert id="warn" type="warning" variant="soft" showIcon style="display:none"></ryugi-alert>
+
+    <div class="previews">
+      <div class="pane">
+        <header><span>Original</span></header>
+        <div class="frame" id="frameBefore"><div class="empty">No image yet</div></div>
+      </div>
+      <div class="pane">
+        <header><span>Compressed preview</span><ryugi-text type="secondary" id="busy"></ryugi-text></header>
+        <div class="frame" id="frameAfter"><div class="empty">Choose an image to see the result</div></div>
+      </div>
+    </div>
+
+    <script>
+      const $ = (id) => document.getElementById(id);
+      const state = { quality: 80, maxWidth: 1920, file: null, bitmap: null, origUrl: null, outUrl: null, outBlob: null, job: 0 };
+
+      const fmt = (b) => {
+        if (b == null) return '—';
+        if (b < 1024) return b + ' B';
+        if (b < 1024 * 1024) return (b / 1024).toFixed(1) + ' KB';
+        return (b / 1024 / 1024).toFixed(2) + ' MB';
+      };
+
+      const loadImage = (url) =>
+        new Promise((res, rej) => {
+          const img = new Image();
+          img.onload = () => res(img);
+          img.onerror = () => rej(new Error('Could not decode this image'));
+          img.src = url;
+        });
+
+      async function setFile(file) {
+        if (!file || !file.type.startsWith('image/')) {
+          window.ryugiToast?.error({ id: 'file', title: 'Not an image', description: 'Pick a JPEG, PNG, WebP, GIF…' });
+          return;
+        }
+        if (state.origUrl) URL.revokeObjectURL(state.origUrl);
+        state.file = file;
+        state.origUrl = URL.createObjectURL(file);
+        $('fileName').textContent = file.name;
+        try {
+          state.bitmap = await loadImage(state.origUrl);
+        } catch (e) {
+          state.bitmap = null;
+          window.ryugiToast?.error({ id: 'file', title: 'Load failed', description: e.message });
+          return;
+        }
+        const img = document.createElement('img');
+        img.src = state.origUrl;
+        img.alt = 'Original';
+        $('frameBefore').replaceChildren(img);
+        $('sizeBefore').textContent = fmt(file.size);
+        $('dimBefore').textContent = `${state.bitmap.naturalWidth} × ${state.bitmap.naturalHeight} · ${file.type.replace('image/', '').toUpperCase()}`;
+        compress();
+      }
+
+      let timer;
+      const schedule = () => { clearTimeout(timer); timer = setTimeout(compress, 120); };
+
+      function compress() {
+        const src = state.bitmap;
+        if (!src) return;
+        const job = ++state.job;
+        const w0 = src.naturalWidth, h0 = src.naturalHeight;
+        const w = Math.min(w0, Math.max(1, Math.round(state.maxWidth)));
+        const h = Math.max(1, Math.round((h0 * w) / w0));
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#fff'; // JPEG has no alpha
+        ctx.fillRect(0, 0, w, h);
+        ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(src, 0, 0, w, h);
+        $('busy').textContent = 'Compressing…';
+        canvas.toBlob(
+          (blob) => {
+            if (job !== state.job) return;
+            $('busy').textContent = '';
+            if (!blob) {
+              window.ryugiToast?.error({ id: 'enc', title: 'Encoding failed' });
+              return;
+            }
+            if (state.outUrl) URL.revokeObjectURL(state.outUrl);
+            state.outBlob = blob;
+            state.outUrl = URL.createObjectURL(blob);
+            const img = document.createElement('img');
+            img.src = state.outUrl;
+            img.alt = 'Compressed';
+            $('frameAfter').replaceChildren(img);
+            $('sizeAfter').textContent = fmt(blob.size);
+            $('dimAfter').textContent = `${w} × ${h} · JPEG q${state.quality}` + (w < w0 ? ` · ${Math.round((w / w0) * 100)}% scale` : '');
+            const pct = ((blob.size - state.file.size) / state.file.size) * 100;
+            const tag = $('saving');
+            tag.textContent = (pct <= 0 ? '−' : '+') + Math.abs(pct).toFixed(1) + '%';
+            tag.setAttribute('color', pct <= 0 ? 'green' : 'red');
+            const warn = $('warn');
+            if (pct > 0) {
+              warn.setAttribute('title', 'The result is larger than the original');
+              warn.setAttribute('description', 'Lower the quality or max width — the source may already be well compressed.');
+              warn.style.display = '';
+            } else warn.style.display = 'none';
+            $('download').disabled = false;
+            $('download').removeAttribute('disabled');
+          },
+          'image/jpeg',
+          state.quality / 100,
+        );
+      }
+
+      $('file').addEventListener('change', (e) => setFile(e.target.files[0]));
+      const drop = $('drop');
+      ['dragenter', 'dragover'].forEach((t) =>
+        document.addEventListener(t, (e) => { e.preventDefault(); drop.classList.add('over'); }),
+      );
+      ['dragleave', 'drop'].forEach((t) =>
+        document.addEventListener(t, (e) => { e.preventDefault(); drop.classList.remove('over'); }),
+      );
+      document.addEventListener('drop', (e) => setFile(e.dataTransfer?.files?.[0]));
+
+      document.addEventListener('ryugi-change', (e) => {
+        const id = e.target.id;
+        if (id === 'quality' || id === 'maxWidth') {
+          const n = Number(e.detail.value);
+          if (!Number.isFinite(n) || n <= 0) return;
+          state[id] = n;
+          schedule();
+        } else if (id === 'actual') {
+          const on = !!(e.detail.checked ?? e.detail.value);
+          $('frameBefore').classList.toggle('actual', on);
+          $('frameAfter').classList.toggle('actual', on);
+        }
+      });
+
+      document.addEventListener(
+        'ryugi-ui:ready',
+        () => {
+          state.quality = Number($('quality').value) || 80;
+          state.maxWidth = Number($('maxWidth').value) || 1920;
+          $('download').addEventListener('click', () => {
+            if (!state.outBlob) return;
+            const base = (state.file?.name || 'image').replace(/\.[^.]+$/, '');
+            const a = document.createElement('a');
+            a.href = state.outUrl;
+            a.download = `${base}-q${state.quality}-${state.maxWidth}w.jpg`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+          });
+        },
+        { once: true },
+      );
+    </script>
+  </body>
+</html>

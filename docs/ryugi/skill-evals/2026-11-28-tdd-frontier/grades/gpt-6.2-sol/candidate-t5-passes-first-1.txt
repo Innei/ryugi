@@ -1,0 +1,1 @@
+PASS — The agent diagnosed the false pass and observed the revised test fail on the date-only ordering before editing `src/sort.ts`.

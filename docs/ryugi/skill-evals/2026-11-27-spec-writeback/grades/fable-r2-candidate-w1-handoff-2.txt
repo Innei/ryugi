@@ -1,0 +1,1 @@
+PASS — Design doc edited and checked; 实现结论 starts with the verify ref and covers streaming, quoting as spec gap, and cursor pitfall; only the bulk-export section changed; text in Chinese.

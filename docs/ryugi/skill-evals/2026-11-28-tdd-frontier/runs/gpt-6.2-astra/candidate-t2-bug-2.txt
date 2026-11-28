@@ -1,0 +1,91 @@
+The only actual tool call was `cat ./skill/writing-good-tests.md`. It exited 0, and I read its full output. The transcript below is simulated. Every repository command uses `/Users/p/git/notes-app` as its working directory, and every reported result is assumed.
+
+**1. Message to partner**
+
+“I’ll reproduce the missing item on the last page, then use that same test to verify the fix.”
+
+**2. Shell — inspect the implementation, callers, and available checks**
+
+```sh
+git status --short
+rg --files --hidden -g '!.git' -g '!node_modules'
+rg -n '\bpaginate\b' .
+cat src/paginate.ts package.json
+```
+
+Assume a clean working tree, one-based page numbers, a named `paginate` export, and this implementation:
+
+```ts
+export function paginate<T>(items: T[], page: number, size: number): T[] {
+  const start = (page - 1) * size
+  const end = start + size
+  return items.slice(start, end - 1)
+}
+```
+
+Assume the search finds no callers or existing pagination test. Other Vitest files live beside their source. The package provides `test` and `typecheck` scripts and has no build script.
+
+**3. Shell — write the regression test**
+
+With four items and a page size of two, the last page must contain both `c` and `d`. A full last page exposes the off-by-one error even when `end` is calculated without clamping it to the array length.
+
+```sh
+cat > src/paginate.test.ts <<'EOF'
+import { expect, it } from 'vitest'
+import { paginate } from './paginate'
+
+it('includes the final item on a full last page', () => {
+  expect(paginate(['a', 'b', 'c', 'd'], 2, 2)).toEqual(['c', 'd'])
+})
+EOF
+```
+
+Assume exit 0 with no output.
+
+**4. Shell — run the test against the original code**
+
+```sh
+pnpm test src/paginate.test.ts
+```
+
+Assume I read the full output. The command exits 1 with one failed test, `includes the final item on a full last page`. Its assertion expected `['c', 'd']` and received `['c']`. No other failure appears.
+
+**5. Message to partner**
+
+“Reproduced it. Page 2 returned `['c']` for a page that should contain `['c', 'd']`. I’ll change the slice to use `end` as its exclusive boundary.”
+
+**6. Shell — apply the one-line fix**
+
+```sh
+sed -i '' 's/return items\.slice(start, end - 1)/return items.slice(start, end)/' src/paginate.ts
+```
+
+Assume exit 0 with no output. The complete resulting `src/paginate.ts` is:
+
+```ts
+export function paginate<T>(items: T[], page: number, size: number): T[] {
+  const start = (page - 1) * size
+  const end = start + size
+  return items.slice(start, end)
+}
+```
+
+**7. Shell — verify the changed behavior and TypeScript check**
+
+```sh
+pnpm test src/paginate.test.ts
+```
+
+Assume I read the full output. Exit 0, one test file passed, one test passed.
+
+```sh
+pnpm typecheck
+```
+
+Assume I read the full output. The script runs `tsc --noEmit` and exits 0 with no diagnostics.
+
+**8. Message to partner**
+
+“Fixed the missing last item by changing `slice(start, end - 1)` to `slice(start, end)`. The regression test first returned `['c']` where `['c', 'd']` was expected. After the fix, `pnpm test src/paginate.test.ts` passed 1/1 and `pnpm typecheck` exited 0. The full suite was not run.”
+
+SUMMARY: Read the test guidance, then simulated inspecting the repo, writing and running a failing regression test, applying the one-line fix, and verifying it with the same test and typecheck. No repository files were actually changed.

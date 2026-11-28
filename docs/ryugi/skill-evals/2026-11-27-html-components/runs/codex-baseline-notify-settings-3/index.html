@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Notification settings · Relay</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap');
+
+    :root {
+      color-scheme: light;
+      font: 15px/1.5 "DM Sans", sans-serif;
+      color: #202821;
+      background: #f6f7f3;
+      --muted: #566359;
+      --line: #e1e6dd;
+      --green: #215b40;
+      --accent: #dcf7a9;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    button, input, select { font: inherit; }
+    :focus-visible { outline: 2px solid #3f815b; outline-offset: 4px; }
+    .layout { min-height: 100vh; display: grid; grid-template-columns: 248px minmax(0, 1fr); }
+    .rail { background: #182a22; color: #f4f8ef; padding: 30px 19px; }
+    .brand { display: flex; align-items: center; gap: 11px; margin: 0 10px 50px; font: 800 23px/1 Manrope, sans-serif; letter-spacing: -.05em; }
+    .brand-icon, .heading-icon, .section-icon { display: grid; place-items: center; flex: none; }
+    .brand-icon { width: 34px; height: 34px; border-radius: 10px; color: #203323; background: var(--accent); }
+    .nav-label { margin: 0 10px 10px; color: #adbdaf; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .12em; }
+    .nav-current, .nav-link { display: flex; align-items: center; gap: 10px; border-radius: 8px; padding: 10px 11px; font-weight: 700; }
+    .nav-current { background: #34483a; color: #e1f8bd; }
+    .nav-links { display: grid; margin: 8px 0 0 19px; padding-left: 12px; border-left: 1px solid #4c6052; }
+    .nav-link { padding-block: 8px; color: #c2cec4; font-size: 13px; text-decoration: none; }
+    .nav-link:hover { color: white; background: #293e32; }
+    .rail :focus-visible { outline-color: var(--accent); }
+    main { max-width: 838px; width: 100%; margin: 0 auto; padding: 55px 40px 42px; }
+    .intro { margin-bottom: 28px; }
+    .heading-icon { width: 43px; height: 43px; border-radius: 13px; background: #e6efde; color: var(--green); margin-bottom: 12px; }
+    h1, h2, p { margin: 0; }
+    h1, h2 { font-family: Manrope, sans-serif; }
+    h1 { font-size: clamp(30px, 4vw, 42px); line-height: 1.12; letter-spacing: -.055em; font-weight: 800; }
+    .intro p { color: var(--muted); margin-top: 9px; }
+    form { display: grid; gap: 14px; }
+    .panel { background: white; border: 1px solid var(--line); border-radius: 14px; padding: 19px 22px; scroll-margin-top: 16px; }
+    .panel-heading { display: flex; gap: 11px; align-items: center; margin-bottom: 14px; }
+    .section-icon { width: 34px; height: 34px; border-radius: 9px; color: var(--green); background: #edf3e9; }
+    h2 { font-size: 17px; letter-spacing: -.025em; font-weight: 800; }
+    .hint { color: var(--muted); font-size: 13px; }
+    .setting-row { min-height: 48px; display: flex; justify-content: space-between; align-items: center; gap: 12px; border-top: 1px solid #ecf0e9; }
+    .setting-row + .setting-row { padding-top: 9px; }
+    .setting-label, .field label { font-weight: 700; font-size: 14px; }
+    .switch { appearance: none; cursor: pointer; position: relative; width: 42px; height: 24px; margin: 0; flex: none; background: #6e7a70; border-radius: 24px; transition: background .15s; }
+    .switch::after { content: ""; position: absolute; width: 16px; height: 16px; top: 4px; left: 4px; border-radius: 50%; background: white; transition: transform .15s; }
+    .switch:checked { background: var(--green); }
+    .switch:checked::after { transform: translateX(18px); }
+    select, input[type="time"] { min-height: 36px; padding: 6px 10px; background-color: #fafbf8; border: 1px solid #d7dfd4; border-radius: 7px; color: #202821; font-size: 14px; }
+    select { min-width: 142px; cursor: pointer; }
+    select:disabled { color: #596259; background-color: #eef0eb; cursor: default; }
+    .channels { border: 0; padding: 0; margin: 0; min-width: 0; }
+    .channel-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+    .channel { display: flex; align-items: center; gap: 8px; min-height: 38px; padding: 7px 10px; border: 1px solid var(--line); border-radius: 7px; font-size: 13px; font-weight: 700; cursor: pointer; }
+    .channel:hover { background: #f7faf4; }
+    .channel:has(input:checked) { background: #edf6e8; border-color: #afc9ad; }
+    .channel input { width: 15px; height: 15px; margin: 0; accent-color: var(--green); }
+    .hash { color: #657b6a; }
+    .times { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    .field { display: grid; gap: 5px; min-width: 0; }
+    .field input { width: 100%; min-width: 0; }
+    .quiet-note { margin-top: 7px; }
+    .actions { display: flex; align-items: center; justify-content: flex-end; gap: 14px; min-height: 44px; }
+    .save-status { font-size: 13px; font-weight: 700; color: var(--green); }
+    .save { display: inline-flex; justify-content: center; align-items: center; gap: 8px; padding: 10px 15px; border: 1px solid transparent; border-radius: 8px; background: var(--green); color: white; font-weight: 700; cursor: pointer; flex: none; }
+    .save:hover { background: #184931; }
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+    @media (max-width: 760px) {
+      .layout { grid-template-columns: 170px minmax(0, 1fr); }
+      main { padding: 32px 22px; }
+      .rail { padding-inline: 12px; }
+    }
+    @media (max-width: 560px) {
+      .layout { display: block; }
+      .rail { padding: 15px 18px; }
+      .brand { margin: 0; }
+      .rail nav { display: none; }
+      main { padding: 24px 15px; }
+      .panel { padding-inline: 14px; }
+    }
+    @media (max-width: 340px) { .channel-grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <aside class="rail">
+      <div class="brand"><span class="brand-icon"><ryugi-icon name="messages-square" size="19" aria-hidden="true"></ryugi-icon></span>Relay</div>
+      <nav aria-label="Settings">
+        <div class="nav-label">Preferences</div>
+        <div class="nav-current"><ryugi-icon name="bell" size="17" aria-hidden="true"></ryugi-icon>Notifications</div>
+        <div class="nav-links">
+          <a class="nav-link" id="jump-digest" href="#email-section">Email digest</a>
+          <a class="nav-link" id="jump-channels" href="#channels-section">Muted channels</a>
+          <a class="nav-link" id="jump-quiet" href="#quiet-section">Quiet hours</a>
+        </div>
+      </nav>
+    </aside>
+    <main>
+      <header class="intro">
+        <div class="heading-icon"><ryugi-icon name="bell" size="23" aria-hidden="true"></ryugi-icon></div>
+        <h1>Notifications</h1>
+        <p>Choose what you hear about and when.</p>
+      </header>
+
+      <form id="notification-settings">
+        <section class="panel" id="email-section" aria-labelledby="email-heading">
+          <header class="panel-heading">
+            <span class="section-icon"><ryugi-icon name="mail" size="18" aria-hidden="true"></ryugi-icon></span>
+            <div><h2 id="email-heading">Email digest</h2><p class="hint">Get a summary of unread activity in your inbox.</p></div>
+          </header>
+          <div class="setting-row">
+            <label class="setting-label" for="digest-enabled">Send email digest</label>
+            <input class="switch" id="digest-enabled" name="digest-enabled" type="checkbox" role="switch" checked>
+          </div>
+          <div class="setting-row">
+            <label class="setting-label" for="digest-frequency">Frequency</label>
+            <select id="digest-frequency" name="digest-frequency">
+              <option value="daily" selected>Daily</option>
+              <option value="weekly">Weekly</option>
+            </select>
+          </div>
+        </section>
+
+        <section class="panel" id="channels-section" aria-labelledby="channels-heading">
+          <header class="panel-heading">
+            <span class="section-icon"><ryugi-icon name="volume-x" size="18" aria-hidden="true"></ryugi-icon></span>
+            <div><h2 id="channels-heading">Muted channels</h2><p class="hint" id="channels-hint">Select any channels you want to mute.</p></div>
+          </header>
+          <fieldset class="channels" aria-describedby="channels-hint">
+            <legend class="sr-only">Channels to mute</legend>
+            <div class="channel-grid">
+              <label class="channel"><input type="checkbox" id="mute-general" name="muted-channel" value="general"><span class="hash" aria-hidden="true">#</span>general</label>
+              <label class="channel"><input type="checkbox" id="mute-product" name="muted-channel" value="product"><span class="hash" aria-hidden="true">#</span>product</label>
+              <label class="channel"><input type="checkbox" id="mute-design" name="muted-channel" value="design"><span class="hash" aria-hidden="true">#</span>design</label>
+              <label class="channel"><input type="checkbox" id="mute-announcements" name="muted-channel" value="announcements"><span class="hash" aria-hidden="true">#</span>announcements</label>
+              <label class="channel"><input type="checkbox" id="mute-random" name="muted-channel" value="random"><span class="hash" aria-hidden="true">#</span>random</label>
+              <label class="channel"><input type="checkbox" id="mute-social" name="muted-channel" value="social"><span class="hash" aria-hidden="true">#</span>social</label>
+            </div>
+          </fieldset>
+        </section>
+
+        <section class="panel" id="quiet-section" aria-labelledby="quiet-heading">
+          <header class="panel-heading">
+            <span class="section-icon"><ryugi-icon name="moon" size="18" aria-hidden="true"></ryugi-icon></span>
+            <div><h2 id="quiet-heading">Quiet hours</h2><p class="hint">Pause notifications during this window each day.</p></div>
+          </header>
+          <div class="times">
+            <div class="field"><label for="quiet-start">Start time</label><input type="time" id="quiet-start" name="quiet-start" value="22:00" required></div>
+            <div class="field"><label for="quiet-end">End time</label><input type="time" id="quiet-end" name="quiet-end" value="08:00" required aria-describedby="quiet-note"></div>
+          </div>
+          <p class="hint quiet-note" id="quiet-note"></p>
+        </section>
+
+        <div class="actions">
+          <span class="save-status" id="save-status" role="status"></span>
+          <button class="save" id="save-settings" type="submit"><ryugi-icon name="check" size="16" aria-hidden="true"></ryugi-icon>Save changes</button>
+        </div>
+      </form>
+    </main>
+  </div>
+  <script>
+    const form = document.getElementById('notification-settings');
+    const digest = document.getElementById('digest-enabled');
+    const frequency = document.getElementById('digest-frequency');
+    const quietStart = document.getElementById('quiet-start');
+    const quietEnd = document.getElementById('quiet-end');
+    const quietNote = document.getElementById('quiet-note');
+    const status = document.getElementById('save-status');
+    let savedSettings;
+
+    function readSettings() {
+      return {
+        emailDigest: digest.checked,
+        frequency: frequency.value,
+        mutedChannels: new FormData(form).getAll('muted-channel'),
+        quietStart: quietStart.value,
+        quietEnd: quietEnd.value
+      };
+    }
+
+    function render() {
+      frequency.disabled = !digest.checked;
+      const overnight = quietStart.value && quietEnd.value && quietEnd.value < quietStart.value;
+      quietNote.textContent = overnight
+        ? 'Local time · Ends the following day'
+        : 'Local time';
+      if (savedSettings && JSON.stringify(readSettings()) !== JSON.stringify(savedSettings)) {
+        status.textContent = 'Unsaved changes';
+      } else if (savedSettings) {
+        status.textContent = 'Settings saved';
+      }
+    }
+
+    form.addEventListener('input', render);
+    form.addEventListener('change', render);
+    form.addEventListener('submit', (event) => {
+      event.preventDefault();
+      savedSettings = readSettings();
+      render();
+    });
+    render();
+  </script>
+</body>
+</html>

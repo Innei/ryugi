@@ -1,0 +1,1 @@
+PASS — The boundary and RangeError tests failed before implementation, then passed alongside the existing square test in the only file importing math.ts.

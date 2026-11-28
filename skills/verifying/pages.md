@@ -32,7 +32,12 @@ log, translated. Ids, commands and raw output stay as they are.
 3. **Screen claims stay on the artboard**: add `<ref artboard="…" group="…" />`
    for each verify group so they count toward done; the report sums them
    in one status-line sentence that links to the artboard, not as rows.
-4. Run `check`, clear its warnings and provenance notes, give the link (and
+   Work split into several reports gets one report that holds a
+   `<ref verify="…"/>` for each part; a part counts as done when its own
+   report is. Inside a claim, an inline `<ref>` to the section or drawing
+   a claim rests on links it without counting toward anything.
+4. **Write back to the spec**, as the section below says.
+5. Run `check`, clear its warnings and provenance notes, give the link (and
    the artboard's link first when screen groups wait on them), say how many
    claims need them and how many you checked, and ask them to tell
    you here when they have decided. End your turn; don't poll. While you
@@ -71,11 +76,37 @@ visible bug before and after, motion, device screenshots.
    discussed and it still exists, add `<ref artboard="<id>" group="<verify
 group>" />` to the section that discussed each module, as the artifacts CLI document writing description explains. The reference shows the verdict,
    and it is the only way back from the verify page to that discussion.
+   Then write back to the spec, as the section below says.
 5. Set `focus` to the first group, run `check` and clear its warnings,
    provenance notes and `pending`, give the link (the report's link when
    there is a report; else the artboard's, the cloud link when there is
    one), say what each group asks, and ask them to tell you here when they
    have decided. End your turn; don't poll.
+
+## Write back to the spec
+
+When the spec names the design document it was built from and that
+document still exists, write back to it when you give the verify link, and
+again after each rejection is repaired. Write in their language.
+
+1. **At its end, a section on how it was built** ("实现结论" in Chinese,
+   "Implementation notes" in English). First line: `<ref verify="<topic>"/>`;
+   with no report, a `<ref artboard="<id>" group="<group>"/>` per verify
+   group; with no page at all, no reference. Then the decisions that differ
+   from the spec, one line each: what was done, why, when it would be
+   wrong. They are the same rulings the report asks about, at most five.
+   Points the spec left open, and how you settled them, go in a list of
+   their own after the differences, never among them.
+   Then the pitfalls hit on the way: what showed, its root cause, how it was
+   got around. Write "none" when there were none.
+2. **Under each section the build departs from**, a `<ref verify="<topic>"/>`
+   and one sentence on the difference. Sections that held stay as they are.
+3. **After a repair**, add that round's pitfalls and correct any difference
+   that no longer holds. Verdicts are not written out: the reference shows
+   them as they change.
+
+Never paste the ledger, test output or logs into the document. Commit the
+document change with the work.
 
 ## Prepare each recording
 

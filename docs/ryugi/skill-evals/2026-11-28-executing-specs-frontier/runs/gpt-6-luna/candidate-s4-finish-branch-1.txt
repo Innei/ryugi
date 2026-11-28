@@ -1,0 +1,11 @@
+I read `skill/SKILL.md`. From here, the simulated finish is:
+
+1. **Tool call — none.** The scenario says adeck:verifying already ran, the project has no running-product check, and there is no verify page. No further verification command is needed.
+
+2. **Message to you:** “The export work is complete on `feat/export`. The verifier’s inline test command proved the claim. Two items await your verdict: RFC 4180 quoting was chosen because the spec is silent on commas; if that ruling is wrong, Excel-only users may see quotes. The deferred minor review finding is that the CSV header says `updatedAt`. The branch workspace stays until landing.”
+
+3. **Tool call — none.** I would keep `.artideck/sdd/2026-11-10-export-design/` because the work is on a branch and has not landed. No commit, push, PR, or cleanup is authorized by this finish step.
+
+4. **Wait for your landing choice:** squash into `main` (default), rebase onto `main`, push and open a PR, or keep the branch as-is.
+
+SUMMARY: Simulated the finish; the two review items and landing choice now await your verdict.

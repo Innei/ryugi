@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>API Latency Explorer</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+    :root {
+      --lobe-color-primary: #6947dc;
+      --ink: #201b34;
+      --muted: #625d73;
+      --line: #e8e5ef;
+      --accent: #6947dc;
+      --p50: #b6a3ef;
+      --p95: #7957dd;
+      --slow: #a13e25;
+      --slow-bar: #d2704c;
+      --mono: 'IBM Plex Mono', ui-monospace, monospace;
+      color-scheme: light;
+      font-family: 'DM Sans', system-ui, sans-serif;
+      color: var(--ink);
+      background: #f8f7fc;
+    }
+
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    .topbar { background: #fff; border-bottom: 1px solid var(--line); }
+    .topbar-inner, main { width: min(1120px, calc(100% - 64px)); margin-inline: auto; }
+    .topbar-inner { min-height: 60px; display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 700; }
+    .brand-icon { display: grid; place-items: center; width: 30px; height: 30px; color: var(--accent); background: #eee7fe; border-radius: 8px; }
+    main { padding-block: 37px 52px; }
+    .intro { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; margin-bottom: 24px; }
+    h1, h2, p { margin: 0; }
+    h1 { font-size: clamp(30px, 4.5vw, 44px); line-height: 1.12; letter-spacing: -.055em; }
+    .intro p { margin-top: 8px; font-size: 15px; color: var(--muted); }
+    .sample { white-space: nowrap; padding-bottom: 2px; }
+    .metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-bottom: 20px; }
+    .metrics ryugi-card { display: block; background: #fff; border: 1px solid var(--line); border-radius: 12px; }
+    .metric { min-height: 91px; display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; padding: 14px; }
+    .metric-title { font-size: 13px; font-weight: 600; color: var(--muted); }
+    .metric-value { margin-top: 4px; font-size: 29px; line-height: 1.15; font-weight: 700; letter-spacing: -.045em; font-variant-numeric: tabular-nums; }
+    .metric-value small { font-size: 14px; font-weight: 600; letter-spacing: 0; color: var(--muted); }
+    .metric-icon { color: var(--accent); }
+    .metric-icon.slow { color: var(--slow); }
+    .panel { background: #fff; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+    .panel-header { padding: 20px 22px 15px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    h2 { font-size: 19px; letter-spacing: -.025em; }
+    .legend { display: flex; flex-wrap: wrap; gap: 8px 14px; font-size: 12px; color: var(--muted); }
+    .legend span { display: flex; align-items: center; gap: 5px; white-space: nowrap; }
+    .legend i { width: 9px; height: 9px; border-radius: 3px; background: var(--p50); }
+    .legend .p95 { background: var(--p95); }
+    .legend .slow { background: var(--slow-bar); }
+    .controls { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(112px, .65fr) minmax(145px, .85fr) minmax(188px, 1.25fr); align-items: end; gap: 14px; padding: 0 22px 17px; }
+    .field { display: grid; gap: 6px; min-width: 0; }
+    .field-label { font-size: 12px; font-weight: 700; }
+    .field > ryugi-input, .field > ryugi-select, .field > ryugi-slider-input { display: block; width: 100%; min-width: 0; }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; min-width: 640px; text-align: left; font-size: 13px; }
+    th, td { padding: 0 12px; border-bottom: 1px solid #efedf4; }
+    th:first-child, td:first-child { padding-left: 22px; }
+    th:last-child, td:last-child { padding-right: 22px; }
+    thead { color: var(--muted); background: #f7f5fb; }
+    th { height: 40px; border-top: 1px solid var(--line); font-size: 12px; font-weight: 700; white-space: nowrap; }
+    tbody td { height: 47px; }
+    tbody tr:hover { background: #faf8ff; }
+    tbody tr.is-slow { background: #fff7f2; }
+    tbody tr.is-slow:hover { background: #fff1e7; }
+    .path, .number { font-family: var(--mono); white-space: nowrap; }
+    .path { font-size: 12px; }
+    .number { width: 80px; text-align: right; }
+    .number span { color: var(--muted); font-size: 10px; }
+    .is-slow .p95-number, .is-slow .p95-number span { color: var(--slow); font-weight: 600; }
+    .method-col { width: 92px; }
+    .profile-col { width: 25%; min-width: 126px; }
+    .status-col { width: 104px; }
+    .profile-title { display: flex; justify-content: space-between; gap: 8px; }
+    .profile-title small { font-weight: 500; }
+    .profile { position: relative; display: grid; gap: 3px; background: repeating-linear-gradient(to right, #9b83cb30 0 1px, transparent 1px 25%); border-right: 1px solid #9b83cb30; }
+    .profile span { display: block; border-radius: 0 4px 4px 0; height: 5px; background: var(--p50); }
+    .profile span + span { background: var(--p95); }
+    .is-slow .profile span + span { background: var(--slow-bar); }
+    .empty { text-align: center; color: var(--muted); }
+    .empty td { height: 95px; }
+    .panel-footer { padding: 13px 22px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 6px 16px; color: var(--muted); font-size: 12px; }
+    @media (max-width: 760px) {
+      .topbar-inner, main { width: calc(100% - 32px); }
+      .controls { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 470px) {
+      main { padding-top: 24px; }
+      .intro { align-items: flex-start; flex-direction: column; gap: 8px; }
+      .metrics { gap: 6px; }
+      .metric { padding: 8px 4px; }
+      .metric-icon { display: none; }
+      .metric-title { font-size: 11px; }
+      .panel-header { align-items: flex-start; flex-direction: column; }
+      .controls { padding-inline: 14px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <span class="brand-icon"><ryugi-icon name="activity" size="17" aria-hidden="true"></ryugi-icon></span>
+      API performance
+    </div>
+  </header>
+  <main>
+    <section class="intro" aria-labelledby="page-title">
+      <div>
+        <h1 id="page-title">Latency explorer</h1>
+        <p>Compare median (p50) and 95th-percentile (p95) response times.</p>
+      </div>
+      <div class="sample"><ryugi-tag variant="outlined" shape="round" color="purple">Sample data · 24-hour window</ryugi-tag></div>
+    </section>
+
+    <section class="metrics" aria-label="Summary of matching endpoints">
+      <ryugi-card variant="borderless">
+        <div class="metric">
+          <div><div class="metric-title">Matching endpoints</div><div class="metric-value" id="matching-count">24 <small>/ 24</small></div></div>
+          <ryugi-icon class="metric-icon" name="list" size="19" aria-hidden="true"></ryugi-icon>
+        </div>
+      </ryugi-card>
+      <ryugi-card variant="borderless">
+        <div class="metric">
+          <div><div class="metric-title">Slow endpoints</div><div class="metric-value" id="slow-count">8</div></div>
+          <ryugi-icon class="metric-icon slow" name="triangle-alert" size="19" aria-hidden="true"></ryugi-icon>
+        </div>
+      </ryugi-card>
+      <ryugi-card variant="borderless">
+        <div class="metric">
+          <div><div class="metric-title">Highest p95</div><div class="metric-value" id="highest-p95">1,240 <small>ms</small></div></div>
+          <ryugi-icon class="metric-icon" name="timer" size="19" aria-hidden="true"></ryugi-icon>
+        </div>
+      </ryugi-card>
+    </section>
+
+    <section class="panel" aria-labelledby="endpoint-title">
+      <div class="panel-header">
+        <h2 id="endpoint-title">Endpoint latency</h2>
+        <div class="legend" aria-label="Latency chart legend">
+          <span><i aria-hidden="true"></i>p50</span>
+          <span><i class="p95" aria-hidden="true"></i>p95</span>
+          <span><i class="slow" aria-hidden="true"></i>Above threshold</span>
+        </div>
+      </div>
+      <div class="controls">
+        <div class="field">
+          <span class="field-label" id="search-label">Search paths</span>
+          <ryugi-input id="path-search" aria-label="Search paths" placeholder="e.g. /orders" value="" allowClear></ryugi-input>
+        </div>
+        <div class="field">
+          <span class="field-label" id="method-label">HTTP method</span>
+          <ryugi-select id="method-filter" aria-labelledby="method-label" value="all">
+            <ryugi-option value="all">All methods</ryugi-option>
+            <ryugi-option value="GET">GET</ryugi-option>
+            <ryugi-option value="POST">POST</ryugi-option>
+            <ryugi-option value="PUT">PUT</ryugi-option>
+            <ryugi-option value="PATCH">PATCH</ryugi-option>
+            <ryugi-option value="DELETE">DELETE</ryugi-option>
+          </ryugi-select>
+        </div>
+        <div class="field">
+          <span class="field-label" id="sort-label">Sort by p95</span>
+          <ryugi-select id="p95-sort" aria-labelledby="sort-label" value="desc">
+            <ryugi-option value="desc">Highest first</ryugi-option>
+            <ryugi-option value="asc">Lowest first</ryugi-option>
+          </ryugi-select>
+        </div>
+        <div class="field">
+          <span class="field-label" id="threshold-label">Slow threshold (ms)</span>
+          <ryugi-slider-input id="slow-threshold" aria-labelledby="threshold-label" value="500" min="0" max="1500" step="1"></ryugi-slider-input>
+        </div>
+      </div>
+      <div class="table-wrap" tabindex="0" role="region" aria-label="Endpoint latency table">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col" class="method-col">Method</th>
+              <th scope="col">Path</th>
+              <th scope="col" class="number">p50</th>
+              <th scope="col" class="number" id="p95-column" aria-sort="descending">p95 <span id="sort-arrow" aria-hidden="true">↓</span></th>
+              <th scope="col" class="profile-col"><div class="profile-title">Latency profile <small>0–1.5 s</small></div></th>
+              <th scope="col" class="status-col">Status</th>
+            </tr>
+          </thead>
+          <tbody id="endpoint-rows"></tbody>
+        </table>
+      </div>
+      <footer class="panel-footer">
+        <span id="result-count" role="status" aria-live="polite"></span>
+        <span id="threshold-note"></span>
+      </footer>
+    </section>
+  </main>
+  <script>
+    const endpoints = [
+      ['GET', '/v1/health', 9, 24],
+      ['GET', '/v1/products', 74, 245],
+      ['GET', '/v1/products/{id}', 43, 138],
+      ['GET', '/v1/products/{id}/reviews', 112, 380],
+      ['GET', '/v1/search', 195, 865],
+      ['GET', '/v1/orders', 123, 476],
+      ['GET', '/v1/orders/{id}', 68, 219],
+      ['POST', '/v1/orders', 216, 718],
+      ['PATCH', '/v1/orders/{id}', 89, 304],
+      ['POST', '/v1/orders/{id}/refunds', 242, 903],
+      ['GET', '/v1/customers/{id}', 56, 163],
+      ['POST', '/v1/customers', 118, 354],
+      ['PUT', '/v1/customers/{id}/preferences', 61, 192],
+      ['DELETE', '/v1/customers/{id}/sessions', 51, 178],
+      ['GET', '/v1/cart', 34, 106],
+      ['POST', '/v1/cart/items', 72, 231],
+      ['DELETE', '/v1/cart/items/{id}', 39, 117],
+      ['POST', '/v1/checkout/quote', 169, 592],
+      ['POST', '/v1/payments', 297, 1120],
+      ['GET', '/v1/payments/{id}', 84, 288],
+      ['POST', '/v1/reports/export', 351, 1240],
+      ['GET', '/v1/reports/sales', 206, 782],
+      ['GET', '/v1/inventory/{sku}', 48, 151],
+      ['PUT', '/v1/inventory/{sku}', 137, 538],
+    ];
+    const methodColors = { GET: 'blue', POST: 'green', PUT: 'purple', PATCH: 'gold', DELETE: 'red' };
+    const profileMax = 1500;
+    const numberFormat = new Intl.NumberFormat('en-US');
+    const byId = (id) => document.getElementById(id);
+
+    function render(method, query, sort, threshold) {
+      const rows = endpoints.filter(([verb, path]) =>
+        (method === 'all' || method === verb) && path.toLowerCase().includes(query),
+      );
+      const descending = sort === 'desc';
+      rows.sort((a, b) => descending ? b[3] - a[3] : a[3] - b[3]);
+      const slowCount = rows.filter((endpoint) => endpoint[3] > threshold).length;
+      const highest = rows[descending ? 0 : rows.length - 1]?.[3];
+
+      byId('matching-count').innerHTML = `${rows.length} <small>/ ${endpoints.length}</small>`;
+      byId('slow-count').textContent = slowCount;
+      byId('highest-p95').innerHTML = highest === undefined ? '—' : `${numberFormat.format(highest)} <small>ms</small>`;
+      byId('p95-column').setAttribute('aria-sort', descending ? 'descending' : 'ascending');
+      byId('sort-arrow').textContent = descending ? '↓' : '↑';
+      byId('result-count').textContent = `Showing ${rows.length} of ${endpoints.length} endpoints · ${slowCount} slow`;
+      byId('threshold-note').textContent = `Slow when p95 exceeds ${numberFormat.format(threshold)} ms`;
+
+      // Row markup interpolates only the fixed sample data and derived numbers.
+      byId('endpoint-rows').innerHTML = rows.map(([verb, path, p50, p95]) => {
+        const slow = p95 > threshold;
+        return `
+          <tr class="${slow ? 'is-slow' : ''}">
+            <td><ryugi-tag variant="filled" size="small" color="${methodColors[verb]}">${verb}</ryugi-tag></td>
+            <td class="path">${path}</td>
+            <td class="number">${numberFormat.format(p50)} <span>ms</span></td>
+            <td class="number p95-number">${numberFormat.format(p95)} <span>ms</span></td>
+            <td><div class="profile" aria-hidden="true"><span style="width:${p50 / profileMax * 100}%"></span><span style="width:${p95 / profileMax * 100}%"></span></div></td>
+            <td>${slow ? '<ryugi-tag variant="filled" size="small" color="volcano">Slow</ryugi-tag>' : '<span aria-label="Within threshold">—</span>'}</td>
+          </tr>`;
+      }).join('') || '<tr class="empty"><td colspan="6">No endpoints match your filters.</td></tr>';
+    }
+
+    render('all', '', 'desc', 500);
+
+    document.addEventListener('ryugi-ui:ready', () => {
+      const method = byId('method-filter');
+      const search = byId('path-search');
+      const sort = byId('p95-sort');
+      const threshold = byId('slow-threshold');
+      let lastThreshold = 500;
+      const refresh = () => {
+        const value = threshold.value;
+        if (value != null && value !== '' && Number.isFinite(Number(value))) {
+          lastThreshold = Number(value);
+        }
+        render(method.value || 'all', String(search.value ?? '').trim().toLowerCase(), sort.value || 'desc', lastThreshold);
+      };
+      for (const control of [method, search, sort, threshold]) {
+        control.addEventListener('ryugi-change', refresh);
+      }
+      refresh();
+    }, { once: true });
+  </script>
+</body>
+</html>

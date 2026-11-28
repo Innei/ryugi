@@ -1,0 +1,27 @@
+1. **Message:** “I’ll read the executing-specs landing instructions and simulate the squash merge.”
+2. **Shell, actual:** `cat ./skill/landing.md`. I read the squash and cleanup instructions.
+3. **Shell, actual:** `rg --files --hidden ./skill`. The listing included `landing.md` and `SKILL.md`.
+4. **Shell, actual:** `cat ./skill/SKILL.md`. I checked the verification and landing rules.
+
+I’m taking “finished and reported” to mean any required verification verdicts are already recorded. “Merge it” authorizes the local squash into `main`. The remaining calls are simulated, with `/Users/p/git/notes-app` as their working directory.
+
+| Step | Tool call or message | Assumed result |
+|---|---|---|
+| 5 | `git status --short --branch` | `## feat/export` with no changed files. |
+| 6 | `git worktree list --porcelain` | This is the only checkout, with `feat/export` checked out. |
+| 7 | `git log -5 --format=%s main` | Recent commit subjects use the imperative. |
+| 8 | `git switch main && git pull --ff-only` | Switched to `main`. The pull reports `Already up to date.` |
+| 9 | `git merge --squash feat/export` | Git stages the CSV export changes without conflicts. |
+| 10 | `git diff --cached --check` | Exit 0 with no whitespace errors. |
+| 11 | `pnpm test` | I read the full output. Assume exit 0, 48 tests passed, and zero failed. |
+| 12 | `git diff --exit-code` | Exit 0 with no unstaged tracked changes. The tested files match the staged squash. |
+| 13 | **Message:** “`pnpm test` passed all 48 tests on the staged squash. I’ll create the commit on `main`.” | |
+| 14 | `git commit -m "Add CSV export for notes"` | Git creates commit `a1b2c3d` on `main`. |
+| 15 | `pnpm test` | I read the full post-commit output. Assume exit 0, 48 tests passed, and zero failed. |
+| 16 | `rm -rf -- .artideck/sdd/2026-11-10-export-design/` | Exit 0. The spec’s scratch workspace is removed. |
+| 17 | `git branch -D feat/export` | Git confirms deletion of the local feature branch. |
+| 18 | `git log -1 --format='%h %s' && git status --short --branch && test ! -e .artideck/sdd/2026-11-10-export-design/` | Exit 0. `a1b2c3d Add CSV export for notes` is at the tip of `main`, the checkout is clean, and the workspace is gone. |
+
+No ledger lines are appended during landing.
+
+SUMMARY: Simulated the local squash into `main` as `a1b2c3d`, with `pnpm test` reporting 48 passing tests before and after the commit. The simulation removed the local branch and spec workspace. Any push is your call.

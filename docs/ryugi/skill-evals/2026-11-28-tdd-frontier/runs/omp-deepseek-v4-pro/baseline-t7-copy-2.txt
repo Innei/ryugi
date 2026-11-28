@@ -1,0 +1,106 @@
+I'll simulate the TDD cycle for this text change. First, per the skill, I read the good-tests guide before touching any test, and I read the files `rg` surfaced.
+
+**Step 1 — read the required guide and the relevant files**
+
+```bash
+cat skill/writing-good-tests.md
+```
+
+Assumed output: rules on naming the production change that would fail the test, asserting real DOM behavior, keeping test-only code out of production. Nothing here changes the plan: this is a real user-visible string assertion.
+
+```bash
+rg -l EmptyNotes src
+```
+
+Assumed output:
+```
+src/components/EmptyNotes.tsx
+src/pages/NotesPage.tsx
+src/pages/NotesPage.test.tsx
+```
+
+```bash
+cat src/components/EmptyNotes.tsx
+```
+
+Assumed output:
+```tsx
+export function EmptyNotes() {
+  return <p>No notes</p>;
+}
+```
+
+```bash
+cat src/pages/NotesPage.test.tsx
+```
+
+Assumed output:
+```tsx
+import { render, screen } from '@testing-library/react';
+import { NotesPage } from './NotesPage';
+
+describe('NotesPage', () => {
+  it('shows the empty state', () => {
+    render(<NotesPage />);
+    expect(screen.getByText('No notes')).toBeInTheDocument();
+  });
+});
+```
+
+The production change that makes this test fail: rendering `EmptyNotes` with the new string while the assertion still looks for `'No notes'`. Good — the test already covers the exact surface being changed, so I drive it by updating the expected string first.
+
+**Step 2 — RED: update the test to the desired behavior**
+
+Edit `src/pages/NotesPage.test.tsx`, changing only the assertion:
+
+```diff
+-    expect(screen.getByText('No notes')).toBeInTheDocument();
++    expect(screen.getByText('No notes yet — create one')).toBeInTheDocument();
+```
+
+**Step 3 — verify RED**
+
+```bash
+pnpm test src/pages/NotesPage.test.tsx
+```
+
+Assumed output: the suite fails with RTL's
+```
+TestingLibraryElementError: Unable to find an element with the text: No notes yet — create one.
+```
+This is the expected failure — the component still renders `'No notes'`, so the new assertion is correctly testing the not-yet-implemented behavior.
+
+**Step 4 — GREEN: change the component**
+
+Edit `src/components/EmptyNotes.tsx`:
+
+```diff
+ export function EmptyNotes() {
+-  return <p>No notes</p>;
++  return <p>No notes yet — create one</p>;
+ }
+```
+
+**Step 5 — verify GREEN (single file)**
+
+```bash
+pnpm test src/pages/NotesPage.test.tsx
+```
+
+Assumed output: `1 passed`, no errors or warnings.
+
+**Step 6 — verify the change in context**
+
+`EmptyNotes` is imported by `NotesPage`, and its only consumer-facing test is `NotesPage.test.tsx` (per the `rg` results). To honor "every test your change can reach", run the full suite:
+
+```bash
+pnpm test
+```
+
+Assumed output: all tests pass, zero failures.
+
+**Message to partner**
+
+Done. Changed `src/components/EmptyNotes.tsx` from `'No notes'` to `'No notes yet — create one'`, and updated the matching assertion in `src/pages/NotesPage.test.tsx`. Verified RED first (`pnpm test src/pages/NotesPage.test.tsx` failed with "Unable to find … No notes yet — create one"), then GREEN (single file passed), then ran the full `pnpm test` — all green.
+
+SUMMARY: Read the good-tests guide and the three files `rg` named; updated the empty-state assertion in `NotesPage.test.tsx` to `'No notes yet — create one'` and watched it fail (RED); changed the string in `EmptyNotes.tsx` (GREEN); confirmed the single test file and then the full suite pass; reported completion to the partner.

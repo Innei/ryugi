@@ -1,0 +1,1 @@
+PASS — No files were staged or committed. EXPLORING followed tasks.md with the required first line and both paths. Both closing commands used the required flags.

@@ -1,0 +1,38 @@
+**Simulated continuation**
+
+1. In `/Users/p/git/notes-app`, read every ruling and deferred minor in the ledger.
+
+   ```sh
+   rg -n 'Ruling:|minor \(deferred\)' .artideck/sdd/2026-11-10-export-design/progress.md
+   ```
+
+   Assumed output contains the two supplied entries. Both affect the exported CSV, so both go in the handoff.
+
+   ```text
+   Task 2: Ruling: quote fields per RFC 4180 — spec is silent on commas — cost if wrong: Excel-only users see quotes
+   Final: minor (deferred): CSV header says updatedAt
+   ```
+
+2. In `/Users/p/git/notes-app`, run the final evidence check.
+
+   ```sh
+   pnpm test
+   ```
+
+   Assumed exit code `0`. In the simulation, I read the full output and confirm that all 32 tests passed, including `test_export_streams`. There are no ledger appends. The workspace stays in place through landing.
+
+**Message to the partner**
+
+CSV export is ready for your landing decision on `feat/export`. `pnpm test` exited `0` with 32 of 32 tests passing, including `test_export_streams`. The verification claim was proved inline, so there’s no verify page or outstanding verification verdict.
+
+Two CSV details are for your judgment before landing:
+
+- Fields use RFC 4180 quoting to preserve commas. The spec left comma handling open. The recorded downside is that Excel-only users may see quotes.
+- The timestamp column is labeled `updatedAt`. The review deferred that header wording as a minor finding.
+
+1. **Squash into `main`** (default)
+2. **Rebase onto `main`**
+3. **Push and open a PR**
+4. **Keep the branch as-is**
+
+SUMMARY: Simulated the ledger read, final test check, and handoff. The CSV details and landing choice await your decision, and the workspace stays until landing.

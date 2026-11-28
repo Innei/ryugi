@@ -1,0 +1,84 @@
+**1. Read the test-writing rules.** My message was “I’ll read the TDD skill’s test-writing rules. All repository commands, edits, and test results below will be simulated.” I ran `cat ./skill/writing-good-tests.md`, read its full output, and observed exit 0. That was the only real command.
+
+**2. Inspect the implementation and find affected tests.** For every shell call below, the simulated working directory is `/Users/p/git/notes-app`.
+
+```sh
+git status --short
+```
+
+```sh
+rg --files
+```
+
+```sh
+rg -n 'paginate|notesPage|/notes' .
+```
+
+```sh
+cat src/paginate.ts
+```
+
+Assume the working tree is clean, `src/paginate.test.ts` does not exist, and the implementation is:
+
+```ts
+export function paginate<T>(items: T[], page: number, size: number): T[] {
+  const start = (page - 1) * size
+  const end = Math.min(start + size, items.length)
+  return items.slice(start, end - 1)
+}
+```
+
+Assume the search finds one caller, `src/notesPage.ts`, plus a caller test and a notes end-to-end test. I would read them to confirm which tests exercise pagination.
+
+```sh
+cat src/notesPage.ts src/notesPage.test.ts tests/e2e/notes.test.ts
+```
+
+Assume the caller test requests a page beyond the end of the list, and the end-to-end test opens `/notes` with an empty list. Both reach `paginate`. Neither exercises a nonempty last page.
+
+**3. Name the break before writing the test.** Message to partner:
+
+> With three items and a page size of two, page two should contain the third item. Subtracting one from the exclusive slice end makes that page empty. I’ll test that case directly.
+
+**4. Write the regression test and verify RED.** This command contains the entire new file.
+
+```sh
+cat > src/paginate.test.ts <<'EOF'
+import { expect, it } from 'vitest'
+import { paginate } from './paginate'
+
+it('keeps the only item on the last page', () => {
+  expect(paginate(['a', 'b', 'c'], 2, 2)).toEqual(['c'])
+})
+EOF
+```
+
+```sh
+pnpm test src/paginate.test.ts
+```
+
+Assume I read the full output and see exit 1, one test collected, and one assertion failure in `keeps the only item on the last page`. Expected `['c']`, received `[]`. That is the reported bug, so I would proceed to the implementation edit.
+
+**5. Change the slice end.** This command contains the entire resulting file. No files are deleted.
+
+```sh
+cat > src/paginate.ts <<'EOF'
+export function paginate<T>(items: T[], page: number, size: number): T[] {
+  const start = (page - 1) * size
+  const end = Math.min(start + size, items.length)
+  return items.slice(start, end)
+}
+EOF
+```
+
+**6. Verify GREEN through the affected entry points.** I would run each command and read its full output before reporting the result.
+
+| Simulated shell call | Assumed result |
+|---|---|
+| `pnpm test src/paginate.test.ts` | Exit 0. One file, one test passed. |
+| `pnpm test src/notesPage.test.ts` | Exit 0. One file, one test passed. |
+| `pnpm test tests/e2e/notes.test.ts` | Exit 0. One file, one test passed. |
+
+Assume all three runs finish without warnings or errors. Restoring `end - 1` would reproduce the exact assertion failure observed in step 4. I would send the following message and stop.
+
+SUMMARY: In the simulation, I reproduced the missing last item with a failing regression test, changed `slice(start, end - 1)` to `slice(start, end)`, and reran the regression, caller, and end-to-end tests. All three simulated checks exited 0. Only the skill-file read actually ran.

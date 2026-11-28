@@ -1,0 +1,1 @@
+PASS — The regression test failed before the one-line fix and passed afterward. The agent completed the test without asking to skip it.

@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Search Empty State · Copy Review</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;650;700;750;800&family=Playfair+Display:ital,wght@1,600&display=swap');
+
+    :root {
+      color-scheme: light;
+      --ground: #f7f4ee;
+      --paper: #fffefa;
+      --ink: #241e1c;
+      --muted: #665b55;
+      --line: #e1d9cf;
+      --accent: #a83824;
+      --peach: #f8e6dc;
+      font-family: "DM Sans", system-ui, sans-serif;
+      color: var(--ink);
+      background: var(--ground);
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    h1, h2, h3, p, figure, dl, dd { margin: 0; }
+    .wrap { width: min(1160px, calc(100% - 80px)); margin-inline: auto; }
+    .masthead { border-bottom: 1px solid var(--line); }
+    .masthead-inner { min-height: 61px; display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+    .masthead-label, .jump { display: inline-flex; gap: 9px; align-items: center; font-size: 13px; font-weight: 750; }
+    .masthead-label .magnifier { color: var(--accent); }
+    .jump { color: var(--accent); text-decoration: none; }
+    .jump:hover { text-decoration: underline; }
+    .hero { display: grid; grid-template-columns: minmax(0, 1fr) 230px; align-items: center; gap: 30px; padding-block: 44px 34px; }
+    h1 { font-size: clamp(42px, 6.4vw, 94px); font-weight: 750; letter-spacing: -.073em; line-height: 1.06; }
+    h1 em { font-family: "Playfair Display", Georgia, serif; font-weight: 600; color: var(--accent); letter-spacing: -.072em; white-space: nowrap; }
+    .hero p { margin-top: 17px; color: var(--muted); font-size: 16px; line-height: 1.5; }
+    .hero-art { position: relative; width: 216px; height: 131px; justify-self: end; margin-right: 14px; color: var(--accent); background: radial-gradient(circle, #dbc1ae 1px, transparent 1.5px) 0 0 / 12px 12px; }
+    .hero-orbit { position: absolute; left: 49px; top: 9px; width: 112px; height: 112px; display: grid; place-items: center; border: 1px solid #e9b7a2; border-radius: 50%; background: #f7e5da; }
+    .hero-orbit::before { content: ""; position: absolute; inset: 8px; border: 1px dashed #d79982; border-radius: inherit; }
+    .hero-orbit .magnifier { font-size: 46px; transform: translate(-4px, -4px); border-width: 2px; }
+    .hero-orbit .magnifier::after { height: 2px; width: .41em; }
+    .hero-orbit .magnifier::before { content: ""; position: absolute; inset: 48% 29% auto; height: 2px; background: currentColor; }
+    .spark { position: absolute; color: var(--accent); font-size: 21px; line-height: 1; }
+    .spark-one { right: 18px; top: 10px; }
+    .spark-two { left: 16px; bottom: 14px; font-size: 14px; }
+    .magnifier { display: inline-block; position: relative; width: .81em; height: .81em; margin-right: .17em; border: max(1px, .105em) solid currentColor; border-radius: 50%; flex: none; }
+    .magnifier::after { content: ""; position: absolute; width: .36em; height: max(1px, .105em); background: currentColor; left: 84%; top: 83%; transform: rotate(45deg); transform-origin: left center; border-radius: 10px; }
+
+    .section-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; border-top: 1px solid var(--line); padding-top: 17px; margin-bottom: 15px; }
+    h2 { font-size: 23px; font-weight: 750; letter-spacing: -.04em; }
+    .sample-label { color: var(--muted); font-size: 13px; }
+    .candidates { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+    .candidate { min-width: 0; background: var(--paper); border: 1px solid var(--line); border-radius: 16px; box-shadow: 0 3px 6px #39201207; overflow: hidden; transition: border-color .16s, box-shadow .16s; }
+    .candidate:has(.pick input:checked) { border-color: #ba5943; box-shadow: 0 0 0 1px #ba5943; }
+    .candidate-header { display: flex; align-items: center; gap: 10px; padding: 15px 16px 13px; }
+    .letter { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 8px; background: var(--peach); color: var(--accent); font-size: 14px; font-weight: 800; }
+    h3 { font-size: 16px; letter-spacing: -.02em; }
+    .preview { display: flex; flex-direction: column; min-height: 218px; margin-inline: 15px; border: 1px solid #e7dfd7; border-radius: 10px; overflow: hidden; background: #fff; }
+    .preview-toolbar { background: #f9f7f3; border-bottom: 1px solid #eee8e1; padding: 10px 11px; }
+    .preview-title { display: block; font-size: 11px; font-weight: 800; margin-bottom: 5px; }
+    .search-query { display: flex; align-items: center; gap: 7px; color: #615955; font-size: 11px; padding: 6px 8px; border: 1px solid #e6dfd8; border-radius: 6px; background: white; }
+    .empty-state { display: flex; flex: 1; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 12px 9px; text-align: center; }
+    .empty-icon { display: grid; place-items: center; width: 37px; height: 37px; border-radius: 50%; background: #f7efe8; color: #8d4737; font-size: 16px; margin-bottom: 4px; }
+    .empty-state strong { font-size: 15px; line-height: 1.25; letter-spacing: -.027em; }
+    .empty-state p { max-width: 25ch; color: var(--muted); font-size: 12px; line-height: 1.4; min-height: 2.8em; }
+
+    .review-controls { padding: 13px 15px 15px; }
+    .pick { display: flex; min-height: 39px; align-items: center; justify-content: center; gap: 8px; padding: 6px; border: 1px solid var(--line); border-radius: 8px; font-size: 13px; font-weight: 750; cursor: pointer; }
+    .pick:hover { background: #fcf4ef; }
+    .pick:has(input:checked) { background: var(--peach); border-color: #dfae9d; color: var(--accent); }
+    .pick input { margin: 0; width: 15px; height: 15px; accent-color: var(--accent); }
+    .pick-active, .pick:has(input:checked) .pick-idle { display: none; }
+    .pick:has(input:checked) .pick-active { display: inline; }
+    .tone { border: 0; padding: 0; margin: 13px 0 0; min-width: 0; }
+    legend { padding: 0; margin-bottom: 6px; font-size: 12px; font-weight: 750; }
+    .score-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; }
+    .score { position: relative; cursor: pointer; }
+    .score input, .sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+    .score span { display: grid; place-items: center; min-height: 35px; color: var(--ink); background: #f8f5f0; border: 1px solid #ebe3db; border-radius: 6px; font-size: 13px; font-weight: 750; }
+    .score:hover span { background: var(--peach); }
+    .score input:checked + span { background: var(--accent); border-color: var(--accent); color: white; }
+    :focus-visible, .score input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 3px; }
+    .scale { display: flex; justify-content: space-between; margin-top: 5px; color: var(--muted); font-size: 11px; }
+
+    .note-section { margin: 25px 0; }
+    .note-section label { display: block; font-size: 17px; font-weight: 750; margin-bottom: 7px; }
+    .optional { color: var(--muted); font-size: 12px; font-weight: 500; margin-left: 5px; }
+    textarea { display: block; width: 100%; border: 1px solid var(--line); border-radius: 9px; padding: 11px 13px; resize: vertical; min-height: 76px; background: var(--paper); color: var(--ink); font: inherit; font-size: 14px; }
+    textarea::placeholder { color: #73665e; }
+    .summary { background: #2c231f; color: #fff9f3; border-radius: 14px; padding: 21px 24px; margin-bottom: 32px; scroll-margin-top: 16px; }
+    .summary-grid { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 14px; margin-block: 14px; }
+    .summary-grid > div { padding-left: 12px; border-left: 1px solid #65524a; }
+    .summary dt { color: #dbc7ba; font-size: 12px; }
+    .summary dd { margin-top: 4px; font-size: 14px; font-weight: 700; }
+    .summary-note { padding-top: 12px; border-top: 1px solid #65524a; }
+    .summary-note dd { white-space: pre-wrap; overflow-wrap: anywhere; font-weight: 500; }
+
+    @media (max-width: 900px) {
+      .wrap { width: calc(100% - 44px); }
+      .hero { grid-template-columns: 1fr 155px; gap: 12px; }
+      .hero-art { margin-right: 0; scale: .75; transform-origin: right center; }
+      .candidates { gap: 10px; }
+      .preview { margin-inline: 10px; }
+      .candidate-header, .review-controls { padding-inline: 10px; }
+    }
+    @media (max-width: 690px) {
+      .wrap { width: calc(100% - 32px); }
+      .hero { display: block; padding-block: 29px 25px; }
+      .hero-art { display: none; }
+      .hero p { font-size: 15px; }
+      .candidates { grid-template-columns: 1fr; gap: 14px; }
+      .preview { margin-inline: 14px; }
+      .candidate-header, .review-controls { padding-inline: 14px; }
+      .summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .candidate { transition: none; }
+    }
+  </style>
+</head>
+<body>
+  <header class="masthead">
+    <div class="wrap masthead-inner">
+      <span class="masthead-label"><span class="magnifier" aria-hidden="true"></span> Copy review</span>
+      <a id="jump-summary" class="jump" href="#summary">View summary <span aria-hidden="true">↓</span></a>
+    </div>
+  </header>
+  <main class="wrap">
+    <div class="hero">
+      <div>
+        <h1>Search <em>empty state</em></h1>
+        <p>Choose your preferred copy and rate how well each tone fits the product.</p>
+      </div>
+      <div class="hero-art" aria-hidden="true">
+        <span class="hero-orbit"><span class="magnifier"></span></span>
+        <span class="spark spark-one">+</span><span class="spark spark-two">+</span>
+      </div>
+    </div>
+    <form id="copy-review">
+      <section aria-labelledby="options-heading">
+        <div class="section-head">
+          <h2 id="options-heading">Compare options</h2>
+          <span class="sample-label">Sample copy &amp; layout</span>
+        </div>
+        <div class="candidates">
+        <article class="candidate" aria-labelledby="title-A">
+          <header class="candidate-header">
+            <span class="letter" aria-hidden="true">A</span>
+            <h3 id="title-A">Direct</h3>
+          </header>
+          <figure class="preview" aria-label="Search results preview">
+            <div class="preview-toolbar">
+              <span class="preview-title">Search results</span>
+              <div class="search-query"><span class="magnifier" aria-hidden="true"></span> quarterly roadmap</div>
+            </div>
+            <div class="empty-state">
+              <span class="empty-icon" aria-hidden="true"><span class="magnifier"></span></span>
+              <strong>No results found</strong>
+              <p>Try a different keyword or check your spelling.</p>
+            </div>
+          </figure>
+          <div class="review-controls">
+            <label class="pick" for="prefer-A">
+              <input id="prefer-A" type="radio" name="preferred" value="A" aria-label="Prefer option A, Direct">
+              <span class="pick-idle">Prefer this option</span><span class="pick-active">Preferred option</span>
+            </label>
+            <fieldset class="tone">
+              <legend>Tone rating <span class="sr-only">for option A, Direct, from 1 to 5</span></legend>
+              <div class="score-grid">
+                <label class="score"><input id="tone-A-1" type="radio" name="tone-A" value="1"><span>1</span></label>
+                <label class="score"><input id="tone-A-2" type="radio" name="tone-A" value="2"><span>2</span></label>
+                <label class="score"><input id="tone-A-3" type="radio" name="tone-A" value="3"><span>3</span></label>
+                <label class="score"><input id="tone-A-4" type="radio" name="tone-A" value="4"><span>4</span></label>
+                <label class="score"><input id="tone-A-5" type="radio" name="tone-A" value="5"><span>5</span></label>
+              </div>
+              <div class="scale" aria-hidden="true"><span>Poor fit</span><span>Great fit</span></div>
+            </fieldset>
+          </div>
+        </article>
+        <article class="candidate" aria-labelledby="title-B">
+          <header class="candidate-header">
+            <span class="letter" aria-hidden="true">B</span>
+            <h3 id="title-B">Friendly</h3>
+          </header>
+          <figure class="preview" aria-label="Search results preview">
+            <div class="preview-toolbar">
+              <span class="preview-title">Search results</span>
+              <div class="search-query"><span class="magnifier" aria-hidden="true"></span> quarterly roadmap</div>
+            </div>
+            <div class="empty-state">
+              <span class="empty-icon" aria-hidden="true"><span class="magnifier"></span></span>
+              <strong>We couldn’t find a match</strong>
+              <p>Try a shorter search or use a different word.</p>
+            </div>
+          </figure>
+          <div class="review-controls">
+            <label class="pick" for="prefer-B">
+              <input id="prefer-B" type="radio" name="preferred" value="B" aria-label="Prefer option B, Friendly">
+              <span class="pick-idle">Prefer this option</span><span class="pick-active">Preferred option</span>
+            </label>
+            <fieldset class="tone">
+              <legend>Tone rating <span class="sr-only">for option B, Friendly, from 1 to 5</span></legend>
+              <div class="score-grid">
+                <label class="score"><input id="tone-B-1" type="radio" name="tone-B" value="1"><span>1</span></label>
+                <label class="score"><input id="tone-B-2" type="radio" name="tone-B" value="2"><span>2</span></label>
+                <label class="score"><input id="tone-B-3" type="radio" name="tone-B" value="3"><span>3</span></label>
+                <label class="score"><input id="tone-B-4" type="radio" name="tone-B" value="4"><span>4</span></label>
+                <label class="score"><input id="tone-B-5" type="radio" name="tone-B" value="5"><span>5</span></label>
+              </div>
+              <div class="scale" aria-hidden="true"><span>Poor fit</span><span>Great fit</span></div>
+            </fieldset>
+          </div>
+        </article>
+        <article class="candidate" aria-labelledby="title-C">
+          <header class="candidate-header">
+            <span class="letter" aria-hidden="true">C</span>
+            <h3 id="title-C">Playful</h3>
+          </header>
+          <figure class="preview" aria-label="Search results preview">
+            <div class="preview-toolbar">
+              <span class="preview-title">Search results</span>
+              <div class="search-query"><span class="magnifier" aria-hidden="true"></span> quarterly roadmap</div>
+            </div>
+            <div class="empty-state">
+              <span class="empty-icon" aria-hidden="true"><span class="magnifier"></span></span>
+              <strong>Nothing turned up this time</strong>
+              <p>Let’s try again with a different search term.</p>
+            </div>
+          </figure>
+          <div class="review-controls">
+            <label class="pick" for="prefer-C">
+              <input id="prefer-C" type="radio" name="preferred" value="C" aria-label="Prefer option C, Playful">
+              <span class="pick-idle">Prefer this option</span><span class="pick-active">Preferred option</span>
+            </label>
+            <fieldset class="tone">
+              <legend>Tone rating <span class="sr-only">for option C, Playful, from 1 to 5</span></legend>
+              <div class="score-grid">
+                <label class="score"><input id="tone-C-1" type="radio" name="tone-C" value="1"><span>1</span></label>
+                <label class="score"><input id="tone-C-2" type="radio" name="tone-C" value="2"><span>2</span></label>
+                <label class="score"><input id="tone-C-3" type="radio" name="tone-C" value="3"><span>3</span></label>
+                <label class="score"><input id="tone-C-4" type="radio" name="tone-C" value="4"><span>4</span></label>
+                <label class="score"><input id="tone-C-5" type="radio" name="tone-C" value="5"><span>5</span></label>
+              </div>
+              <div class="scale" aria-hidden="true"><span>Poor fit</span><span>Great fit</span></div>
+            </fieldset>
+          </div>
+        </article>
+        </div>
+      </section>
+      <div class="note-section">
+        <label for="review-note">Review note <span class="optional">Optional</span></label>
+        <textarea id="review-note" rows="2" placeholder="What worked, or what would you change?"></textarea>
+      </div>
+    </form>
+    <section class="summary" id="summary" aria-labelledby="summary-heading">
+      <h2 id="summary-heading">Your review summary</h2>
+      <dl class="summary-grid" aria-live="polite">
+        <div><dt>Preferred option</dt><dd id="summary-preferred">No option selected</dd></div>
+        <div><dt>A · Direct</dt><dd id="summary-A">Unrated</dd></div>
+        <div><dt>B · Friendly</dt><dd id="summary-B">Unrated</dd></div>
+        <div><dt>C · Playful</dt><dd id="summary-C">Unrated</dd></div>
+      </dl>
+      <dl class="summary-note"><dt>Review note</dt><dd id="summary-note">No note added</dd></dl>
+    </section>
+  </main>
+  <script>
+    const form = document.getElementById('copy-review');
+    const note = document.getElementById('review-note');
+    const variants = {"A":"Direct","B":"Friendly","C":"Playful"};
+    const preferredSummary = document.getElementById('summary-preferred');
+    const noteSummary = document.getElementById('summary-note');
+
+    function showValue(element, value) {
+      if (element.textContent !== value) element.textContent = value;
+    }
+
+    function render() {
+      const preferred = form.elements.preferred.value;
+      showValue(preferredSummary, preferred ? preferred + ' · ' + variants[preferred] : 'No option selected');
+
+      for (const letter of Object.keys(variants)) {
+        const rating = form.elements['tone-' + letter].value;
+        showValue(document.getElementById('summary-' + letter), rating ? rating + ' / 5' : 'Unrated');
+      }
+
+      showValue(noteSummary, note.value.trim() ? note.value : 'No note added');
+    }
+
+    form.addEventListener('input', render);
+    form.addEventListener('change', render);
+    render();
+  </script>
+</body>
+</html>

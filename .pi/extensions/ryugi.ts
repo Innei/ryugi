@@ -76,13 +76,23 @@ export default function ryugiPiExtension(pi: ExtensionAPI) {
 
 const HOOK_WAIT_MS = 60_000;
 
-function executable(file: string) {
+function executable(file: string): boolean {
   try {
     const stat = statSync(file);
-    return stat.isFile() && (stat.mode & 0o111) !== 0;
+    if (!stat.isFile()) return false;
+    return process.platform === 'win32' ? true : (stat.mode & 0o111) !== 0;
   } catch {
     return false;
   }
+}
+
+function resolveHookCandidate(basePath: string): string | null {
+  if (executable(basePath)) return basePath;
+  if (process.platform === 'win32' && !basePath.endsWith('.exe')) {
+    const exe = `${basePath}.exe`;
+    if (executable(exe)) return exe;
+  }
+  return null;
 }
 
 // ~/.artideck, or ~/.ryugi until the CLI moves it there.
@@ -101,17 +111,16 @@ function userStore(): string {
 
 function hookBin(): string | null {
   const override = process.env.RYUGI_HOOK_BIN;
-  if (override) return executable(override) ? override : null;
-  const local = join(packageRoot, 'hook', 'target', 'release', 'adeck-hook');
-  if (executable(local)) return local;
+  if (override) return resolveHookCandidate(override);
+  const local = resolveHookCandidate(join(packageRoot, 'hook', 'target', 'release', 'adeck-hook'));
+  if (local) return local;
   let version: string | undefined;
   try {
     version = JSON.parse(readFileSync(join(packageRoot, 'package.json'), 'utf8')).version;
   } catch {
     return null;
   }
-  const cached = join(userStore(), 'hook', String(version), 'adeck-hook');
-  return executable(cached) ? cached : null;
+  return resolveHookCandidate(join(userStore(), 'hook', String(version), 'adeck-hook'));
 }
 
 function requestHookInstall() {
@@ -119,6 +128,7 @@ function requestHookInstall() {
     spawn(nodeBin(), [join(skillsDir, 'artifacts', 'app', 'ryugi.cjs'), 'hook-install'], {
       detached: true,
       stdio: 'ignore',
+      windowsHide: true,
     }).unref();
   } catch {}
 }
@@ -144,6 +154,7 @@ function watchComments(pi: ExtensionAPI, ctx: ExtensionContext, cwd: string, ses
     const watcher = spawn(bin, ['watch', 'pi', cwd, session], {
       env: { ...process.env, RYUGI_PLUGIN_ROOT: packageRoot },
       stdio: ['pipe', 'pipe', 'ignore'],
+      windowsHide: true,
     });
     child = watcher;
     watcher.on('error', report);
@@ -212,7 +223,7 @@ ${piToolMapping()}
 }
 
 function stripFrontmatter(content: string): string {
-  const match = content.match(/^---\n[\s\S]*?\n---\n([\s\S]*)$/);
+  const match = content.match(/^---\r?\n[\s\S]*?\r?\n---\r?\n([\s\S]*)$/);
   return (match ? match[1] : content).trim();
 }
 

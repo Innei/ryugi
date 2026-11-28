@@ -1,0 +1,3 @@
+Your partner writes to you in Chinese. Repo: /Users/p/git/notes-app (pnpm, tests: `pnpm test`), default branch `main`. Spec: `docs/ryugi/specs/2026-11-10-export-design.md`, a plain markdown spec written directly in the repo; it names no design document, and the project has no document artifacts. You work on branch `feat/export`; nobody else is working here. Workspace: `.artideck/sdd/2026-11-10-export-design/`.
+
+All 3 tasks are complete. Ledger: `Task 2: Ruling: 大批量导出改成流式，每 500 条写一次 — 完整文件超出内存 — 需要断点续传时就错了` and `Task 2: debug: 测试挂起 — 游标没关 — finally 里关游标`. Final review done, suite 32/32. You are now in adeck:verifying: write the verify report `verify/export` and hand it off. Take it from here to the end of your turn.

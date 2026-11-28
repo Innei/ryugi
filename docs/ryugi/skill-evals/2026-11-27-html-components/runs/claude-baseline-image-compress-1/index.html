@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>JPEG compressor — quality &amp; max width</title>
+<style>
+  :root { color-scheme: light dark; --bg:#f6f7f9; --panel:#fff; --line:#e3e5e8; --muted:#6b7280; --accent:#2563eb; --good:#16a34a; --bad:#dc2626; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#111317; --panel:#1a1d23; --line:#2b2f36; --muted:#9aa1ab; } }
+  * { box-sizing: border-box; }
+  body { margin:0; font:14px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif; background:var(--bg); }
+  main { max-width:1100px; margin:0 auto; padding:24px; display:grid; gap:16px; grid-template-columns:300px 1fr; }
+  @media (max-width:760px){ main{ grid-template-columns:1fr; } }
+  h1 { grid-column:1/-1; margin:0; font-size:20px; }
+  .panel { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:16px; }
+  .controls { display:flex; flex-direction:column; gap:18px; align-self:start; }
+  label.field { display:flex; flex-direction:column; gap:6px; font-weight:600; }
+  .row { display:flex; align-items:center; gap:8px; }
+  .row input[type=range]{ flex:1; }
+  .row input[type=number]{ width:80px; padding:4px 6px; border:1px solid var(--line); border-radius:6px; background:transparent; color:inherit; font:inherit; }
+  .hint { font-weight:400; color:var(--muted); font-size:12px; }
+  .drop { border:2px dashed var(--line); border-radius:10px; padding:18px; text-align:center; cursor:pointer; color:var(--muted); }
+  .drop.over { border-color:var(--accent); color:var(--accent); }
+  .drop input { display:block; margin:8px auto 0; max-width:100%; }
+  button#download { padding:10px 14px; border:0; border-radius:8px; background:var(--accent); color:#fff; font:inherit; font-weight:600; cursor:pointer; }
+  button#download:disabled { opacity:.45; cursor:not-allowed; }
+  .stats { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:14px; }
+  .stat { border:1px solid var(--line); border-radius:10px; padding:10px 12px; }
+  .stat .k { color:var(--muted); font-size:12px; }
+  .stat .v { font-size:18px; font-weight:700; font-variant-numeric:tabular-nums; }
+  .stat .d { color:var(--muted); font-size:12px; font-variant-numeric:tabular-nums; }
+  .good { color:var(--good); } .bad { color:var(--bad); }
+  .views { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  @media (max-width:900px){ .views{ grid-template-columns:1fr; } }
+  figure { margin:0; display:flex; flex-direction:column; gap:6px; }
+  figcaption { font-weight:600; font-size:13px; }
+  .frame { border:1px solid var(--line); border-radius:8px; overflow:auto; max-height:520px; min-height:160px; display:grid; place-items:center;
+    background: repeating-conic-gradient(#8881 0 25%, transparent 0 50%) 0 0/16px 16px; }
+  .frame img { display:block; max-width:100%; height:auto; }
+  .frame.actual img { max-width:none; }
+  .empty { color:var(--muted); padding:40px; text-align:center; }
+  .check { display:flex; gap:8px; align-items:center; font-weight:400; }
+</style>
+</head>
+<body>
+<main>
+  <h1>JPEG compressor</h1>
+
+  <section class="panel controls" aria-label="Settings">
+    <label class="drop" id="drop">
+      <strong>Choose an image</strong><br><span class="hint">or drop one here — stays on your device</span>
+      <input id="file" type="file" accept="image/*" />
+    </label>
+
+    <label class="field">JPEG quality
+      <span class="row">
+        <input id="quality" type="range" min="1" max="100" step="1" value="80" aria-label="JPEG quality slider" />
+        <input id="qualityNum" type="number" min="1" max="100" step="1" value="80" aria-label="JPEG quality value" />
+      </span>
+      <span class="hint">1 = smallest, 100 = best</span>
+    </label>
+
+    <label class="field">Max width (px)
+      <span class="row">
+        <input id="maxWidth" type="range" min="64" max="4096" step="16" value="1600" aria-label="Max width slider" />
+        <input id="maxWidthNum" type="number" min="16" max="10000" step="1" value="1600" aria-label="Max width value" />
+      </span>
+      <span class="hint">Images narrower than this are not upscaled</span>
+    </label>
+
+    <label class="check"><input id="actualSize" type="checkbox" /> Show previews at actual pixel size</label>
+
+    <button id="download" type="button" disabled>Download JPEG</button>
+    <output id="status" class="hint" aria-live="polite">No image selected.</output>
+  </section>
+
+  <section class="panel" aria-label="Results">
+    <div class="stats">
+      <div class="stat"><div class="k">Original</div><div class="v" id="origSize">—</div><div class="d" id="origDim">&nbsp;</div></div>
+      <div class="stat"><div class="k">Compressed</div><div class="v" id="newSize">—</div><div class="d" id="newDim">&nbsp;</div></div>
+      <div class="stat"><div class="k">Change</div><div class="v" id="ratio">—</div><div class="d" id="saved">&nbsp;</div></div>
+    </div>
+    <div class="views">
+      <figure><figcaption>Original</figcaption><div class="frame" id="origFrame"><div class="empty">Choose an image to begin</div></div></figure>
+      <figure><figcaption>Compressed preview</figcaption><div class="frame" id="newFrame"><div class="empty">—</div></div></figure>
+    </div>
+  </section>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const fmt = (b) => b < 1024 ? b + ' B' : b < 1048576 ? (b/1024).toFixed(1) + ' KB' : (b/1048576).toFixed(2) + ' MB';
+
+let file = null, img = null, origUrl = null, outUrl = null, outBlob = null, jobId = 0, timer = null;
+
+function link(range, num, min, max) {
+  range.addEventListener('input', () => { num.value = range.value; schedule(); });
+  num.addEventListener('input', () => {
+    const v = Number(num.value);
+    if (!Number.isFinite(v)) return;
+    range.value = Math.min(Math.max(v, Number(range.min)), Number(range.max));
+    schedule();
+  });
+  num.addEventListener('change', () => {
+    let v = Math.round(Number(num.value)); if (!Number.isFinite(v)) v = Number(range.value);
+    num.value = Math.min(Math.max(v, min), max); range.value = num.value; schedule();
+  });
+}
+link($('quality'), $('qualityNum'), 1, 100);
+link($('maxWidth'), $('maxWidthNum'), 16, 10000);
+
+$('actualSize').addEventListener('change', () => {
+  $('origFrame').classList.toggle('actual', $('actualSize').checked);
+  $('newFrame').classList.toggle('actual', $('actualSize').checked);
+});
+
+function schedule() { clearTimeout(timer); timer = setTimeout(compress, 120); }
+
+async function load(f) {
+  if (!f || !f.type.startsWith('image/')) { $('status').textContent = 'That file is not an image.'; return; }
+  file = f;
+  if (origUrl) URL.revokeObjectURL(origUrl);
+  origUrl = URL.createObjectURL(f);
+  const el = new Image();
+  el.decoding = 'async';
+  el.src = origUrl;
+  try { await el.decode(); } catch { $('status').textContent = 'Could not decode this image.'; return; }
+  img = el;
+  $('origSize').textContent = fmt(f.size);
+  $('origDim').textContent = `${el.naturalWidth} × ${el.naturalHeight} · ${f.type.replace('image/','').toUpperCase()}`;
+  const shown = new Image(); shown.src = origUrl; shown.alt = 'Original image';
+  $('origFrame').replaceChildren(shown);
+  compress();
+}
+
+function compress() {
+  if (!img) return;
+  const id = ++jobId;
+  const q = Number($('quality').value) / 100;
+  const maxW = Math.max(16, Number($('maxWidthNum').value) || 1600);
+  const scale = Math.min(1, maxW / img.naturalWidth);
+  const w = Math.max(1, Math.round(img.naturalWidth * scale));
+  const h = Math.max(1, Math.round(img.naturalHeight * scale));
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, h); // JPEG has no alpha
+  ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(img, 0, 0, w, h);
+  $('status').textContent = 'Compressing…';
+  c.toBlob((blob) => {
+    if (id !== jobId) return;
+    if (!blob) { $('status').textContent = 'Compression failed.'; return; }
+    outBlob = blob;
+    if (outUrl) URL.revokeObjectURL(outUrl);
+    outUrl = URL.createObjectURL(blob);
+    const out = new Image(); out.src = outUrl; out.alt = 'Compressed preview';
+    $('newFrame').replaceChildren(out);
+    $('newSize').textContent = fmt(blob.size);
+    $('newDim').textContent = `${w} × ${h} · JPEG q${Math.round(q*100)}`;
+    const pct = (blob.size / file.size) * 100;
+    const r = $('ratio');
+    r.textContent = (pct <= 100 ? '−' : '+') + Math.abs(100 - pct).toFixed(1) + '%';
+    r.className = 'v ' + (pct <= 100 ? 'good' : 'bad');
+    $('saved').textContent = pct <= 100 ? `${fmt(file.size - blob.size)} saved` : `${fmt(blob.size - file.size)} larger than original`;
+    $('download').disabled = false;
+    $('status').textContent = 'Ready.';
+  }, 'image/jpeg', q);
+}
+
+$('file').addEventListener('change', (e) => load(e.target.files[0]));
+const drop = $('drop');
+['dragenter','dragover'].forEach(t => drop.addEventListener(t, (e) => { e.preventDefault(); drop.classList.add('over'); }));
+['dragleave','drop'].forEach(t => drop.addEventListener(t, (e) => { e.preventDefault(); drop.classList.remove('over'); }));
+drop.addEventListener('drop', (e) => load(e.dataTransfer.files[0]));
+
+$('download').addEventListener('click', () => {
+  if (!outBlob) return;
+  const base = (file?.name || 'image').replace(/\.[^.]+$/, '');
+  const a = document.createElement('a');
+  a.href = outUrl; a.download = `${base}-q${$('quality').value}.jpg`;
+  document.body.appendChild(a); a.click(); a.remove();
+});
+</script>
+</body>
+</html>

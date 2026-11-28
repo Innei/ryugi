@@ -1,0 +1,1 @@
+FAIL — The summary reports TDD and the dispositions, but the transcript shows neither the failing test output nor the three required `Final:` ledger lines.

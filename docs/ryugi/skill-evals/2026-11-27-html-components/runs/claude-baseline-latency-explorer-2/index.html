@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>API latency explorer — p50 / p95 across 24 endpoints</title>
+<style>
+  :root {
+    --bg: #f7f7f8; --panel: #fff; --text: #1d1d1f; --muted: #6b6b73; --line: #e5e5ea;
+    --p50: #6b8afd; --p95: #2b4fd8; --slow: #d83b3b; --slow-bg: #fdecec;
+    --get: #1f8a4c; --post: #2b4fd8; --put: #b26a00; --patch: #8a3ad8; --delete: #c42b2b;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #141416; --panel: #1d1d20; --text: #ececf0; --muted: #9a9aa3; --line: #2e2e33;
+      --p50: #5c74d6; --p95: #8ea6ff; --slow: #ff6b6b; --slow-bg: #3a1e1f;
+      --get: #4cc982; --post: #8ea6ff; --put: #f0a840; --patch: #c08cff; --delete: #ff7a7a;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; background: var(--bg); color: var(--text); }
+  main { max-width: 1100px; margin: 0 auto; padding: 24px 20px 48px; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .sub { color: var(--muted); margin: 0 0 18px; }
+  .controls { display: grid; grid-template-columns: 1.3fr 1.6fr 1.4fr auto; gap: 16px; align-items: end;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
+  @media (max-width: 860px) { .controls { grid-template-columns: 1fr 1fr; } }
+  .field > .lbl { display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px; font-weight: 500; }
+  input[type=search], select, input[type=number] {
+    width: 100%; padding: 7px 10px; border: 1px solid var(--line); border-radius: 7px;
+    background: var(--bg); color: var(--text); font: inherit; }
+  .methods { display: flex; flex-wrap: wrap; gap: 6px; }
+  .methods label { display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; border: 1px solid var(--line);
+    border-radius: 999px; cursor: pointer; font-size: 12px; font-weight: 600; user-select: none; }
+  .methods input { margin: 0; }
+  .thresh { display: flex; gap: 8px; align-items: center; }
+  .thresh input[type=range] { flex: 1; accent-color: var(--slow); }
+  .thresh input[type=number] { width: 84px; }
+  .summary { display: flex; gap: 12px; margin: 16px 0; flex-wrap: wrap; }
+  .stat { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; min-width: 140px; }
+  .stat b { display: block; font-size: 20px; font-variant-numeric: tabular-nums; }
+  .stat span { font-size: 12px; color: var(--muted); }
+  .stat.alert b { color: var(--slow); }
+  table { width: 100%; border-collapse: collapse; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  th, td { padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--line); }
+  th { font-size: 12px; color: var(--muted); font-weight: 600; background: var(--panel); }
+  th.num, td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  tr:last-child td { border-bottom: 0; }
+  tr.slow td { background: var(--slow-bg); }
+  tr.slow td.p95v { color: var(--slow); font-weight: 700; }
+  .sortbtn { background: none; border: 0; color: inherit; font: inherit; cursor: pointer; padding: 0; }
+  .sortbtn:hover { color: var(--text); }
+  .m { font-size: 11px; font-weight: 700; letter-spacing: .03em; font-family: ui-monospace, Menlo, monospace; }
+  .m.GET { color: var(--get); } .m.POST { color: var(--post); } .m.PUT { color: var(--put); }
+  .m.PATCH { color: var(--patch); } .m.DELETE { color: var(--delete); }
+  .path { font-family: ui-monospace, Menlo, monospace; font-size: 13px; }
+  .path mark { background: #ffe58a; color: #000; border-radius: 2px; }
+  .barcell { width: 32%; }
+  .bar { position: relative; height: 12px; background: var(--bg); border-radius: 3px; }
+  .bar .b95 { position: absolute; inset: 0 auto 0 0; background: var(--p95); opacity: .35; border-radius: 3px; }
+  .bar .b50 { position: absolute; inset: 0 auto 0 0; background: var(--p50); border-radius: 3px; }
+  tr.slow .bar .b95 { background: var(--slow); opacity: .5; }
+  .bar .thr { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--slow); }
+  .legend { display: flex; gap: 14px; font-size: 12px; color: var(--muted); margin: 8px 0 0; }
+  .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; }
+  .empty { padding: 28px; text-align: center; color: var(--muted); }
+  .tag { font-size: 11px; color: var(--slow); font-weight: 700; margin-left: 6px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>API latency explorer</h1>
+  <p class="sub">p50 / p95 response times for 24 endpoints, last 24 h (sample data). Endpoints whose p95 is above the threshold are highlighted.</p>
+
+  <section class="controls" aria-label="Filters">
+    <div class="field">
+      <label class="lbl" for="search">Search path</label>
+      <input id="search" type="search" placeholder="e.g. /orders or {id}" autocomplete="off" />
+    </div>
+    <div class="field">
+      <span class="lbl" id="methods-lbl">HTTP method</span>
+      <div class="methods" role="group" aria-labelledby="methods-lbl">
+        <label><input type="checkbox" id="m-GET" value="GET" checked /><span class="m GET">GET</span></label>
+        <label><input type="checkbox" id="m-POST" value="POST" checked /><span class="m POST">POST</span></label>
+        <label><input type="checkbox" id="m-PUT" value="PUT" checked /><span class="m PUT">PUT</span></label>
+        <label><input type="checkbox" id="m-PATCH" value="PATCH" checked /><span class="m PATCH">PATCH</span></label>
+        <label><input type="checkbox" id="m-DELETE" value="DELETE" checked /><span class="m DELETE">DELETE</span></label>
+      </div>
+    </div>
+    <div class="field">
+      <label class="lbl" for="threshold">Slow threshold (p95, ms)</label>
+      <div class="thresh">
+        <input id="threshold" type="range" min="50" max="2000" step="10" value="500" aria-label="Slow threshold slider" />
+        <input id="threshold-num" type="number" min="50" max="2000" step="10" value="500" aria-label="Slow threshold in milliseconds" />
+      </div>
+    </div>
+    <div class="field">
+      <label class="lbl" for="sort">Sort by p95</label>
+      <select id="sort">
+        <option value="desc">Slowest first</option>
+        <option value="asc">Fastest first</option>
+        <option value="none">Default order</option>
+      </select>
+    </div>
+  </section>
+
+  <section class="summary" aria-live="polite">
+    <div class="stat"><b id="s-shown">–</b><span>endpoints shown</span></div>
+    <div class="stat alert"><b id="s-slow">–</b><span>above threshold</span></div>
+    <div class="stat"><b id="s-med">–</b><span>median p95 (shown)</span></div>
+    <div class="stat"><b id="s-worst">–</b><span id="s-worst-lbl">worst p95</span></div>
+  </section>
+
+  <table>
+    <thead>
+      <tr>
+        <th style="width:70px">Method</th>
+        <th>Path</th>
+        <th class="num">Req / 24h</th>
+        <th class="num">p50</th>
+        <th class="num"><button class="sortbtn" id="p95-head" type="button" title="Toggle p95 sort">p95 <span id="sort-arrow">↓</span></button></th>
+        <th class="barcell">Distribution</th>
+      </tr>
+    </thead>
+    <tbody id="rows"></tbody>
+  </table>
+  <div class="legend">
+    <span><i style="background:var(--p50)"></i>p50</span>
+    <span><i style="background:var(--p95);opacity:.35"></i>p95</span>
+    <span><i style="background:var(--slow);width:2px"></i>threshold</span>
+  </div>
+</main>
+
+<script>
+const DATA = [
+  ['GET',    '/v1/health',                       4,     9,    1820000],
+  ['POST',   '/v1/auth/login',                   142,   388,  96000],
+  ['POST',   '/v1/auth/refresh',                 38,    95,   410000],
+  ['GET',    '/v1/users/me',                     22,    61,   880000],
+  ['GET',    '/v1/users/{id}',                   31,    84,   215000],
+  ['PATCH',  '/v1/users/{id}',                   67,    190,  18400],
+  ['DELETE', '/v1/users/{id}',                   120,   540,  610],
+  ['GET',    '/v1/products',                     88,    310,  540000],
+  ['GET',    '/v1/products/{id}',                27,    72,   1210000],
+  ['GET',    '/v1/search',                       210,   1340, 362000],
+  ['GET',    '/v1/cart',                         35,    110,  298000],
+  ['POST',   '/v1/cart/items',                   54,    160,  121000],
+  ['DELETE', '/v1/cart/items/{id}',              41,    118,  37000],
+  ['POST',   '/v1/orders',                       320,   980,  44200],
+  ['GET',    '/v1/orders',                       96,    420,  83000],
+  ['GET',    '/v1/orders/{id}',                  44,    130,  156000],
+  ['PUT',    '/v1/orders/{id}/address',          78,    240,  5100],
+  ['POST',   '/v1/payments/charge',              610,   1870, 41800],
+  ['POST',   '/v1/payments/webhook',             58,    220,  73000],
+  ['GET',    '/v1/recommendations',              180,   720,  402000],
+  ['POST',   '/v1/uploads',                      450,   1650, 9700],
+  ['GET',    '/v1/reports/sales',                740,   1960, 1300],
+  ['PUT',    '/v1/settings/notifications',       49,    140,  7600],
+  ['PATCH',  '/v1/inventory/{sku}',              92,    365,  26500],
+].map(([method, path, p50, p95, rpm], i) => ({ i, method, path, p50, p95, reqs: rpm }));
+
+const $ = id => document.getElementById(id);
+const METHODS = ['GET','POST','PUT','PATCH','DELETE'];
+const fmtMs = v => v >= 1000 ? (v/1000).toFixed(2) + ' s' : v + ' ms';
+const fmtN = v => v >= 1e6 ? (v/1e6).toFixed(2) + 'M' : v >= 1e3 ? (v/1e3).toFixed(1) + 'k' : String(v);
+const esc = s => s.replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+function highlight(path, q) {
+  if (!q) return esc(path);
+  const idx = path.toLowerCase().indexOf(q);
+  if (idx < 0) return esc(path);
+  return esc(path.slice(0, idx)) + '<mark>' + esc(path.slice(idx, idx + q.length)) + '</mark>' + esc(path.slice(idx + q.length));
+}
+
+function render() {
+  const q = $('search').value.trim().toLowerCase();
+  const active = new Set(METHODS.filter(m => $('m-' + m).checked));
+  const thr = Number($('threshold').value);
+  const sort = $('sort').value;
+
+  let rows = DATA.filter(d => active.has(d.method) && (!q || d.path.toLowerCase().includes(q)));
+  if (sort === 'desc') rows.sort((a, b) => b.p95 - a.p95);
+  else if (sort === 'asc') rows.sort((a, b) => a.p95 - b.p95);
+  $('sort-arrow').textContent = sort === 'desc' ? '↓' : sort === 'asc' ? '↑' : '·';
+
+  const scaleMax = Math.max(thr, ...DATA.map(d => d.p95)) * 1.05;
+  const pct = v => (v / scaleMax * 100).toFixed(2) + '%';
+
+  $('rows').innerHTML = rows.length ? rows.map(d => {
+    const slow = d.p95 > thr;
+    return `<tr class="${slow ? 'slow' : ''}">
+      <td><span class="m ${d.method}">${d.method}</span></td>
+      <td class="path">${highlight(d.path, q)}${slow ? '<span class="tag">SLOW</span>' : ''}</td>
+      <td class="num">${fmtN(d.reqs)}</td>
+      <td class="num">${fmtMs(d.p50)}</td>
+      <td class="num p95v">${fmtMs(d.p95)}</td>
+      <td class="barcell"><div class="bar" title="p50 ${d.p50} ms · p95 ${d.p95} ms">
+        <div class="b95" style="width:${pct(d.p95)}"></div>
+        <div class="b50" style="width:${pct(d.p50)}"></div>
+        <div class="thr" style="left:${pct(thr)}"></div>
+      </div></td>
+    </tr>`;
+  }).join('') : '<tr><td colspan="6" class="empty">No endpoints match these filters.</td></tr>';
+
+  const slowCount = rows.filter(d => d.p95 > thr).length;
+  $('s-shown').textContent = `${rows.length} / ${DATA.length}`;
+  $('s-slow').textContent = slowCount;
+  const sorted = rows.map(d => d.p95).sort((a, b) => a - b);
+  const med = sorted.length ? (sorted.length % 2 ? sorted[(sorted.length - 1) / 2]
+    : Math.round((sorted[sorted.length/2 - 1] + sorted[sorted.length/2]) / 2)) : null;
+  $('s-med').textContent = med == null ? '–' : fmtMs(med);
+  const worst = rows.reduce((w, d) => !w || d.p95 > w.p95 ? d : w, null);
+  $('s-worst').textContent = worst ? fmtMs(worst.p95) : '–';
+  $('s-worst-lbl').textContent = worst ? `worst p95 · ${worst.method} ${worst.path}` : 'worst p95';
+}
+
+$('threshold').addEventListener('input', () => { $('threshold-num').value = $('threshold').value; render(); });
+$('threshold-num').addEventListener('input', () => {
+  const v = Number($('threshold-num').value);
+  if (Number.isFinite(v) && v >= 50 && v <= 2000) { $('threshold').value = v; render(); }
+});
+$('p95-head').addEventListener('click', () => {
+  $('sort').value = $('sort').value === 'desc' ? 'asc' : 'desc';
+  render();
+});
+['search', 'sort', ...METHODS.map(m => 'm-' + m)].forEach(id => {
+  $(id).addEventListener('input', render);
+  $(id).addEventListener('change', render);
+});
+render();
+</script>
+</body>
+</html>

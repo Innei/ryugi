@@ -1,0 +1,1 @@
+FAIL — The agent outlines one unspecified test and stops at a missing-module failure, leaving several distinct merge behaviors untested.

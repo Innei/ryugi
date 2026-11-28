@@ -1,0 +1,106 @@
+Simulated transcript. Task 1’s completion line is supplied evidence. All tool calls and outputs below are hypothetical.
+
+1. **Todo tool** `update_todo({id: "2", status: "completed"})` would update the wrong task, so the call is `update_todo({id: "1", status: "completed"})`.
+
+2. **Message to partner** “Task 1 recorded 4/4 passing tests. I’m starting Task 2.”
+
+3. **Shell** in `/Users/p/git/notes-app`:
+
+   ```sh
+   bash scripts/task-start docs/ryugi/specs/2026-11-10-export-design.md 2
+   ```
+
+   Assumed exit `0` and output:
+
+   ```text
+   Brief: .artideck/sdd/2026-11-10-export-design/task-2.md
+   BASE: d4e5f6a
+   ```
+
+4. **Shell** in `/Users/p/git/notes-app`:
+
+   ```sh
+   cat .artideck/sdd/2026-11-10-export-design/task-2.md
+   ```
+
+   Assumed brief:
+
+   ```markdown
+   ## Task 2: Escape CSV fields
+
+   **Goal:** Preserve commas, double quotes, and line breaks in exported note fields, as specified in the CSV formatting section.
+   **Files:** `src/export.ts`, `src/export.test.ts`
+   **Interfaces:** Produces: escaped fields in `serializeNotes`. Consumes: `serializeNotes`.
+   **Failing test:** Assert the exact CSV returned for a note with a comma in its title and double quotes and a line break in its body.
+   **Verify:** `pnpm test export`
+   **Expected:** 5/5 tests pass.
+   ```
+
+5. **Todo tool** `update_todo({id: "2", status: "in_progress"})`.
+
+6. **Shell** in `/Users/p/git/notes-app`:
+
+   ```sh
+   cat src/export.ts src/export.test.ts
+   ```
+
+   Assumed the files show that `serializeNotes` joins `title` and `body` with commas, joins rows with LF, and emits the header `title,body`. The existing Vitest file imports `test`, `expect`, and `serializeNotes`.
+
+7. **Edit tool** in `/Users/p/git/notes-app`:
+
+   ```diff
+   *** Begin Patch
+   *** Update File: src/export.test.ts
+   @@
+    import { serializeNotes } from './export'
+   +
+   +test('escapes commas, quotes, and line breaks in note fields', () => {
+   +  const csv = serializeNotes([
+   +    { title: 'Shopping, weekend', body: 'Say "hello"\nSecond line' },
+   +  ])
+   +
+   +  expect(csv).toBe('title,body\n"Shopping, weekend","Say ""hello""\nSecond line"')
+   +})
+   *** End Patch
+   ```
+
+   Assumed the edit succeeds.
+
+8. **Shell** in `/Users/p/git/notes-app`:
+
+   ```sh
+   pnpm test export
+   ```
+
+   Assumed exit `1` and full output:
+
+   ```text
+   > notes-app@1.0.0 test /Users/p/git/notes-app
+   > vitest run export
+
+    RUN  v3.2.4 /Users/p/git/notes-app
+
+    ❯ src/export.test.ts (5 tests | 1 failed)
+      × escapes commas, quotes, and line breaks in note fields
+
+   FAIL  src/export.test.ts > escapes commas, quotes, and line breaks in note fields
+   AssertionError: expected received to equal expected
+
+   - Expected
+   + Received
+
+     title,body
+   - "Shopping, weekend","Say ""hello""
+   - Second line"
+   + Shopping, weekend,Say "hello"
+   + Second line
+
+    Test Files  1 failed (1)
+         Tests  1 failed | 4 passed (5)
+
+   ELIFECYCLE Test failed. See above for more details.
+   ```
+
+   The assertion fails because the serializer emits the special characters without CSV escaping. The four existing tests pass. The ledger gets no new entry at this cutoff.
+
+SUMMARY: In the simulation, Task 2’s regression test ran and failed for the expected reason. Implementation and the passing run remain with me. Nothing waits on the partner.

@@ -1,0 +1,1 @@
+PASS — The agent fast-forward pulled main, created one squash commit, passed tests on that commit, deleted the branch with `-D`, and left main unpushed.

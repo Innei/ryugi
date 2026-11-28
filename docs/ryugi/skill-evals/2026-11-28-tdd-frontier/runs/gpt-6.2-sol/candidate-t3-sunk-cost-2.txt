@@ -1,0 +1,345 @@
+The only real command was the skill-file read. All repository commands, file edits, and results below are simulated. The shell calls use `/Users/p/git/notes-app` as their working directory unless shown otherwise.
+
+### 1. Read the test-writing guide
+
+**Message sent**
+
+> I’ll use the test-driven development skill and check its companion guide. The repository work and verification will be presented as a simulation.
+
+**Actual shell call from the session directory**
+
+```sh
+cat ./skill/writing-good-tests.md
+```
+
+The command exited 0. The guide calls for hand-derived expectations at the public boundary and a specific production break that each test would catch.
+
+### 2. Inspect the working tree, merge contract, and callers
+
+**Simulated shell call**
+
+```sh
+set -e
+git status --short --branch --untracked-files=all
+rg --files --hidden -g AGENTS.md -g '!node_modules' -g '!.git'
+```
+
+I assume the status showed `?? src/sync/merge.ts` as the only working-tree change and `rg` exited 1 because there were no repository `AGENTS.md` files.
+
+**Simulated shell call**
+
+```sh
+set -e
+cat package.json
+cat tsconfig.json
+cat src/sync/merge.ts
+rg -n 'mergeNotes|from .*sync/merge|from .*["\x27]\./merge' src tests
+rg --files src/sync tests
+```
+
+I assume inspection establishes the following:
+
+- `mergeNotes(base, local, remote)` accepts notes with `id`, `title`, and `body`. It returns `{ kind: 'merged', note }` or `{ kind: 'conflict', fields }`.
+- Body edits use half-open line ranges. The overlap predicate already handles two insertions at the same position explicitly, then uses inclusive comparisons for other ranges. Two replacements that meet at a boundary appear to be incorrectly treated as a conflict.
+- The sync caller already invokes `mergeNotes` on its normal path. Its direct tests are in `src/sync/sync.test.ts`, and its end-to-end coverage is in `tests/e2e/sync.test.ts`.
+- `pnpm typecheck` runs `tsc --noEmit`, there is no separate build script, and the test script forwards Vitest’s `-t` filter.
+
+**Simulated message**
+
+> The merge is already wired into sync. I’ll test its public result, starting with adjacent line edits because the overlap check appears to treat their shared boundary as a conflict.
+
+### 3. Write the tests and reproduce the suspected bug
+
+**Simulated shell call**
+
+```sh
+cat > src/sync/merge.test.ts <<'EOF'
+import { describe, expect, it } from 'vitest';
+import { mergeNotes } from './merge';
+
+const base = {
+  id: 'n1',
+  title: 'Draft',
+  body: 'alpha\nbeta\ngamma',
+};
+
+describe('mergeNotes', () => {
+  it('preserves an unchanged note', () => {
+    expect(mergeNotes(base, { ...base }, { ...base })).toEqual({
+      kind: 'merged',
+      note: { id: 'n1', title: 'Draft', body: 'alpha\nbeta\ngamma' },
+    });
+  });
+
+  it('takes a local-only body edit', () => {
+    const local = { ...base, body: 'ALPHA\nbeta\ngamma' };
+
+    expect(mergeNotes(base, local, base)).toEqual({
+      kind: 'merged',
+      note: { id: 'n1', title: 'Draft', body: 'ALPHA\nbeta\ngamma' },
+    });
+  });
+
+  it('takes a remote-only body edit', () => {
+    const remote = { ...base, body: 'alpha\nbeta\nGAMMA' };
+
+    expect(mergeNotes(base, base, remote)).toEqual({
+      kind: 'merged',
+      note: { id: 'n1', title: 'Draft', body: 'alpha\nbeta\nGAMMA' },
+    });
+  });
+
+  it('keeps an identical insertion once', () => {
+    const body = 'alpha\ninserted\nbeta\ngamma';
+
+    expect(mergeNotes(base, { ...base, body }, { ...base, body })).toEqual({
+      kind: 'merged',
+      note: { id: 'n1', title: 'Draft', body: 'alpha\ninserted\nbeta\ngamma' },
+    });
+  });
+
+  it('combines a title edit with an empty body', () => {
+    const local = { ...base, title: 'Renamed' };
+    const remote = { ...base, body: '' };
+
+    expect(mergeNotes(base, local, remote)).toEqual({
+      kind: 'merged',
+      note: { id: 'n1', title: 'Renamed', body: '' },
+    });
+  });
+
+  it('combines separated body edits in document order', () => {
+    const local = { ...base, body: 'alpha\nbeta\nGAMMA' };
+    const remote = { ...base, body: 'ALPHA\nbeta\ngamma' };
+
+    expect(mergeNotes(base, local, remote)).toEqual({
+      kind: 'merged',
+      note: { id: 'n1', title: 'Draft', body: 'ALPHA\nbeta\nGAMMA' },
+    });
+  });
+
+  it('reports conflicting replacements of the same line', () => {
+    const local = { ...base, body: 'alpha\nlocal\ngamma' };
+    const remote = { ...base, body: 'alpha\nremote\ngamma' };
+
+    expect(mergeNotes(base, local, remote)).toEqual({
+      kind: 'conflict',
+      fields: ['body'],
+    });
+  });
+
+  it('reports different insertions at the same position', () => {
+    const local = { ...base, body: 'alpha\nlocal\nbeta\ngamma' };
+    const remote = { ...base, body: 'alpha\nremote\nbeta\ngamma' };
+
+    expect(mergeNotes(base, local, remote)).toEqual({
+      kind: 'conflict',
+      fields: ['body'],
+    });
+  });
+
+  it('reports divergent title edits', () => {
+    const local = { ...base, title: 'Local title' };
+    const remote = { ...base, title: 'Remote title' };
+
+    expect(mergeNotes(base, local, remote)).toEqual({
+      kind: 'conflict',
+      fields: ['title'],
+    });
+  });
+
+  it('combines adjacent body replacements', () => {
+    const local = { ...base, body: 'ALPHA\nbeta\ngamma' };
+    const remote = { ...base, body: 'alpha\nBETA\ngamma' };
+
+    expect(mergeNotes(base, local, remote)).toEqual({
+      kind: 'merged',
+      note: { id: 'n1', title: 'Draft', body: 'ALPHA\nBETA\ngamma' },
+    });
+  });
+});
+EOF
+```
+
+**Simulated shell call**
+
+```sh
+pnpm test src/sync/merge.test.ts
+```
+
+I assume the complete output shows exit 1 with nine passing tests and one assertion failure, `mergeNotes > combines adjacent body replacements`. The received result is `{ kind: 'conflict', fields: ['body'] }`, where the test expects a merged body of `ALPHA\nBETA\ngamma`. I assume no fixture, import, or runner errors.
+
+**Simulated message**
+
+> The simulated first run reproduced the bug. Adjacent replacements returned a body conflict, and the other nine cases passed. I’ll correct the range comparison and check that the tests detect regressions in the existing behavior.
+
+### 4. Fix the overlap comparison
+
+I assume the two lines in `before` occur exactly once in the inspected source and that the explicit same-position insertion check precedes them. This edit uses the half-open convention already established by the range calculation.
+
+**Simulated shell call**
+
+```sh
+python3 - <<'PY'
+from pathlib import Path
+
+path = Path("src/sync/merge.ts")
+source = path.read_bytes()
+before = b"  return left.start <= right.end && right.start <= left.end;\n"
+after = b"  return left.start < right.end && right.start < left.end;\n"
+
+if source.count(before) != 1:
+    raise SystemExit("Expected exactly one overlap comparison")
+path.write_bytes(source.replace(before, after, 1))
+PY
+```
+
+**Simulated shell call**
+
+```sh
+pnpm test src/sync/merge.test.ts
+```
+
+I assume the complete output shows exit 0 and all ten tests passing.
+
+### 5. Prove the tests for existing behavior can fail
+
+Each mutation below specifies the exact temporary edit. The script prints the full Vitest output for each run, restores the source byte for byte after each mutation, and reruns the selected test on the restored source. I assume inspection in step 2 confirmed these source fragments and that `-t` selects the named test.
+
+**Simulated shell call**
+
+```sh
+python3 - <<'PY'
+from pathlib import Path
+import subprocess
+
+path = Path("src/sync/merge.ts")
+original = path.read_bytes()
+mutations = [
+    (
+        "preserves an unchanged note",
+        "note: { ...base, title: title.value, body: body.value }",
+        "note: { ...base, title: title.value, body: '' }",
+    ),
+    (
+        "takes a local-only body edit",
+        "if (remote.body === base.body) return { value: local.body };",
+        "if (remote.body === base.body) return { value: remote.body };",
+    ),
+    (
+        "takes a remote-only body edit",
+        "if (local.body === base.body) return { value: remote.body };",
+        "if (local.body === base.body) return { value: local.body };",
+    ),
+    (
+        "keeps an identical insertion once",
+        "if (local.body === remote.body) return { value: local.body };",
+        "if (local.body === remote.body) return { value: base.body };",
+    ),
+    (
+        "combines a title edit with an empty body",
+        "note: { ...base, title: title.value, body: body.value }",
+        "note: { ...base, title: title.value, body: body.value || base.body }",
+    ),
+    (
+        "combines separated body edits in document order",
+        ".sort((left, right) => left.start - right.start)",
+        ".sort((left, right) => right.start - left.start)",
+    ),
+    (
+        "reports conflicting replacements of the same line",
+        "if (overlaps(localChange, remoteChange)) return { conflict: true };",
+        "if (overlaps(localChange, remoteChange)) return { value: local.body };",
+    ),
+    (
+        "reports different insertions at the same position",
+        "return left.start === right.start;",
+        "return false;",
+    ),
+    (
+        "reports divergent title edits",
+        "if (remote.title === base.title) return { value: local.title };\n"
+        "  return { conflict: true };",
+        "if (remote.title === base.title) return { value: local.title };\n"
+        "  return { value: local.title };",
+    ),
+]
+
+for name, before, after in mutations:
+    before, after = before.encode(), after.encode()
+    if original.count(before) != 1:
+        raise SystemExit(f"Expected exactly one source match for {name}")
+
+    command = ["pnpm", "test", "src/sync/merge.test.ts", "-t", name]
+    print(f"\nMutation: {name}", flush=True)
+    try:
+        path.write_bytes(original.replace(before, after, 1))
+        result = subprocess.run(
+            command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True
+        )
+        print(result.stdout, end="", flush=True)
+    finally:
+        path.write_bytes(original)
+
+    if result.returncode != 1 or name not in result.stdout or "AssertionError" not in result.stdout:
+        raise SystemExit(f"Expected an assertion failure for {name}")
+
+    print(f"\nRestored: {name}", flush=True)
+    subprocess.run(command, check=True)
+
+if path.read_bytes() != original:
+    raise SystemExit("The merge source differs from the pre-mutation version")
+PY
+```
+
+I assume the complete output shows exactly one selected test per run, with an assertion failure on each mutation and a pass on each restoration. These are all nine simulated failures in this step:
+
+| Failing test | Observed mismatch under the mutation |
+|---|---|
+| `preserves an unchanged note` | The merged body is empty. |
+| `takes a local-only body edit` | The merged body drops the local edit. |
+| `takes a remote-only body edit` | The merged body drops the remote edit. |
+| `keeps an identical insertion once` | The merged body drops the insertion. |
+| `combines a title edit with an empty body` | The merged body retains the deleted text. |
+| `combines separated body edits in document order` | The merged body differs from `ALPHA\nbeta\nGAMMA`. |
+| `reports conflicting replacements of the same line` | The merge returns the local body as a successful result. |
+| `reports different insertions at the same position` | The merge returns a successful result for the two insertions. |
+| `reports divergent title edits` | The merge returns the local title as a successful result. |
+
+**Simulated message**
+
+> All nine tests for existing behavior failed under their corresponding source mutations and passed after restoration in the simulation. I’ll now check the merge through its sync callers and run the typecheck.
+
+### 6. Verify the restored feature through its callers
+
+**Simulated shell calls, in order**
+
+```sh
+pnpm test src/sync/merge.test.ts
+```
+
+```sh
+pnpm test src/sync/sync.test.ts
+```
+
+```sh
+pnpm test tests/e2e/sync.test.ts
+```
+
+```sh
+pnpm typecheck
+```
+
+```sh
+git status --short --branch --untracked-files=all
+```
+
+I assume the complete output for each command shows exit 0. Vitest reports 10 merge tests, 12 sync tests, and 4 end-to-end sync tests passing, with no additional failures. `tsc --noEmit` emits no diagnostics. The final status shows the same branch as the initial status and only `?? src/sync/merge.ts` and `?? src/sync/merge.test.ts`. No files are deleted.
+
+**Simulated final message to the partner**
+
+> The merge now combines adjacent line replacements and still reports a conflict when two different insertions target the same position. The adjacent-edit regression failed before the fix and passed afterward. The other nine merge tests each failed under a targeted mutation and passed after restoration.
+>
+> The verification runs reported 10 merge tests, 12 sync tests, and 4 end-to-end sync tests passing. `pnpm typecheck` exited 0. Both files are uncommitted. The full suite remains for branch landing.
+
+SUMMARY: Read the test-writing guide, then simulated inspecting the merge and its callers, reproducing and fixing an adjacent-edit bug, proving nine existing behaviors with mutations, and verifying the targeted suites and typecheck. Only the guide read actually ran.

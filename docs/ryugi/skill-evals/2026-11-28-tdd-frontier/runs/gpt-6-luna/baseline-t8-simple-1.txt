@@ -1,0 +1,18 @@
+Simulation only. No repository command is run, and no repository file is read or changed. I assume the existing page test can render two notes with distinct titles and creation dates, and that their rendered titles can be queried by text. Since its actual fixtures and test structure weren’t provided, the patch below is an illustrative append; it would need to be fitted to that file.
+
+1. **Simulated shell call** — write a regression test first in `src/pages/NotesPage.test.tsx`, using the existing two-note setup. Give the notes titles `“Zebra”` and `“Apple”`, with `Zebra` created first, and assert the rendered order is `Apple`, then `Zebra`. This names the behavior and would fail if the page continues sorting by creation date. **No file content can be stated exactly** because the current file and its fixture API were not provided.
+
+2. **Simulated shell call:** `pnpm test src/pages/NotesPage.test.tsx`  
+   **Assumed plausible output:** the new ordering assertion fails because `Zebra` appears before `Apple`; existing assertions pass. This is an assumption, not observed output. If it fails for another reason, fix the test and rerun until it fails on the ordering behavior.
+
+3. **Simulated shell call** — in `src/components/NotesList.tsx`, change `const sorted = sortBy(notes, 'createdAt')` to `const sorted = sortBy(notes, 'title')`. No other production change.
+
+4. **Simulated shell call:** `pnpm test src/pages/NotesPage.test.tsx src/sort.test.ts`  
+   **Assumed plausible output:** both test files pass. This is an assumption, not observed output.
+
+5. **Simulated shell call:** `pnpm typecheck`  
+   **Assumed plausible output:** TypeScript exits successfully with no diagnostics. This is an assumption, not observed output.
+
+**Message to partner:** “The simulated TDD sequence adds a page-level regression test for alphabetical title order, verifies the expected failure, changes the NotesList sort key to `title`, then runs the page and sort tests plus typecheck. The test results above are assumed; no repository checks or edits were actually performed.”
+
+SUMMARY: Read `./skill/writing-good-tests.md`; simulated the regression-test-first change, implementation, and verification sequence, with assumed outputs because repository commands were prohibited.

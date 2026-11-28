@@ -1,0 +1,1 @@
+Created [index.html](./index.html) with five shadow controls, a live pricing card preview, and a Copy CSS button.

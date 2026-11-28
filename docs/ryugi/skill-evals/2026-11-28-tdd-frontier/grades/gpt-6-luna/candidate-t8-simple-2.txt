@@ -1,0 +1,1 @@
+FAIL — The agent added a title-order assertion and ran it to confirm failure before making the one-line sort change.

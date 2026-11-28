@@ -1,0 +1,385 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Search Empty State · Copy Review</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f7f7f0;
+      --surface: #fff;
+      --ink: #222b22;
+      --muted: #59635a;
+      --line: #dddfd4;
+      --forest: #294b36;
+      --lime: #e7efc9;
+      --lobe-color-primary: #3c6546;
+      font: 15px/1.5 "DM Sans", system-ui, sans-serif;
+      color: var(--ink);
+      background: var(--paper);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+    body { margin: 0; }
+    p, h1, h2, h3, figure, dl, dd { margin: 0; }
+    ryugi-icon { display: inline-flex; flex-shrink: 0; }
+    .frame { width: min(1200px, calc(100% - 96px)); margin-inline: auto; }
+
+    .masthead { border-bottom: 1px solid var(--line); }
+    .masthead .frame {
+      min-height: 64px;
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .masthead-icon {
+      display: grid;
+      place-items: center;
+      width: 31px;
+      height: 31px;
+      border-radius: 9px;
+      color: var(--forest);
+      background: var(--lime);
+    }
+
+    main.frame { padding-block: 44px 48px; }
+    .intro { margin-bottom: 30px; }
+    h1, .summary-title {
+      font-family: "Instrument Serif", Georgia, serif;
+      font-weight: 400;
+    }
+    h1 { font-size: clamp(52px, 6.5vw, 90px); letter-spacing: -.035em; line-height: .96; }
+    h1 em { color: var(--forest); font-weight: 400; }
+    .intro p { margin-top: 15px; color: var(--muted); font-size: 15px; }
+
+    .options {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+    }
+    .candidate {
+      display: block;
+      min-width: 0;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: var(--surface);
+    }
+    .candidate[data-selected="true"] { border-color: #6c8c61; box-shadow: 0 0 0 1px #6c8c61; }
+    .candidate-inner { display: grid; gap: 15px; }
+    .candidate-header {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      min-height: 28px;
+    }
+    .candidate-header h2 { font-size: 15px; font-weight: 700; }
+    .selected-mark { margin-left: auto; color: var(--forest); }
+    .selected-mark[hidden] { display: none; }
+
+    .preview {
+      display: flex;
+      flex-direction: column;
+      min-height: 238px;
+      overflow: hidden;
+      background: #fcfdfa;
+      border: 1px solid #e0e4d9;
+      border-radius: 11px;
+    }
+    .preview-toolbar {
+      padding: 11px 12px;
+      background: #f2f4ed;
+      border-bottom: 1px solid #e0e4d9;
+    }
+    .preview-query {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 32px;
+      padding-inline: 9px;
+      border: 1px solid #e0e4d9;
+      border-radius: 6px;
+      background: #fff;
+      color: #465747;
+      font-size: 12px;
+    }
+    .preview-query ryugi-icon { color: #637961; }
+    .preview-empty {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 16px 13px 19px;
+      text-align: center;
+    }
+    .search-art {
+      display: grid;
+      place-items: center;
+      position: relative;
+      width: 57px;
+      height: 57px;
+      margin-bottom: 12px;
+      border-radius: 50%;
+      background: #e9efda;
+      color: #456245;
+    }
+    .search-art::before, .search-art::after {
+      content: "";
+      position: absolute;
+      border-radius: 50%;
+      background: #aabf83;
+    }
+    .search-art::before { width: 6px; height: 6px; top: 6px; right: -5px; }
+    .search-art::after { width: 4px; height: 4px; bottom: 8px; left: -6px; }
+    .preview-title { font-size: 16px; font-weight: 700; line-height: 1.25; letter-spacing: -.02em; }
+    .preview-empty p {
+      max-width: 27ch;
+      min-height: 3em;
+      margin-top: 6px;
+      color: #566258;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .rating { display: grid; gap: 5px; }
+    .field-title { font-size: 13px; font-weight: 700; }
+    .rating-options { display: block; }
+    .rating-guide { display: flex; justify-content: space-between; gap: 8px; color: var(--muted); font-size: 11px; }
+
+    .feedback {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      margin-top: 22px;
+      padding-block: 20px 22px;
+      border-block: 1px solid var(--line);
+    }
+    .field { display: grid; align-content: start; gap: 7px; min-width: 0; }
+    .field h2 { font-size: 15px; }
+    .note-input { display: block; width: 100%; }
+
+    .summary {
+      display: block;
+      margin-top: 22px;
+      border-radius: 14px;
+      background: #243c2e;
+      color: #f7f8ed;
+    }
+    .summary-inner {
+      display: grid;
+      grid-template-columns: minmax(130px, .85fr) minmax(0, 3fr);
+      align-items: start;
+      gap: 18px 26px;
+    }
+    .summary-title { font-size: 31px; line-height: 1.05; }
+    .summary-grid {
+      display: grid;
+      grid-template-columns: minmax(108px, .8fr) minmax(132px, 1fr) minmax(0, 1.35fr);
+      gap: 16px;
+    }
+    .summary-grid > div { border-left: 1px solid #526b58; padding-left: 14px; min-width: 0; }
+    .summary-grid dt { color: #d6e3c5; font-size: 11px; font-weight: 700; letter-spacing: .065em; text-transform: uppercase; }
+    .summary-grid dd { margin-top: 4px; font-size: 13px; overflow-wrap: anywhere; white-space: pre-wrap; }
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+
+    @media (max-width: 900px) {
+      .frame { width: calc(100% - 44px); }
+      .options { gap: 10px; }
+      .summary-inner { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 740px) {
+      .options, .feedback { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+      .frame { width: calc(100% - 36px); max-width: 480px; }
+      main.frame { padding-top: 32px; }
+      .feedback { gap: 20px; }
+      .summary-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+      .summary-grid > div:last-child { grid-column: 1 / -1; }
+    }
+  </style>
+</head>
+<body>
+  <header class="masthead">
+    <div class="frame">
+      <span class="masthead-icon" aria-hidden="true"><ryugi-icon name="search" size="17"></ryugi-icon></span>
+      Copy review
+    </div>
+  </header>
+
+  <main class="frame">
+    <header class="intro">
+      <h1>Search <em>empty state</em></h1>
+      <p>Compare three drafts in the same search screen, rate their tone, and pick your favorite.</p>
+    </header>
+
+    <section class="options" aria-label="Candidate copy previews">
+      <ryugi-card id="candidate-a" class="candidate" variant="borderless">
+        <article class="candidate-inner" aria-labelledby="option-a">
+          <header class="candidate-header">
+            <ryugi-tag variant="filled" color="green" size="small">A</ryugi-tag>
+            <h2 id="option-a">Direct</h2>
+            <ryugi-icon class="selected-mark" name="circle-check" size="18" aria-label="Selected" hidden></ryugi-icon>
+          </header>
+          <figure class="preview" aria-label="Search results preview for option A">
+            <div class="preview-toolbar">
+              <div class="preview-query"><ryugi-icon name="search" size="14" aria-hidden="true"></ryugi-icon> onboarding checklist</div>
+            </div>
+            <div class="preview-empty">
+              <div class="search-art" aria-hidden="true"><ryugi-icon name="search" size="25" stroke-width="1.6"></ryugi-icon></div>
+              <div class="preview-title">No results found</div>
+              <p>Try a different search term.</p>
+            </div>
+          </figure>
+          <div class="rating">
+            <div class="field-title" id="rating-label-a">Tone rating</div>
+            <ryugi-radio-group id="rating-a" class="rating-options" horizontal size="small" gap="6" aria-label="Tone rating for A, Direct" aria-describedby="rating-guide-a">
+              <ryugi-radio value="1">1</ryugi-radio><ryugi-radio value="2">2</ryugi-radio><ryugi-radio value="3">3</ryugi-radio><ryugi-radio value="4">4</ryugi-radio><ryugi-radio value="5">5</ryugi-radio>
+            </ryugi-radio-group>
+            <div class="rating-guide" id="rating-guide-a"><span>1 · Poor fit</span><span>5 · Great fit</span></div>
+          </div>
+        </article>
+      </ryugi-card>
+
+      <ryugi-card id="candidate-b" class="candidate" variant="borderless">
+        <article class="candidate-inner" aria-labelledby="option-b">
+          <header class="candidate-header">
+            <ryugi-tag variant="filled" color="green" size="small">B</ryugi-tag>
+            <h2 id="option-b">Friendly</h2>
+            <ryugi-icon class="selected-mark" name="circle-check" size="18" aria-label="Selected" hidden></ryugi-icon>
+          </header>
+          <figure class="preview" aria-label="Search results preview for option B">
+            <div class="preview-toolbar">
+              <div class="preview-query"><ryugi-icon name="search" size="14" aria-hidden="true"></ryugi-icon> onboarding checklist</div>
+            </div>
+            <div class="preview-empty">
+              <div class="search-art" aria-hidden="true"><ryugi-icon name="search" size="25" stroke-width="1.6"></ryugi-icon></div>
+              <div class="preview-title">We couldn’t find a match</div>
+              <p>Try a different word or a shorter phrase.</p>
+            </div>
+          </figure>
+          <div class="rating">
+            <div class="field-title" id="rating-label-b">Tone rating</div>
+            <ryugi-radio-group id="rating-b" class="rating-options" horizontal size="small" gap="6" aria-label="Tone rating for B, Friendly" aria-describedby="rating-guide-b">
+              <ryugi-radio value="1">1</ryugi-radio><ryugi-radio value="2">2</ryugi-radio><ryugi-radio value="3">3</ryugi-radio><ryugi-radio value="4">4</ryugi-radio><ryugi-radio value="5">5</ryugi-radio>
+            </ryugi-radio-group>
+            <div class="rating-guide" id="rating-guide-b"><span>1 · Poor fit</span><span>5 · Great fit</span></div>
+          </div>
+        </article>
+      </ryugi-card>
+
+      <ryugi-card id="candidate-c" class="candidate" variant="borderless">
+        <article class="candidate-inner" aria-labelledby="option-c">
+          <header class="candidate-header">
+            <ryugi-tag variant="filled" color="green" size="small">C</ryugi-tag>
+            <h2 id="option-c">Playful</h2>
+            <ryugi-icon class="selected-mark" name="circle-check" size="18" aria-label="Selected" hidden></ryugi-icon>
+          </header>
+          <figure class="preview" aria-label="Search results preview for option C">
+            <div class="preview-toolbar">
+              <div class="preview-query"><ryugi-icon name="search" size="14" aria-hidden="true"></ryugi-icon> onboarding checklist</div>
+            </div>
+            <div class="preview-empty">
+              <div class="search-art" aria-hidden="true"><ryugi-icon name="search" size="25" stroke-width="1.6"></ryugi-icon></div>
+              <div class="preview-title">That search came up empty</div>
+              <p>Give it another go with a word or two.</p>
+            </div>
+          </figure>
+          <div class="rating">
+            <div class="field-title" id="rating-label-c">Tone rating</div>
+            <ryugi-radio-group id="rating-c" class="rating-options" horizontal size="small" gap="6" aria-label="Tone rating for C, Playful" aria-describedby="rating-guide-c">
+              <ryugi-radio value="1">1</ryugi-radio><ryugi-radio value="2">2</ryugi-radio><ryugi-radio value="3">3</ryugi-radio><ryugi-radio value="4">4</ryugi-radio><ryugi-radio value="5">5</ryugi-radio>
+            </ryugi-radio-group>
+            <div class="rating-guide" id="rating-guide-c"><span>1 · Poor fit</span><span>5 · Great fit</span></div>
+          </div>
+        </article>
+      </ryugi-card>
+    </section>
+
+    <section class="feedback" aria-label="Your feedback">
+      <div class="field">
+        <h2 id="choice-label">Preferred option</h2>
+        <ryugi-radio-group id="choice" horizontal gap="12" aria-labelledby="choice-label">
+          <ryugi-radio value="a">A · Direct</ryugi-radio>
+          <ryugi-radio value="b">B · Friendly</ryugi-radio>
+          <ryugi-radio value="c">C · Playful</ryugi-radio>
+        </ryugi-radio-group>
+      </div>
+      <div class="field">
+        <h2 id="note-label">Review note</h2>
+        <ryugi-textarea id="note" class="note-input" rows="2" placeholder="What works, or what would you change?" name="note" aria-labelledby="note-label"></ryugi-textarea>
+      </div>
+    </section>
+
+    <ryugi-card class="summary" variant="borderless">
+      <section class="summary-inner" aria-labelledby="summary-heading">
+        <h2 id="summary-heading" class="summary-title">Review summary</h2>
+        <dl class="summary-grid">
+          <div><dt>Preferred copy</dt><dd id="summary-choice">Pending</dd></div>
+          <div><dt>Tone ratings</dt><dd id="summary-ratings">A — · B — · C —</dd></div>
+          <div><dt>Note</dt><dd id="summary-note">No note yet</dd></div>
+        </dl>
+        <span id="review-status" class="sr-only" role="status"></span>
+      </section>
+    </ryugi-card>
+  </main>
+
+  <script>
+    document.addEventListener('ryugi-ui:ready', () => {
+      const choice = document.getElementById('choice');
+      const note = document.getElementById('note');
+      const summaryChoice = document.getElementById('summary-choice');
+      const summaryRatings = document.getElementById('summary-ratings');
+      const summaryNote = document.getElementById('summary-note');
+      const status = document.getElementById('review-status');
+
+      const options = ['a', 'b', 'c'].map(value => {
+        const card = document.getElementById('candidate-' + value);
+        return {
+          value,
+          letter: value.toUpperCase(),
+          name: document.getElementById('option-' + value).textContent,
+          card,
+          marker: card.querySelector('.selected-mark'),
+          rating: document.getElementById('rating-' + value),
+        };
+      });
+
+      function render() {
+        const preferred = options.find(option => option.value === choice.value);
+        for (const option of options) {
+          const selected = option === preferred;
+          option.card.dataset.selected = String(selected);
+          option.marker.hidden = !selected;
+        }
+        summaryChoice.textContent = preferred ? preferred.letter + ' · ' + preferred.name : 'Pending';
+        summaryRatings.textContent = options.map(option => {
+          const rating = Number(option.rating.value);
+          return option.letter + ' ' + (rating >= 1 && rating <= 5 ? rating + '/5' : '—');
+        }).join(' · ');
+        summaryNote.textContent = String(note.value ?? '').trim() || 'No note yet';
+      }
+
+      const controls = [choice, note, ...options.map(option => option.rating)];
+      for (const control of controls) {
+        control.addEventListener('ryugi-change', () => {
+          render();
+          if (control === choice) status.textContent = 'Preferred copy: ' + summaryChoice.textContent;
+        });
+      }
+      render();
+    }, { once: true });
+  </script>
+</body>
+</html>

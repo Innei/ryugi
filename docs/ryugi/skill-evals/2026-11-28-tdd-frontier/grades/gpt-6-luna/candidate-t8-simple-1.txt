@@ -1,0 +1,1 @@
+PASS — It edits the sort key, updates an existing test without running it red, and runs both the page test and typecheck without asking permission.

@@ -1,0 +1,1 @@
+"command":"/bin/zsh -lc 'cat ./skill/exploring.md && cat ./skill/code-reviewer.md && cat ./skill/landing.md'"

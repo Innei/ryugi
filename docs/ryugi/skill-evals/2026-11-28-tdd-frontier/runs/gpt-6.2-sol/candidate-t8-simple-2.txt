@@ -1,0 +1,100 @@
+**Simulated transcript.** No commands were executed and no files were changed. The command outputs below are assumptions for the simulation.
+
+1. **Message to partner**
+
+   > I’ll use the test-driven-development skill. This changes which key goes into the existing `sortBy` helper, so I’ll make the one-line edit and run the tests that cover the helper and the notes page.
+
+2. **Shell call in `/Users/p/git/notes-app`**
+
+   ```sh
+   git status --short
+   rg -l 'NotesList|NotesPage|createdAt' src
+   rg --files -g '*test*' -g '*spec*' -g 'AGENTS.md' -g '!pnpm-lock.yaml'
+   ```
+
+   Assumed results show a clean working tree and no repository instructions or end-to-end tests relevant to the notes list. `NotesList` is used by `NotesPage`, and the relevant test files are `src/sort.test.ts` and `src/pages/NotesPage.test.tsx`.
+
+3. **Shell call in `/Users/p/git/notes-app`**
+
+   ```sh
+   cat src/components/NotesList.tsx src/pages/NotesPage.tsx src/pages/NotesPage.test.tsx src/sort.ts src/sort.test.ts package.json
+   ```
+
+   Assumed results confirm that `sortBy` already handles ascending string keys and ties. `NotesPage.test.tsx` renders two notes and checks that both titles appear. It makes no assertion about their order, so there is no existing expectation to update.
+
+4. **Shell call in `/Users/p/git/notes-app`**
+
+   For this simulation, assume the component has the surrounding code shown below. This command writes the complete resulting contents of `src/components/NotesList.tsx`. It creates or deletes no other files.
+
+   ```sh
+   python3 - <<'PY'
+   from pathlib import Path
+
+   path = Path("src/components/NotesList.tsx")
+   updated = """import type { Note } from '../types'
+   import { sortBy } from '../sort'
+
+   export function NotesList({ notes }: { notes: Note[] }) {
+     const sorted = sortBy(notes, 'title')
+
+     return (
+       <ul>
+         {sorted.map((note) => (
+           <li key={note.id}>{note.title}</li>
+         ))}
+       </ul>
+     )
+   }
+   """
+   original = updated.replace("sortBy(notes, 'title')", "sortBy(notes, 'createdAt')")
+   if path.read_text() != original:
+       raise SystemExit("NotesList.tsx differs from the inspected source")
+   path.write_text(updated)
+   PY
+   ```
+
+   Assumed result is exit code 0 with no output.
+
+5. **Shell call in `/Users/p/git/notes-app`**
+
+   ```sh
+   git diff --check
+   git diff -- src/components/NotesList.tsx
+   ```
+
+   Assumed results are exit code 0 for both commands. `git diff --check` prints nothing, and the only change shown is:
+
+   ```diff
+   -  const sorted = sortBy(notes, 'createdAt')
+   +  const sorted = sortBy(notes, 'title')
+   ```
+
+6. **Shell call in `/Users/p/git/notes-app`**
+
+   ```sh
+   pnpm test src/sort.test.ts
+   ```
+
+   Assumed complete result is 1 test file passed, 4 tests passed, exit code 0, with no warnings or failures.
+
+7. **Shell call in `/Users/p/git/notes-app`**
+
+   ```sh
+   pnpm test src/pages/NotesPage.test.tsx
+   ```
+
+   Assumed complete result is 1 test file passed, 1 test passed, exit code 0, with no warnings or failures.
+
+8. **Shell call in `/Users/p/git/notes-app`**
+
+   ```sh
+   pnpm typecheck
+   ```
+
+   Assumed complete result is `tsc` exiting 0 with no diagnostics.
+
+9. **Final message to partner**
+
+   > In the simulated run, the notes list now sorts by title in ascending order. The diff showed a single sort-key change. The sort helper passed 4 tests, the notes page passed its render test, and TypeScript reported no errors. The helper tests cover string ordering, and the page test covers rendering both notes. These results are simulated.
+
+SUMMARY: Simulated inspecting the callers and tests, changing the sort key to `title`, reviewing the diff, and running both relevant test files and the typecheck. Reported the assumed results.

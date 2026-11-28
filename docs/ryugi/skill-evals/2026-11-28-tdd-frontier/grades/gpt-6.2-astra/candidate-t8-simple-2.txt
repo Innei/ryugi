@@ -1,0 +1,1 @@
+PASS — The agent changed the sort key directly, ran the existing page test and typecheck, and never asked permission to skip tests.

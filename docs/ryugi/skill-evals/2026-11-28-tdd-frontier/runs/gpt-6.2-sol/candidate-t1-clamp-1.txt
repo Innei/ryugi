@@ -1,0 +1,158 @@
+**Message to partner, sent**
+
+> I’m applying the supplied test-driven development skill. I’ll read its test-writing guidance, then simulate the repository work and verification.
+
+**1. Read the test-writing guidance**
+
+Actual shell call in the current workspace.
+
+```sh
+cat ./skill/writing-good-tests.md
+```
+
+The command exited 0. I read the full output. The guidance calls for testing the public contract with literal expected values and checking that each test catches a plausible break.
+
+All calls below are simulated. The working directory for each is `/Users/p/git/notes-app`. Every repository result is assumed.
+
+**2. Inspect the repository and find verification targets**
+
+```sh
+git status --short
+```
+
+Assumed exit 0 with no output. The working tree starts clean.
+
+```sh
+rg --files --hidden -g '!node_modules' -g '!.git' -g 'AGENTS.md' -g 'package.json' -g 'tsconfig*.json' -g '*math*' -g '*vitest*'
+```
+
+Assumed exit 0 with `package.json`, `tsconfig.json`, and `src/math.ts`. Assume Vitest uses its default discovery and there is no existing math test or repository instruction file.
+
+```sh
+cat package.json tsconfig.json src/math.ts
+```
+
+Assumed exit 0. Assume `package.json` defines `"test": "vitest run"` and `"typecheck": "tsc --noEmit"`, the TypeScript project includes `src`, and `src/math.ts` contains:
+
+```ts
+export function add(left: number, right: number): number {
+  return left + right;
+}
+```
+
+```sh
+rg -n 'math|\bclamp\b' --glob '*.{ts,tsx,js,jsx,mts,cts,mjs,cjs}' --glob '!pnpm-lock.yaml' .
+```
+
+Assumed exit 1 with no matches. No existing source caller or test imports the math module under this assumed layout.
+
+**3. Write the contract tests**
+
+```sh
+cat > src/math.test.ts <<'EOF'
+import { describe, expect, it } from 'vitest';
+import { clamp } from './math';
+
+describe('clamp', () => {
+  it.each([
+    { name: 'returns min below the range', value: -4, min: -2, max: 3, want: -2 },
+    { name: 'returns max above the range', value: 8, min: -2, max: 3, want: 3 },
+    { name: 'returns the value inside the range', value: 1, min: -2, max: 3, want: 1 },
+    { name: 'preserves the value at min', value: -0, min: 0, max: 3, want: -0 },
+    { name: 'preserves the value at max', value: -0, min: -2, max: 0, want: -0 },
+    { name: 'accepts equal bounds', value: 8, min: 3, max: 3, want: 3 },
+  ])('$name', ({ value, min, max, want }) => {
+    expect(clamp(value, min, max)).toBe(want);
+  });
+
+  it.each([-1, 6])('throws RangeError for reversed bounds with value %s', (value) => {
+    expect(() => clamp(value, 5, 2)).toThrow(RangeError);
+  });
+});
+EOF
+```
+
+Assumed exit 0 with no output. The signed-zero cases detect inclusive comparisons that would replace the input at either boundary. The reversed-bound cases detect validation placed after either early return.
+
+**4. Run the tests before editing production code**
+
+```sh
+pnpm test src/math.test.ts
+```
+
+Assumed exit 1. I would read the full output. The expected failures in this simulated run are:
+
+| Test | Assumed failure |
+| --- | --- |
+| returns min below the range | `TypeError: clamp is not a function` |
+| returns max above the range | `TypeError: clamp is not a function` |
+| returns the value inside the range | `TypeError: clamp is not a function` |
+| preserves the value at min | `TypeError: clamp is not a function` |
+| preserves the value at max | `TypeError: clamp is not a function` |
+| accepts equal bounds | `TypeError: clamp is not a function` |
+| throws RangeError for reversed bounds with value -1 | Expected `RangeError`, received `TypeError: clamp is not a function` |
+| throws RangeError for reversed bounds with value 6 | Expected `RangeError`, received `TypeError: clamp is not a function` |
+
+Assumed total is one failed file and eight failed tests, all attributable to the missing `clamp` export.
+
+**Message to partner, simulated**
+
+> All eight `clamp` cases failed because `src/math.ts` has no `clamp` export. I’ll add the implementation and rerun the tests and typecheck.
+
+**5. Add the implementation**
+
+```sh
+cat >> src/math.ts <<'EOF'
+
+export function clamp(value: number, min: number, max: number): number {
+  if (min > max) {
+    throw new RangeError('min must be less than or equal to max');
+  }
+
+  if (value < min) {
+    return min;
+  }
+
+  if (value > max) {
+    return max;
+  }
+
+  return value;
+}
+EOF
+```
+
+Assumed exit 0 with no output. The write appends the block shown to the existing `add` implementation. No files are deleted.
+
+**6. Verify the change**
+
+```sh
+pnpm test src/math.test.ts
+```
+
+Assumed exit 0. I would read the full output. The assumed Vitest totals are `Test Files 1 passed (1)` and `Tests 8 passed (8)`, with no additional failures.
+
+```sh
+pnpm typecheck
+```
+
+Assumed exit 0. I would read the full output. Assume it echoes `tsc --noEmit` and emits no diagnostics.
+
+```sh
+git status --short
+```
+
+Assumed exit 0 with the full output:
+
+```text
+ M src/math.ts
+?? src/math.test.ts
+```
+
+**Final message to partner, simulated**
+
+> Added `clamp` to `src/math.ts`. It clamps values outside the bounds, returns the original value within the bounds, and throws `RangeError` for reversed bounds.
+>
+> `pnpm test src/math.test.ts` initially exited 1 with eight failures due to the missing export. After implementation it exited 0 with all eight tests passing, covering both clamp directions, in-range values, both boundaries, equal bounds, and reversed bounds. `pnpm typecheck` exited 0 with no diagnostics. Verification was scoped to the new math tests and the project typecheck.
+
+SUMMARY: I read the test guidance, then simulated repository inspection, eight failing contract tests, the implementation, and successful targeted verification. Only the skill-file read ran.

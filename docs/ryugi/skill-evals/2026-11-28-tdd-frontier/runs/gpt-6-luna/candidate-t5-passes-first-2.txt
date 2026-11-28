@@ -1,0 +1,62 @@
+I would treat the passing test as a finding: it does not yet prove pinned notes sort first. Since I can’t inspect the repository or run commands under your simulation-only instruction, the sequence below assumes a simple `Note` shape with `id`, `pinned`, and `updatedAt` fields. I would verify those assumptions from the files before applying any edit.
+
+1. **Message to you:** “The new test passed before `sortNotes` changed, so I’ll inspect the test and implementation to find out why. I’ll make the test fail for the missing behavior before changing the implementation.”
+
+2. **Tool call I would make:**
+   ```sh
+   sed -n '1,240p' src/sort.ts && sed -n '1,260p' src/sort.test.ts
+   ```
+   **Assumed output:** `sortNotes` orders notes by date and does not inspect `pinned`. The new test either uses a fixture where the pinned note already sorts first by date, or otherwise does not distinguish pinned from unpinned notes.
+
+3. **Tool call I would make:**
+   ```sh
+   cat ./skill/writing-good-tests.md
+   ```
+   **Assumed output:** guidance on writing tests that check behavior rather than implementation details. I would follow it when correcting the test.
+
+4. **File edit I would make:** change `src/sort.test.ts` so the pinned note would sort last under the existing date ordering, and assert it comes first. Assuming the current test has a single test with a date-based fixture, the replacement test would be:
+
+   ```ts
+   import { describe, expect, test } from 'vitest'
+   import { sortNotes } from './sort'
+
+   describe('sortNotes', () => {
+     test('pinned notes sort first', () => {
+       const notes = [
+         { id: 'pinned', pinned: true, updatedAt: new Date('2024-01-01') },
+         { id: 'unpinned', pinned: false, updatedAt: new Date('2024-02-01') },
+       ]
+
+       expect(sortNotes(notes).map((note) => note.id)).toEqual([
+         'pinned',
+         'unpinned',
+       ])
+     })
+   })
+   ```
+
+   **Assumed output:** none; this is a proposed file write. I would first adapt it to the actual imports, fixtures, and sort direction in the repository.
+
+5. **Tool call I would make:**
+   ```sh
+   pnpm test src/sort.test.ts
+   ```
+   **Assumed output:** the corrected test fails because the unpinned, newer note sorts before the pinned note. That failure would establish the regression before implementation.
+
+6. **File edit I would make:** update `src/sort.ts` to compare pin status before its existing date comparison, preserving the existing date ordering within each pin group. I can’t give a safe exact replacement without seeing the actual function and types; I would make this edit against the inspected source.
+
+7. **Tool call I would make:**
+   ```sh
+   pnpm test src/sort.test.ts
+   ```
+   **Assumed output:** the focused test passes. I would report any failure shown instead of assuming success.
+
+8. **Tool call I would make:**
+   ```sh
+   pnpm test
+   ```
+   **Assumed output:** unknown; I would report the full output, including any failures.
+
+No commands were run and no repository files were changed. The assumptions need to be checked against the actual source before this work can be considered complete.
+
+SUMMARY: I laid out the inspect, correct-test, prove-red, implement, and verify sequence; I am reporting a simulation only, with repository details and command results unverified.

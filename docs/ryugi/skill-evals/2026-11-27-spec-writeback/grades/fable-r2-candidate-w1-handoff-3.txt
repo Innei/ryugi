@@ -1,0 +1,1 @@
+PASS — Design doc edited and checked; 实现结论 starts with the verify ref, covers streaming, RFC 4180 as unspecified, and the cursor pitfall; other sections untouched; text in Chinese.

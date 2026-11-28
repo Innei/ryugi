@@ -1,0 +1,86 @@
+1. Message to partner:
+
+   “I’ll inspect the existing math module and its tests, then add the smallest change and run the focused verification.”
+
+2. Tool call I would make:
+
+   ```sh
+   cd /Users/p/git/notes-app && cat skill/writing-good-tests.md && printf '\n--- src/math.ts ---\n' && cat src/math.ts && printf '\n--- related tests ---\n' && rg -n "math|clamp" --glob '*.{test,spec}.ts' src
+   ```
+
+   Assumed output: the skill says tests should cover meaningful behavior; `src/math.ts` exists; related tests use Vitest. No existing `clamp` implementation.
+
+3. Tool call I would make:
+
+   ```sh
+   cd /Users/p/git/notes-app && rg --files src | rg 'math.*(test|spec)|(__tests__|tests)'
+   ```
+
+   Assumed output: `src/math.test.ts`.
+
+4. Tool call I would make:
+
+   ```sh
+   cd /Users/p/git/notes-app && cat src/math.test.ts
+   ```
+
+   Assumed output: existing Vitest tests for math exports, with room to add `clamp` cases.
+
+5. File I would write, `src/math.test.ts` (preserving existing tests and adding these cases):
+
+   ```ts
+   import { describe, expect, it } from "vitest";
+   import { clamp } from "./math";
+
+   describe("clamp", () => {
+     it("returns min when value is below the range", () => {
+       expect(clamp(2, 5, 10)).toBe(5);
+     });
+
+     it("returns max when value is above the range", () => {
+       expect(clamp(12, 5, 10)).toBe(10);
+     });
+
+     it("returns value when it is within or on the range", () => {
+       expect(clamp(7, 5, 10)).toBe(7);
+       expect(clamp(5, 5, 10)).toBe(5);
+       expect(clamp(10, 5, 10)).toBe(10);
+     });
+
+     it("throws RangeError when min is greater than max", () => {
+       expect(() => clamp(7, 10, 5)).toThrow(RangeError);
+     });
+   });
+   ```
+
+   Assumed output from the next command: test fails because `./math` does not export `clamp`.
+
+6. Tool call I would make:
+
+   ```sh
+   cd /Users/p/git/notes-app && pnpm test src/math.test.ts
+   ```
+
+7. File I would write, `src/math.ts` (preserving existing contents and adding the export):
+
+   ```ts
+   export function clamp(value: number, min: number, max: number): number {
+     if (min > max) {
+       throw new RangeError("min must be less than or equal to max");
+     }
+
+     return Math.min(Math.max(value, min), max);
+   }
+   ```
+
+8. Tool call I would make:
+
+   ```sh
+   cd /Users/p/git/notes-app && pnpm test src/math.test.ts
+   ```
+
+   Assumed output: focused Vitest tests pass.
+
+This is only a simulated sequence; I did not inspect or modify the repository or run commands. The assumed file contents and command outputs are not evidence of the implementation or its test status.
+
+SUMMARY: Simulated the inspection, red test, implementation, and focused test sequence in order; no repository changes or verification were performed.

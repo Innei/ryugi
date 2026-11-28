@@ -1,0 +1,44 @@
+I read `./skill/writing-good-tests.md`. I did not run commands or change files, as requested. The commands and outputs below are simulated; the repository contents and test results are assumptions, not observed evidence.
+
+1. **Inspect the current implementation and test** with `sed -n '1,200p' src/sort.ts && sed -n '1,240p' src/sort.test.ts`.
+
+   **Assumed output:** `sortNotes` sorts notes by date, and the new “pinned notes sort first” test passes because its fixture does not distinguish pinned from unpinned notes. I’m assuming notes have a `pinned` boolean and the existing test framework uses Vitest.
+
+2. **Replace the inadequate test** with a test that would fail if the pinned-first behavior were missing. Exact proposed test body:
+
+   ```ts
+   test('pinned notes sort first', () => {
+     const pinned = { id: 'pinned', pinned: true, updatedAt: 1 };
+     const unpinned = { id: 'unpinned', pinned: false, updatedAt: 2 };
+
+     expect(sortNotes([unpinned, pinned])).toEqual([pinned, unpinned]);
+   });
+   ```
+
+   This assumes `sortNotes` accepts and returns those note objects as-is. If the inspection output shows different required fields or date semantics, adapt the fixture while preserving the key behavior: the pinned note starts after the unpinned note and must sort ahead of it.
+
+3. **Run the focused test** with `pnpm test src/sort.test.ts`.
+
+   **Assumed output:** the new test fails because the current implementation puts the more recently updated unpinned note first. If it passes, the test still does not expose the missing behavior; revise the fixture and rerun until it fails for that reason.
+
+4. **Add the minimal implementation** to the existing comparator in `src/sort.ts`, ordering pinned notes before unpinned notes before applying the existing date ordering:
+
+   ```ts
+   if (a.pinned !== b.pinned) {
+     return a.pinned ? -1 : 1;
+   }
+   ```
+
+   This assumes comparator parameters are `a` and `b`, and that `pinned` is a required boolean. Adapt to the actual code’s types and conventions based on the inspection.
+
+5. **Rerun the focused test** with `pnpm test src/sort.test.ts`.
+
+   **Assumed output:** the focused suite passes, including the pinned-first test.
+
+6. **Run tests that exercise the changed behavior** with `pnpm test`.
+
+   **Assumed output:** the full suite passes. No output from either test command was provided, and I did not run them; these are expected results, not evidence.
+
+The skill says the already-passing test must be corrected until it fails for the intended reason before implementation. Under the stated simulation-only constraint, that red-green cycle remains unverified.
+
+SUMMARY: Read the test-writing rules, then simulated inspection, a discriminating test, a failing focused run, the comparator change, and focused plus full test runs; reporting all outputs as assumptions because nothing beyond reading the skill was run.

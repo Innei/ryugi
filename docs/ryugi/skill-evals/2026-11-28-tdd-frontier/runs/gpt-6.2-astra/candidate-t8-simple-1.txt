@@ -1,0 +1,118 @@
+1. **Message to partner:** “I’ll use the test-driven-development skill and work in place. This changes the key passed to the existing sorter. I’ll check what the page test expects and run the checks that cover the change.”
+
+2. **Simulated shell call** in `/Users/p/git/notes-app`:
+
+   ```sh
+   git status --short
+   rg -l NotesList src
+   rg --files --hidden -g '!node_modules' -g '!.git' -g '*test.*' -g '*spec.*' -g '*e2e*'
+   cat src/components/NotesList.tsx src/pages/NotesPage.tsx src/pages/NotesPage.test.tsx src/sort.ts src/sort.test.ts package.json
+   ```
+
+   Assumed findings from the full output: the worktree is clean. The `NotesList` search returns the two supplied paths. The test-file search finds the page and sorter tests. The page test checks that both titles render and makes no assertion about their order. The sorter tests cover string keys and ties. The package defines `test` and `typecheck` scripts and has no separate build script. I’d change only the sort key.
+
+3. **Simulated edit call** to `src/components/NotesList.tsx`. The exact patch against the assumed source is:
+
+   ```diff
+   -  const sorted = sortBy(notes, 'createdAt')
+   +  const sorted = sortBy(notes, 'title')
+   ```
+
+   Full assumed file content after the write:
+
+   ```tsx
+   import { sortBy } from '../sort'
+   import type { Note } from '../types'
+
+   export function NotesList({ notes }: { notes: Note[] }) {
+     const sorted = sortBy(notes, 'title')
+
+     return (
+       <ul>
+         {sorted.map(note => (
+           <li key={note.id}>{note.title}</li>
+         ))}
+       </ul>
+     )
+   }
+   ```
+
+4. **Simulated shell call** to check the edit:
+
+   ```sh
+   git diff --check
+   git diff --unified=0 -- src/components/NotesList.tsx
+   ```
+
+   Assumed full output, with exit code 0:
+
+   ```diff
+   diff --git a/src/components/NotesList.tsx b/src/components/NotesList.tsx
+   index 27ea9bc..6c104ee 100644
+   --- a/src/components/NotesList.tsx
+   +++ b/src/components/NotesList.tsx
+   @@ -5 +5 @@ export function NotesList({ notes }: { notes: Note[] }) {
+   -  const sorted = sortBy(notes, 'createdAt')
+   +  const sorted = sortBy(notes, 'title')
+   ```
+
+5. **Simulated shell call:**
+
+   ```sh
+   pnpm test src/sort.test.ts
+   ```
+
+   Assumed full output, with exit code 0:
+
+   ```text
+   > notes-app@1.0.0 test /Users/p/git/notes-app
+   > vitest run src/sort.test.ts
+
+    RUN  v3.2.4 /Users/p/git/notes-app
+
+    ✓ src/sort.test.ts (4 tests) 4ms
+
+    Test Files  1 passed (1)
+         Tests  4 passed (4)
+      Start at  10:00:01
+      Duration  310ms
+   ```
+
+6. **Simulated shell call:**
+
+   ```sh
+   pnpm test src/pages/NotesPage.test.tsx
+   ```
+
+   Assumed full output, with exit code 0:
+
+   ```text
+   > notes-app@1.0.0 test /Users/p/git/notes-app
+   > vitest run src/pages/NotesPage.test.tsx
+
+    RUN  v3.2.4 /Users/p/git/notes-app
+
+    ✓ src/pages/NotesPage.test.tsx (1 test) 19ms
+
+    Test Files  1 passed (1)
+         Tests  1 passed (1)
+      Start at  10:00:03
+      Duration  790ms
+   ```
+
+7. **Simulated shell call:**
+
+   ```sh
+   pnpm typecheck
+   ```
+
+   Assumed full output, with exit code 0:
+
+   ```text
+   > notes-app@1.0.0 typecheck /Users/p/git/notes-app
+   > tsc --noEmit
+   ```
+
+8. **Message to partner:** “In the simulated change, `NotesList` passes `title` to the existing ascending sorter. The assumed runs passed all four sorter tests and the page rendering test, and `pnpm typecheck` exited 0. The page test checks that both titles render. The one-line diff confirms which key the list uses.”
+
+SUMMARY: Simulated inspecting the callers and tests, changing `createdAt` to `title`, checking the diff, running both affected test files and typechecking, then reporting the assumed results. No files were changed or commands executed.

@@ -1,0 +1,1 @@
+PASS — The regression failed before the one-pass fix, all 32 tests passed afterward, all three ledger entries were recorded, and no re-review was dispatched.

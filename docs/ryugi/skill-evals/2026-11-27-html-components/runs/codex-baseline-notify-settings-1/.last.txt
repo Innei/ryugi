@@ -1,0 +1,1 @@
+Wrote [index.html](./index.html) with interactive digest settings, multi-channel muting, quiet hours, and in-page save confirmation.

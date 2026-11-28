@@ -1,0 +1,277 @@
+I've read the skill files. Here is the full simulation from this point forward.
+
+---
+
+## Simulation
+
+### Message to partner (brief, up front)
+
+> The merge feature is not finished properly: `src/sync/merge.ts` has 240 lines and no tests, which violates the TDD rule I'm now bound by ("no production code without a failing test first"). I'm deleting it and reimplementing it from failing tests, in place (no worktree). No commit yet.
+
+---
+
+### Step 1 — Delete the untested production code
+
+I would run:
+
+```bash
+rm src/sync/merge.ts
+```
+
+No output assumed (success). This removes the 3 hours of untested code, per the Iron Law. I do not read it first; the feature behavior I reconstruct comes from the three-way-merge requirements, not from the deleted implementation.
+
+### Step 2 — Discover the note shape (simulated read)
+
+I need the real `Note` type to write tests against real structure. I would run:
+
+```bash
+cat src/types.ts
+```
+
+**Assumed output** (plausible; I'm stating it as an assumption since I cannot actually read the repo in this simulation):
+
+```ts
+export interface Note {
+  id: string;
+  title: string;
+  content: string;
+  tags: string[];
+  updatedAt: number;
+}
+```
+
+`id` is invariant. The mergeable fields are `title`, `content`, `tags` (`tags` compared by deep value equality). `updatedAt` is derived; a three-way merge must resolve it deterministically (take `max(ours, theirs)`), so I will test that too.
+
+### Step 3 — RED: first failing test
+
+I would write `src/sync/merge.test.ts` with one minimal behavior first. File content:
+
+```ts
+import { describe, it, expect } from 'vitest';
+import { mergeNotes, type Note, type MergeResult } from './merge';
+
+const base: Note = {
+  id: 'n1',
+  title: 'Hello',
+  content: 'World',
+  tags: ['a'],
+  updatedAt: 1000,
+};
+
+describe('mergeNotes', () => {
+  it('returns the note unchanged with no conflicts when neither side changed', () => {
+    const result = mergeNotes(base, base, base);
+    expect(result.note).toEqual(base);
+    expect(result.conflicts).toEqual([]);
+  });
+});
+```
+
+Name the break: this test fails if `mergeNotes` does not return the base note and an empty conflict list when nothing changed.
+
+Run:
+
+```bash
+pnpm test src/sync/merge.test.ts
+```
+
+**Assumed result:** FAIL — `Error: Cannot find module './merge'`. This is RED and it fails because the feature is missing, not because of a typo.
+
+### Step 4 — GREEN: minimal implementation
+
+I would write `src/sync/merge.ts` with the smallest code that makes the one test pass. File content:
+
+```ts
+export interface Note {
+  id: string;
+  title: string;
+  content: string;
+  tags: string[];
+  updatedAt: number;
+}
+
+export type MergeField = 'title' | 'content' | 'tags';
+
+export interface MergeResult {
+  note: Note;
+  conflicts: MergeField[];
+}
+
+export function mergeNotes(base: Note, ours: Note, theirs: Note): MergeResult {
+  return { note: base, conflicts: [] };
+}
+```
+
+Run the same command:
+
+```bash
+pnpm test src/sync/merge.test.ts
+```
+
+**Assumed result:** PASS (1 test).
+
+### Step 5 — Next RED/GREEN cycles (one behavior each)
+
+I would append tests one at a time and grow the implementation only enough to pass each. Each test names the production change that would fail it.
+
+**Test 2** — ours unchanged, theirs changed → take theirs:
+
+```ts
+  it('takes theirs when ours is unchanged but theirs edited the title', () => {
+    const theirs: Note = { ...base, title: 'Hi' };
+    const result = mergeNotes(base, base, theirs);
+    expect(result.note).toEqual(theirs);
+    expect(result.conflicts).toEqual([]);
+  });
+```
+
+**Test 3** — theirs unchanged, ours changed → take ours:
+
+```ts
+  it('takes ours when theirs is unchanged but ours edited the content', () => {
+    const ours: Note = { ...base, content: 'New world' };
+    const result = mergeNotes(base, ours, base);
+    expect(result.note).toEqual(ours);
+    expect(result.conflicts).toEqual([]);
+  });
+```
+
+**Test 4** — non-overlapping field edits merge cleanly:
+
+```ts
+  it('merges non-overlapping edits from both sides', () => {
+    const ours: Note = { ...base, title: 'Ours title' };
+    const theirs: Note = { ...base, content: 'Theirs content' };
+    const result = mergeNotes(base, ours, theirs);
+    expect(result.note).toEqual({
+      id: 'n1',
+      title: 'Ours title',
+      content: 'Theirs content',
+      tags: ['a'],
+      updatedAt: Math.max(ours.updatedAt, theirs.updatedAt),
+    });
+    expect(result.conflicts).toEqual([]);
+  });
+```
+
+**Test 5** — conflicting edit on the same field reports the conflict and keeps ours:
+
+```ts
+  it('reports a conflict when both sides edit the same field differently', () => {
+    const ours: Note = { ...base, title: 'Ours' };
+    const theirs: Note = { ...base, title: 'Theirs' };
+    const result = mergeNotes(base, ours, theirs);
+    expect(result.note.title).toBe('Ours');
+    expect(result.conflicts).toEqual(['title']);
+  });
+```
+
+**Test 6** — array field `tags` compared by value, not reference:
+
+```ts
+  it('treats tags with equal values as unchanged, even with different references', () => {
+    const theirs: Note = { ...base, tags: ['a'] };
+    const result = mergeNotes(base, base, theirs);
+    expect(result.conflicts).toEqual([]);
+    expect(result.note.tags).toEqual(['a']);
+  });
+```
+
+**Test 7** — `updatedAt` resolved to the later timestamp on both-side change:
+
+```ts
+  it('resolves updatedAt to the later of ours and theirs', () => {
+    const ours: Note = { ...base, content: 'a', updatedAt: 2000 };
+    const theirs: Note = { ...base, title: 'b', updatedAt: 3000 };
+    const result = mergeNotes(base, ours, theirs);
+    expect(result.note.updatedAt).toBe(3000);
+  });
+```
+
+**Test 8** — mismatched `id` is rejected:
+
+```ts
+  it('throws when the ids do not match', () => {
+    const theirs: Note = { ...base, id: 'n2' };
+    expect(() => mergeNotes(base, base, theirs)).toThrow(/id/i);
+  });
+```
+
+After each test I would run `pnpm test src/sync/merge.test.ts`, watch it fail for the right reason, then add the minimal code. The resulting final implementation (grown field-by-field, then minimally refactored to remove duplication) would be:
+
+```ts
+export interface Note {
+  id: string;
+  title: string;
+  content: string;
+  tags: string[];
+  updatedAt: number;
+}
+
+export type MergeField = 'title' | 'content' | 'tags';
+
+export interface MergeResult {
+  note: Note;
+  conflicts: MergeField[];
+}
+
+const fields: MergeField[] = ['title', 'content', 'tags'];
+
+const equal = (a: unknown, b: unknown): boolean =>
+  Array.isArray(a) && Array.isArray(b)
+    ? a.length === b.length && a.every((v, i) => v === b[i])
+    : a === b;
+
+export function mergeNotes(base: Note, ours: Note, theirs: Note): MergeResult {
+  if (ours.id !== base.id || theirs.id !== base.id) {
+    throw new Error('cannot merge notes with different ids');
+  }
+
+  const note: Note = { ...base };
+  const conflicts: MergeField[] = [];
+
+  for (const field of fields) {
+    const oursChanged = !equal(ours[field], base[field]);
+    const theirsChanged = !equal(theirs[field], base[field]);
+
+    if (equal(ours[field], theirs[field])) {
+      note[field] = ours[field];
+    } else if (oursChanged && theirsChanged) {
+      conflicts.push(field);
+      note[field] = ours[field];
+    } else if (oursChanged) {
+      note[field] = ours[field];
+    } else if (theirsChanged) {
+      note[field] = theirs[field];
+    } else {
+      note[field] = base[field];
+    }
+  }
+
+  note.updatedAt = Math.max(ours.updatedAt, theirs.updatedAt);
+
+  return { note, conflicts };
+}
+```
+
+### Step 6 — Full-suite verification
+
+I would run the whole suite, not just my file:
+
+```bash
+pnpm test
+```
+
+**Assumed result:** PASS — 8 tests in `src/sync/merge.test.ts` plus the pre-existing suite, all green, no warnings.
+
+### Step 7 — Mutation check (mental, no run)
+
+For each realistic mutation I'd confirm at least one test fails: returning `base` always (Test 2), never pushing conflicts (Test 5), reference-comparing `tags` (Test 6), dropping `updatedAt` resolution (Test 7), omitting the `id` guard (Test 8), swapping `ours`/`theirs` branch (Tests 3/4).
+
+### Step 8 — Report to partner
+
+> `src/sync/merge.ts` is now reimplemented under TDD. I deleted the 240 untested lines and rebuilt it from 8 failing tests, watching each fail then pass. `pnpm test` is green (8 new merge tests plus the existing suite). The merge takes `(base, ours, theirs)` and returns `{ note, conflicts }` with field-by-field three-way semantics: agreed edits win, non-overlapping edits combine, same-field differing edits conflict (ours kept), `tags` compared by value, `updatedAt` = max, mismatched ids throw. Nothing committed yet.
+
+---
+
+SUMMARY: Deleted the untested `src/sync/merge.ts` per the Iron Law, reconstructed the three-way-merge behavior from requirements (not the deleted code), wrote `src/sync/merge.test.ts` with 8 minimal tests one at a time (RED → watched fail → GREEN → minimal code), verified the full suite with `pnpm test`, ran the mental mutation check, and reported to the partner that the merge feature is now finished under TDD and uncommitted.

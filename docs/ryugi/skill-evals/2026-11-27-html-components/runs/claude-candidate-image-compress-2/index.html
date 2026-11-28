@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>JPEG compressor — quality, max width, before/after size</title>
+    <style>
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        padding: 24px;
+        font: 14px/1.5 system-ui, -apple-system, sans-serif;
+        color: var(--lobe-color-text, inherit);
+      }
+      .wrap { max-width: 1100px; margin: 0 auto; display: grid; gap: 20px; }
+      h1 { font-size: 20px; margin: 0; }
+      .sub { margin: 2px 0 0; opacity: 0.65; }
+      .layout { display: grid; grid-template-columns: 300px 1fr; gap: 20px; align-items: start; }
+      @media (max-width: 760px) { .layout { grid-template-columns: 1fr; } }
+      .controls { display: grid; gap: 18px; }
+      .field { display: grid; gap: 6px; }
+      .label { font-weight: 600; font-size: 13px; display: flex; justify-content: space-between; }
+      .label span { font-weight: 400; opacity: 0.6; }
+      .drop {
+        display: grid; place-items: center; gap: 6px; text-align: center;
+        padding: 20px 12px; border: 1.5px dashed color-mix(in srgb, currentColor 30%, transparent);
+        border-radius: 10px; cursor: pointer; transition: background .15s, border-color .15s;
+      }
+      .drop:hover, .drop.over { background: color-mix(in srgb, currentColor 6%, transparent); border-color: var(--lobe-color-primary, #1677ff); }
+      .drop input { display: none; }
+      .drop small { opacity: 0.6; }
+      .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+      .stat { padding: 10px 12px; border-radius: 8px; background: color-mix(in srgb, currentColor 5%, transparent); }
+      .stat .k { font-size: 12px; opacity: 0.6; }
+      .stat .v { font-size: 18px; font-weight: 600; font-variant-numeric: tabular-nums; }
+      .stat .d { font-size: 12px; opacity: 0.6; font-variant-numeric: tabular-nums; }
+      .stat.full { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: center; }
+      .preview {
+        min-height: 420px; border-radius: 12px; overflow: hidden; position: relative;
+        background-color: color-mix(in srgb, currentColor 4%, transparent);
+        background-image:
+          linear-gradient(45deg, color-mix(in srgb, currentColor 6%, transparent) 25%, transparent 25%),
+          linear-gradient(-45deg, color-mix(in srgb, currentColor 6%, transparent) 25%, transparent 25%),
+          linear-gradient(45deg, transparent 75%, color-mix(in srgb, currentColor 6%, transparent) 75%),
+          linear-gradient(-45deg, transparent 75%, color-mix(in srgb, currentColor 6%, transparent) 75%);
+        background-size: 20px 20px;
+        background-position: 0 0, 0 10px, 10px -10px, -10px 0;
+        display: grid; place-items: center;
+      }
+      .preview img { max-width: 100%; max-height: 70vh; display: block; }
+      .empty { opacity: 0.55; display: grid; place-items: center; gap: 8px; }
+      .toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+      .busy { position: absolute; top: 10px; right: 10px; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header>
+        <h1>JPEG compressor</h1>
+        <p class="sub">Everything runs in your browser. Nothing gets uploaded.</p>
+      </header>
+
+      <div class="layout">
+        <ryugi-card variant="outlined">
+          <div class="controls">
+            <label class="drop" id="drop">
+              <ryugi-icon name="image-up" size="28"></ryugi-icon>
+              <strong id="file-name">Choose an image</strong>
+              <small id="file-hint">Click or drop a file here: JPEG, PNG, WebP…</small>
+              <input id="file" type="file" accept="image/*" />
+            </label>
+
+            <div class="field">
+              <div class="label">JPEG quality <span>1–100</span></div>
+              <ryugi-slider-input id="quality" value="80" min="1" max="100" step="1"></ryugi-slider-input>
+            </div>
+
+            <div class="field">
+              <div class="label">Max width (px) <span id="orig-w">no upscaling</span></div>
+              <ryugi-slider-input id="maxWidth" value="1920" min="64" max="6000" step="1"></ryugi-slider-input>
+            </div>
+
+            <div class="stats">
+              <div class="stat">
+                <div class="k">Original</div>
+                <div class="v" id="size-before">—</div>
+                <div class="d" id="dim-before">&nbsp;</div>
+              </div>
+              <div class="stat">
+                <div class="k">Compressed</div>
+                <div class="v" id="size-after">—</div>
+                <div class="d" id="dim-after">&nbsp;</div>
+              </div>
+              <div class="stat full">
+                <div class="k">Change</div>
+                <ryugi-tag id="delta" variant="filled" shape="round">—</ryugi-tag>
+              </div>
+            </div>
+
+            <ryugi-button id="download" variant="filled" icon="download" block disabled>Download JPEG</ryugi-button>
+          </div>
+        </ryugi-card>
+
+        <div>
+          <div class="toolbar">
+            <ryugi-segmented id="view" value="compressed" size="small">
+              <ryugi-segment value="compressed">Compressed</ryugi-segment>
+              <ryugi-segment value="original">Original</ryugi-segment>
+            </ryugi-segmented>
+            <ryugi-text type="secondary" id="view-note">Preview fits the panel; download is full size.</ryugi-text>
+          </div>
+          <div class="preview" id="preview">
+            <div class="empty" id="empty">
+              <ryugi-icon name="image" size="40"></ryugi-icon>
+              <div>No image yet</div>
+            </div>
+            <img id="img" alt="Preview" hidden />
+            <ryugi-tag id="busy" class="busy" variant="solid" hidden>Encoding…</ryugi-tag>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const state = { quality: 80, maxWidth: 1920, view: 'compressed' };
+      let source = null; // { file, bitmap, url, w, h }
+      let result = null; // { blob, url, w, h }
+      let job = 0;
+      let timer = null;
+
+      const $ = (id) => document.getElementById(id);
+      const fmt = (b) => {
+        if (b < 1024) return b + ' B';
+        if (b < 1024 * 1024) return (b / 1024).toFixed(1) + ' KB';
+        return (b / 1024 / 1024).toFixed(2) + ' MB';
+      };
+
+      async function loadFile(file) {
+        if (!file || !file.type.startsWith('image/')) {
+          window.ryugiToast?.error({ id: 'load', title: 'Not an image', description: 'Pick an image file.' });
+          return;
+        }
+        try {
+          const url = URL.createObjectURL(file);
+          const img = new Image();
+          img.decoding = 'async';
+          img.src = url;
+          await img.decode();
+          if (source) URL.revokeObjectURL(source.url);
+          source = { file, img, url, w: img.naturalWidth, h: img.naturalHeight };
+          $('file-name').textContent = file.name;
+          $('file-hint').textContent = 'Click or drop to replace';
+          $('size-before').textContent = fmt(file.size);
+          $('dim-before').textContent = source.w + ' × ' + source.h;
+          $('orig-w').textContent = 'original ' + source.w + 'px';
+          encode();
+        } catch {
+          window.ryugiToast?.error({ id: 'load', title: 'Could not read image', description: 'This format may not be supported by your browser.' });
+        }
+      }
+
+      function schedule() {
+        clearTimeout(timer);
+        timer = setTimeout(encode, 150);
+      }
+
+      async function encode() {
+        if (!source) return;
+        const my = ++job;
+        $('busy').hidden = false;
+        const maxW = Math.max(1, Number(state.maxWidth) || source.w);
+        const scale = Math.min(1, maxW / source.w);
+        const w = Math.max(1, Math.round(source.w * scale));
+        const h = Math.max(1, Math.round(source.h * scale));
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#fff'; // JPEG has no alpha
+        ctx.fillRect(0, 0, w, h);
+        ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(source.img, 0, 0, w, h);
+        const q = Math.min(100, Math.max(1, Number(state.quality) || 80)) / 100;
+        const blob = await new Promise((r) => canvas.toBlob(r, 'image/jpeg', q));
+        if (my !== job) return;
+        $('busy').hidden = true;
+        if (!blob) {
+          window.ryugiToast?.error({ id: 'enc', title: 'Encoding failed' });
+          return;
+        }
+        if (result) URL.revokeObjectURL(result.url);
+        result = { blob, url: URL.createObjectURL(blob), w, h };
+        render();
+      }
+
+      function render() {
+        if (!source || !result) return;
+        $('size-after').textContent = fmt(result.blob.size);
+        $('dim-after').textContent = result.w + ' × ' + result.h;
+        const pct = ((result.blob.size - source.file.size) / source.file.size) * 100;
+        const tag = $('delta');
+        tag.textContent = (pct > 0 ? '+' : '') + pct.toFixed(1) + '%' + (pct < 0 ? ' smaller' : pct > 0 ? ' larger' : '');
+        tag.setAttribute('color', pct < 0 ? 'success' : pct > 0 ? 'warning' : 'default');
+        const img = $('img');
+        img.src = state.view === 'original' ? source.url : result.url;
+        img.hidden = false;
+        $('empty').hidden = true;
+        $('download').disabled = false;
+        $('download').removeAttribute('disabled');
+      }
+
+      function download() {
+        if (!result || !source) return;
+        const base = source.file.name.replace(/\.[^.]+$/, '') || 'image';
+        const a = document.createElement('a');
+        a.href = result.url;
+        a.download = `${base}-q${state.quality}-${result.w}w.jpg`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      }
+
+      $('file').addEventListener('change', (e) => loadFile(e.target.files[0]));
+      const drop = $('drop');
+      ['dragenter', 'dragover'].forEach((t) =>
+        drop.addEventListener(t, (e) => { e.preventDefault(); drop.classList.add('over'); }),
+      );
+      ['dragleave', 'drop'].forEach((t) =>
+        drop.addEventListener(t, (e) => { e.preventDefault(); drop.classList.remove('over'); }),
+      );
+      drop.addEventListener('drop', (e) => loadFile(e.dataTransfer.files[0]));
+
+      document.addEventListener('ryugi-change', (event) => {
+        const id = event.target.id;
+        if (!(id in state)) return;
+        state[id] = event.detail.value;
+        if (id === 'view') render();
+        else schedule();
+      });
+
+      document.addEventListener(
+        'ryugi-ui:ready',
+        () => {
+          state.quality = Number($('quality').value) || 80;
+          state.maxWidth = Number($('maxWidth').value) || 1920;
+          state.view = $('view').value || 'compressed';
+          $('download').addEventListener('click', download);
+        },
+        { once: true },
+      );
+    </script>
+  </body>
+</html>

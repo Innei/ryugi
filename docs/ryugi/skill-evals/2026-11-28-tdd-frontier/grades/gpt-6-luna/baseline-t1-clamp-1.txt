@@ -1,0 +1,1 @@
+FAIL — The agent stopped at the skill read without writing clamp tests, observing a failure, or running post-implementation checks.

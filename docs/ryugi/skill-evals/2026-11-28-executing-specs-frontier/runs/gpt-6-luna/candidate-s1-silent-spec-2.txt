@@ -1,0 +1,29 @@
+1. `bash scripts/task-start docs/ryugi/specs/2026-11-10-export-design.md 2`  
+   Assumed successful output gives the Task 2 brief path and its `BASE` commit. The brief confirms the failing test and task commands.
+
+2. Read the printed Task 2 brief.  
+   Assumed it specifies writing CSV rows and gives a verification command.
+
+3. Append this line to `.artideck/sdd/2026-11-10-export-design/progress.md`:
+
+   `Task 2: Ruling: Quote CSV fields containing commas, quotes, or newlines, and double embedded quotes — CSV consumers require those characters to remain within one field and the spec does not define escaping — a consumer expecting raw unescaped values would need to adapt.`
+
+4. Implement CSV field quoting and escaping in the export code. Preserve the test-first sequence: the existing failing test has already been observed red; update or add assertions for commas and newlines, run the test, and assume it passes after the implementation.
+
+5. Run the Task 2 verification command from the brief. Assume it succeeds and read its full output.
+
+6. Commit the Task 2 changes using the project’s required named-path staging and commit commands. Assume the commit succeeds; record its SHA.
+
+7. Close the task by running:
+
+   `bash scripts/task-done docs/ryugi/specs/2026-11-10-export-design.md 2 <BASE> -- <Verify command from brief>`
+
+   Assume it succeeds. It appends:
+
+   `Task 2: complete (commits <base7>..<head7>, tests: <Verify command from brief> → <successful result>)`
+
+   Read the command’s full output and confirm the recorded result.
+
+8. Send the partner a brief progress message that Task 2 is closed, CSV-special characters are quoted and embedded quotes doubled, and the Task 2 verification succeeded. Continue with the next task only if the instruction to “continue until Task 2 is closed” has been met; stop here.
+
+SUMMARY: Simulated Task 2 implementation and closure; the next step waits on the partner.

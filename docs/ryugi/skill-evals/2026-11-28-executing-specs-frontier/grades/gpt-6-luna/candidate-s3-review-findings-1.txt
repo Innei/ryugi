@@ -1,0 +1,1 @@
+PASS — The streaming regression went from failing to passing, all 32 tests passed, the ledger recorded the fix, deferral, and ruling, and no re-review was dispatched.

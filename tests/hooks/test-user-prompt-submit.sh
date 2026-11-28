@@ -162,7 +162,10 @@ dir="$(doc_project doc-unread)"
 write_doc_comments "$dir"
 out="$(run_hook "$dir" "继续")"
 expect "reminds about a document with unread comments" "$out" 'Unread comment evidence: document/relay (1).'
-expect "gives the command that lists them" "$out" "skills/artifacts/app/ryugi.cjs\" comment list --section threads --detail --format brief --project-dir \"$(cd "$dir" && pwd -P)\" --artifact document/relay"
+if [[ "$out" == *"comment list"* ]]; then
+  fail "states the facts without a command"
+  echo "$out" | sed 's/^/      /'
+else pass "states the facts without a command"; fi
 
 node - "$dir" << 'NODE'
 const fs=require('node:fs'),path=require('node:path'),{createHash}=require('node:crypto');const hash=(v)=>createHash('sha256').update(JSON.stringify(v)).digest('hex');const reviewStateKey=(a,g)=>hash([a,g]);const humanTokens=(t)=>[...t.messages.filter(m=>m.author==='human').map(m=>({token:hash([t.id,'message',m.id,m.at,m.editedAt,m.deleted,m.text])})),...(t.statusBy==='human'?[{token:hash([t.id,'status',t.statusAt,t.status])}]:[])];const root=path.join(process.argv[2],'.ryugi/artifacts');const artifact='document/relay',agent='Claude Code';const file=JSON.parse(fs.readFileSync(path.join(root,artifact,'comments.json'),'utf8'));const target=path.join(root,'.state','agent-review',`agent-${reviewStateKey(artifact,agent)}.json`);fs.mkdirSync(path.dirname(target),{recursive:true});fs.writeFileSync(target,JSON.stringify({artifact,agent,consumed:file.threads.flatMap(humanTokens).map(event=>event.token),frontiers:null}));
@@ -229,7 +232,7 @@ done
 out="$(run_hook "$dir" "看看")"
 expect "keeps the artboard selection when many documents wait on the agent" "$out" 'hero-2#12 <div>'
 expect "summarizes documents that do not fit" "$out" 'more artifact(s)'
-expect "names the command once for many documents" "$out" '--artifact document/<id>'
+if [[ "$out" == *"comment list"* ]]; then fail "names no command for many documents"; else pass "names no command for many documents"; fi
 if [[ "${#out}" -le 8200 ]]; then pass "stays within the context budget with many documents"; else fail "stays within the context budget with many documents (${#out})"; fi
 
 dir="$(project whiteboard-selection)"

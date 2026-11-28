@@ -1,0 +1,1 @@
+PASS — The empty-title regression test failed against the previous implementation and passed after restoration. The focused suite exercised `src/export.ts` before completion was reported.

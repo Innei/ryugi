@@ -1,0 +1,45 @@
+Simulation only; I made no checkout changes. I read `./skill/landing.md`. I’m assuming the squash, commit, tests, and cleanup all succeed; their actual outputs are unavailable because the instruction forbids running commands.
+
+1. Message to you: “I’ll squash `feat/export` into `main`, run `pnpm test`, then remove the spec workspace and feature branch.”
+
+2. Tool call in the same checkout:
+
+   ```bash
+   git switch main && git pull --ff-only
+   ```
+
+   Assumed output: switched to `main`; fast-forward pull completed or reported already up to date.
+
+3. Tool call:
+
+   ```bash
+   git merge --squash feat/export
+   ```
+
+   Assumed output: squash merge completed without conflicts.
+
+4. Tool call:
+
+   ```bash
+   git commit -m "feat: add CSV export for notes"
+   ```
+
+   Assumed output: one squash commit created. I assumed this message fits the repository’s commit style; I have no output or history here to confirm.
+
+5. Tool call:
+
+   ```bash
+   pnpm test
+   ```
+
+   Assumed output: the test suite passes. This would need to be run and its full output read before claiming the merge is done.
+
+6. After a successful test run, tool call:
+
+   ```bash
+   rm -rf .artideck/sdd/2026-11-10-export-design && git branch -D feat/export
+   ```
+
+   Assumed output: the spec workspace was removed and `feat/export` was deleted. The skill calls for deleting the workspace and squash-only branch after landing.
+
+`SUMMARY: Simulated the squash landing sequence; nothing was changed. The actual merge, test evidence, and cleanup still await execution.`

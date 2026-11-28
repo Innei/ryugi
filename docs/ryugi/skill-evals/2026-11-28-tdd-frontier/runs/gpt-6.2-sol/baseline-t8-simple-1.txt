@@ -1,0 +1,209 @@
+Only the skill reference was read. The repository commands, file writes, and outputs below are simulated.
+
+1. **Message sent.** “I’ll use the test-driven-development skill and read its test-writing guidance. The repository commands and edits will be simulated as requested.”
+
+2. **Tool call executed** from the current workspace.
+
+   ```sh
+   cat ./skill/writing-good-tests.md
+   ```
+
+   Exit `0`. I read the full output. The guide calls for naming the regression before writing the test, using a hand-derived expectation, and exercising the real component.
+
+3. **Simulated tool calls.** All repository commands below use `/Users/p/git/notes-app` as their working directory.
+
+   ```sh
+   git status --short
+   ```
+
+   Assumed exit `0` with no output. The working tree is clean.
+
+   ```sh
+   rg -l NotesList src
+   ```
+
+   Supplied result, with exit `0` assumed.
+
+   ```text
+   src/components/NotesList.tsx
+   src/pages/NotesPage.tsx
+   ```
+
+   ```sh
+   rg -n --hidden -g '!.git/**' -g '!node_modules/**' -g '!pnpm-lock.yaml' 'NotesList|NotesPage|/notes' .
+   ```
+
+   Assumed exit `0`. The matches identify the component, its page caller, the page test, and the `/notes` route registration. No additional test references match.
+
+   ```sh
+   rg --files --hidden -g '!.git/**' -g '!node_modules/**' -g '*test*' -g '*spec*' -g '*playwright*' -g '*cypress*' -g '**/e2e/**'
+   ```
+
+   Assumed exit `0`. The file inventory includes `src/pages/NotesPage.test.tsx`, `src/sort.test.ts`, and `vitest.config.ts`. It contains no NotesList, route integration, or end-to-end test files.
+
+   ```sh
+   cat package.json vitest.config.ts src/components/NotesList.tsx src/pages/NotesPage.tsx src/pages/NotesPage.test.tsx src/sort.ts src/sort.test.ts
+   ```
+
+   Assumed exit `0`. The files confirm that `NotesPage` accepts a `notes` prop and renders the real `NotesList`. Each list item contains the note title. The existing page test checks that both notes are present using Testing Library. The note fixtures have `id`, `title`, and `createdAt` string fields. The shared sorter already supports ascending string keys.
+
+4. **Simulated message.** “I’ll add a regression to the existing page test. Its fixtures will put Zebra first by creation date and Apple first by title, so reverting the sort key to `createdAt` will fail the rendered-order assertion.”
+
+5. **Simulated tool call.** Append one test using the existing `render`, `screen`, `test`, `expect`, and `NotesPage` imports. The heredoc contains the complete text written by this call.
+
+   ```sh
+   cat >> src/pages/NotesPage.test.tsx <<'EOF'
+
+   test('renders notes in ascending title order', () => {
+     render(
+       <NotesPage
+         notes={[
+           { id: '1', title: 'Zebra', createdAt: '2026-01-01T00:00:00Z' },
+           { id: '2', title: 'Apple', createdAt: '2026-01-02T00:00:00Z' },
+         ]}
+       />,
+     )
+
+     const titles = screen.getAllByRole('listitem').map((item) => item.textContent)
+
+     expect(titles).toEqual(['Apple', 'Zebra'])
+   })
+   EOF
+   ```
+
+   Assumed exit `0` with no output.
+
+6. **Simulated tool call.** Run the regression against the existing implementation.
+
+   ```sh
+   pnpm test src/pages/NotesPage.test.tsx
+   ```
+
+   Assumed exit `1`. Full simulated output.
+
+   ```text
+   > notes-app@0.0.0 test /Users/p/git/notes-app
+   > vitest run src/pages/NotesPage.test.tsx
+
+    RUN  v3.2.4 /Users/p/git/notes-app
+
+    ❯ src/pages/NotesPage.test.tsx (2 tests | 1 failed)
+      ✓ renders both notes
+      × renders notes in ascending title order
+
+   FAIL  src/pages/NotesPage.test.tsx > renders notes in ascending title order
+   AssertionError: expected [ 'Zebra', 'Apple' ] to deeply equal [ 'Apple', 'Zebra' ]
+
+   - Expected
+   + Received
+
+     [
+   -   "Apple",
+       "Zebra",
+   +   "Apple",
+     ]
+
+   ❯ src/pages/NotesPage.test.tsx:28:18
+       28|   expect(titles).toEqual(['Apple', 'Zebra'])
+         |                  ^
+
+    Test Files  1 failed (1)
+         Tests  1 failed | 1 passed (2)
+
+   ELIFECYCLE Command failed with exit code 1.
+   ```
+
+7. **Simulated message.** “The page test run exited 1. The new assertion received `['Zebra', 'Apple']` and expected `['Apple', 'Zebra']`. The existing test passed. I’ll change the list’s sort key to `title`.”
+
+8. **Simulated tool call.** Replace the sort key. The script specifies the exact text removed and written. No files are deleted.
+
+   ```sh
+   python3 - <<'PY'
+   from pathlib import Path
+
+   path = Path('src/components/NotesList.tsx')
+   source = path.read_text(encoding='utf-8')
+   old = "const sorted = sortBy(notes, 'createdAt')"
+   new = "const sorted = sortBy(notes, 'title')"
+
+   if source.count(old) != 1:
+       raise SystemExit('Expected exactly one creation-date sort in NotesList')
+
+   path.write_text(source.replace(old, new), encoding='utf-8')
+   PY
+   ```
+
+   Assumed exit `0` with no output.
+
+9. **Simulated tool call.** Rerun the page tests.
+
+   ```sh
+   pnpm test src/pages/NotesPage.test.tsx
+   ```
+
+   Assumed exit `0`. Full simulated output.
+
+   ```text
+   > notes-app@0.0.0 test /Users/p/git/notes-app
+   > vitest run src/pages/NotesPage.test.tsx
+
+    RUN  v3.2.4 /Users/p/git/notes-app
+
+    ✓ src/pages/NotesPage.test.tsx (2 tests)
+
+    Test Files  1 passed (1)
+         Tests  2 passed (2)
+   ```
+
+10. **Simulated tool calls.** Check the shared sorter, TypeScript, and the diff.
+
+    ```sh
+    pnpm test src/sort.test.ts
+    ```
+
+    Assumed exit `0`. Full simulated output.
+
+    ```text
+    > notes-app@0.0.0 test /Users/p/git/notes-app
+    > vitest run src/sort.test.ts
+
+     RUN  v3.2.4 /Users/p/git/notes-app
+
+     ✓ src/sort.test.ts (4 tests)
+
+     Test Files  1 passed (1)
+          Tests  4 passed (4)
+    ```
+
+    ```sh
+    pnpm typecheck
+    ```
+
+    Assumed exit `0`. Full simulated output.
+
+    ```text
+    > notes-app@0.0.0 typecheck /Users/p/git/notes-app
+    > tsc
+    ```
+
+    ```sh
+    git diff --check
+    ```
+
+    Assumed exit `0` with no output.
+
+    ```sh
+    git diff --stat
+    ```
+
+    Assumed exit `0`. Full simulated output.
+
+    ```text
+     src/components/NotesList.tsx |  2 +-
+     src/pages/NotesPage.test.tsx | 15 +++++++++++++++
+     2 files changed, 16 insertions(+), 1 deletion(-)
+    ```
+
+11. **Simulated final message.** “The notes list now sorts by title in ascending order. I added a page-level regression with two notes whose title order differs from their creation order. The first run failed on `renders notes in ascending title order`, showing Zebra before Apple. After the change, the page tests passed 2 of 2, the sorter tests passed 4 of 4, and `pnpm typecheck` and `git diff --check` both exited 0. The full suite is deferred to landing.”
+
+SUMMARY: Read the test-writing guide, then simulated finding affected tests, adding a page regression, observing its expected failure, changing the sort key, and verifying the targeted tests and checks. The repository results are assumed, and no repository commands or edits were performed.

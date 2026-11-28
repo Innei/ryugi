@@ -1,0 +1,199 @@
+I've read the two skill files for real (SKILL.md is the TDD skill in the prompt; `writing-good-tests.md` content is above). Everything below is the simulated transcript — the repo is unreachable from this sandbox and I'm not running shell commands against it. Assumptions are marked where I'd otherwise need tool output.
+
+---
+
+## Simulation
+
+### 1. Explore the code (shell reads)
+
+```bash
+cat src/components/NotesList.tsx
+cat src/sort.ts
+cat src/sort.test.ts
+cat src/pages/NotesPage.tsx
+cat src/pages/NotesPage.test.tsx
+cat src/types.ts
+```
+
+Assumed output (consistent with the situation description):
+
+`src/types.ts`
+```ts
+export interface Note {
+  id: string;
+  title: string;
+  createdAt: string;
+}
+```
+
+`src/sort.ts`
+```ts
+export function sortBy<T, K extends keyof T>(
+  items: T[],
+  key: K,
+  order: 'asc' | 'desc' = 'asc'
+): T[] {
+  return [...items].sort((a, b) => {
+    const av = a[key];
+    const bv = b[key];
+    const cmp = av < bv ? -1 : av > bv ? 1 : 0;
+    return order === 'desc' ? -cmp : cmp;
+  });
+}
+```
+
+`src/components/NotesList.tsx`
+```tsx
+import { sortBy } from '../sort';
+import type { Note } from '../types';
+
+export function NotesList({ notes }: { notes: Note[] }) {
+  const sorted = sortBy(notes, 'createdAt');
+  return (
+    <ul>
+      {sorted.map((note) => (
+        <li key={note.id}>{note.title}</li>
+      ))}
+    </ul>
+  );
+}
+```
+
+`src/pages/NotesPage.tsx`
+```tsx
+import { NotesList } from '../components/NotesList';
+import type { Note } from '../types';
+
+export function NotesPage({ notes }: { notes: Note[] }) {
+  return (
+    <div>
+      <h1>Notes</h1>
+      <NotesList notes={notes} />
+    </div>
+  );
+}
+```
+
+`src/pages/NotesPage.test.tsx`
+```tsx
+import { render, screen } from '@testing-library/react';
+import { NotesPage } from './NotesPage';
+
+const notes = [
+  { id: '1', title: 'Banana', createdAt: '2026-01-01T00:00:00Z' },
+  { id: '2', title: 'Apple', createdAt: '2026-02-01T00:00:00Z' },
+];
+
+test('renders note titles', () => {
+  render(<NotesPage notes={notes} />);
+  expect(screen.getByText('Apple')).toBeInTheDocument();
+  expect(screen.getByText('Banana')).toBeInTheDocument();
+});
+```
+
+`src/sort.test.ts` — assumed to cover `sortBy` ascending/descending/string keys/ties; it does not touch `NotesList`, so I don't need to change it.
+
+Observation: `NotesList` renders a real `<ul><li>`, so `getAllByRole('listitem')` returns the items in DOM order — a real-behavior assertion, no mocks. `rg -l NotesList src` confirms the only consumers are `NotesList.tsx` (definition) and `NotesPage.tsx` (caller).
+
+### 2. RED — write the failing test
+
+New file `src/components/NotesList.test.tsx`:
+
+```tsx
+import { render, screen } from '@testing-library/react';
+import { NotesList } from './NotesList';
+
+const notes = [
+  { id: '1', title: 'Banana', createdAt: '2026-01-01T00:00:00Z' },
+  { id: '2', title: 'Apple', createdAt: '2026-02-01T00:00:00Z' },
+  { id: '3', title: 'Cherry', createdAt: '2026-03-01T00:00:00Z' },
+];
+
+test('renders notes sorted by title', () => {
+  render(<NotesList notes={notes} />);
+  const titles = screen.getAllByRole('listitem').map((li) => li.textContent);
+  expect(titles).toEqual(['Apple', 'Banana', 'Cherry']);
+});
+```
+
+Named break: the test fails iff `NotesList` sorts by `createdAt` (current behavior → `['Banana', 'Apple', 'Cherry']`) instead of by title. That is exactly the bug, and the expected value is hand-literal (`['Apple', 'Banana', 'Cherry']`), not derived from `sortBy`. The fixture's createdAt order deliberately differs from its title order so the two sort keys cannot satisfy the same assertion.
+
+### 3. Verify RED
+
+```bash
+pnpm test src/components/NotesList.test.tsx
+```
+
+Assumed output — fails (not errors), for the right reason:
+
+```
+ FAIL  src/components/NotesList.test.tsx > renders notes sorted by title
+AssertionError: expected [ 'Banana', 'Apple', 'Cherry' ] to deeply equal [ 'Apple', 'Banana', 'Cherry' ]
+```
+
+Failure is the expected one: it fails because the feature is missing (still sorting by `createdAt`), not from a typo. RED confirmed.
+
+### 4. GREEN — minimal change
+
+`src/components/NotesList.tsx`, one line:
+
+```diff
+-  const sorted = sortBy(notes, 'createdAt');
++  const sorted = sortBy(notes, 'title');
+```
+
+Nothing else changes — no new helpers, no touching `sortBy` or its tests.
+
+### 5. Verify GREEN + reachable tests
+
+```bash
+pnpm test src/components/NotesList.test.tsx
+```
+
+Assumed output — passes:
+
+```
+ ✓ src/components/NotesList.test.tsx (1 test) 12ms
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+```
+
+```bash
+pnpm test src/pages/NotesPage.test.tsx
+```
+
+Assumed output — passes (its fixture only asserts presence, so it stays green; it's the caller's test and still loads the changed component):
+
+```
+ ✓ src/pages/NotesPage.test.tsx (1 test) 18ms
+```
+
+```bash
+pnpm test src/sort.test.ts
+```
+
+Assumed output — passes (I didn't touch `sortBy`; this guards against accidental breakage of the shared helper):
+
+```
+ ✓ src/sort.test.ts (4 tests) 6ms
+```
+
+```bash
+pnpm typecheck
+```
+
+Assumed output — clean exit, no tsc errors.
+
+### 6. Message to partner (final report)
+
+> Done. `NotesList` now sorts by `title` (`src/components/NotesList.tsx`: `sortBy(notes, 'title')` instead of `'createdAt'`).
+>
+> TDD evidence from this session:
+> - Added `src/components/NotesList.test.tsx` asserting `listitem` order equals `['Apple', 'Banana', 'Cherry']` with a fixture whose creation-date order is `Banana, Apple, Cherry`.
+> - RED: `pnpm test src/components/NotesList.test.tsx` failed with `[ 'Banana', 'Apple', 'Cherry' ]` vs `[ 'Apple', 'Banana', 'Cherry' ]` — failed because sorting was still by `createdAt`.
+> - GREEN: same command passes after the one-line change.
+> - Related tests I ran, all green: `src/pages/NotesPage.test.tsx` (caller), `src/sort.test.ts` (unchanged helper), and `pnpm typecheck`.
+>
+> Mutation check: reverting the key to `'createdAt'` makes the new test fail.
+
+SUMMARY: Read the two skill files (real) for the test rules; simulated the repo since it's unreachable from the sandbox. Explored NotesList/sort/NotesPage + their tests (assumed contents noted); wrote a new failing `src/components/NotesList.test.tsx` asserting title-order rendering with a fixture whose creation-date order differs; verified RED (fails with `[Banana, Apple, Cherry]` vs `[Apple, Banana, Cherry]`); made the minimal one-line change `sortBy(notes, 'createdAt')` → `sortBy(notes, 'title')`; verified GREEN plus the caller's test, the unchanged `sortBy` tests, and `typecheck` (all assumed-pass); reported to the partner with the failing/passing evidence and mutation check.

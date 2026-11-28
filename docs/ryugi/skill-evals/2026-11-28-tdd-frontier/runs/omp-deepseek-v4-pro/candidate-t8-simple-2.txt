@@ -1,0 +1,111 @@
+Skill files read. Decision first: this is the exact case the skill lists as *write directly* — "changing which input goes into logic that is already tested (a sort key, a flag, an argument)". `sortBy` is already covered for string keys, ascending, and ties in `src/sort.test.ts`; the change is one key literal. No new test.
+
+Here is the full simulated sequence from here to the report.
+
+---
+
+**1. Read the caller/test surface (find the exact line + whether any test pins order)**
+
+```
+$ cd /Users/p/git/notes-app
+$ sed -n '1,40p' src/components/NotesList.tsx
+```
+```tsx
+import { sortBy } from '../sort'
+import type { Note } from '../types'
+
+interface Props {
+  notes: Note[]
+}
+
+export function NotesList({ notes }: Props) {
+  const sorted = sortBy(notes, 'createdAt')
+  return (
+    <ul>
+      {sorted.map((note) => (
+        <li key={note.id}>{note.title}</li>
+      ))}
+    </ul>
+  )
+}
+```
+
+```
+$ sed -n '1,60p' src/pages/NotesPage.test.tsx
+```
+```tsx
+import { render, screen } from '@testing-library/react'
+import { describe, expect, it } from 'vitest'
+import { NotesPage } from './NotesPage'
+
+const notes = [
+  { id: '1', title: 'Banana', createdAt: '2024-01-01T00:00:00Z' },
+  { id: '2', title: 'Apple', createdAt: '2024-01-02T00:00:00Z' },
+]
+
+describe('NotesPage', () => {
+  it('renders every note', () => {
+    render(<NotesPage notes={notes} />)
+    expect(screen.getByText('Banana')).toBeInTheDocument()
+    expect(screen.getByText('Apple')).toBeInTheDocument()
+  })
+})
+```
+
+Assumed: the test asserts only that both notes are present, no ordering assertion. So nothing pins the old `createdAt` order — no test update needed. `NotesPage.tsx` passes `notes` straight through to `<NotesList notes={notes} />`, so this test exercises the changed line. `sortBy`'s default direction is ascending (already tested); the requirement is ascending title, so no direction change.
+
+**2. Make the edit**
+
+```
+$ perl -i -pe "s/sortBy\(notes, 'createdAt'\)/sortBy(notes, 'title')/" src/components/NotesList.tsx
+$ sed -n '1,40p' src/components/NotesList.tsx
+```
+```tsx
+import { sortBy } from '../sort'
+import type { Note } from '../types'
+
+interface Props {
+  notes: Note[]
+}
+
+export function NotesList({ notes }: Props) {
+  const sorted = sortBy(notes, 'title')
+  return (
+    <ul>
+      {sorted.map((note) => (
+        <li key={note.id}>{note.title}</li>
+      ))}
+    </ul>
+  )
+}
+```
+
+**3. Verify — narrowest check that exercises the change, plus typecheck**
+
+```
+$ pnpm test src/pages/NotesPage.test.tsx
+```
+*(assumed output)*
+```
+ ✓ src/pages/NotesPage.test.tsx (1 test) 22ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+```
+
+```
+$ pnpm typecheck
+```
+*(assumed output)* — exits 0, no diagnostics.
+
+`src/sort.ts` and `src/sort.test.ts` are untouched, so they aren't re-run; they're the already-tested logic the new key feeds into.
+
+---
+
+**Report to partner**
+
+> Done. `src/components/NotesList.tsx` now sorts by `title` instead of `createdAt` — one-line change, `sortBy(notes, 'createdAt')` → `sortBy(notes, 'title')`. Wrote it directly: it's a sort-key swap into `sortBy`, whose string-key/ascending/tie behavior is already covered in `src/sort.test.ts`; no new test warranted, and `NotesPage.test.tsx` asserts only presence, not order, so nothing pinned the old value. Verified this session: `pnpm test src/pages/NotesPage.test.tsx` → 1 passed; `pnpm typecheck` → clean.
+
+---
+
+SUMMARY: Read the TDD skill and writing-good-tests.md; classified the change as write-directly (sort key into already-tested `sortBy`); read `NotesList.tsx` (located `sortBy(notes, 'createdAt')`) and `NotesPage.test.tsx` (presence-only, no order pin); edited the one line to `sortBy(notes, 'title')`; verified with `pnpm test src/pages/NotesPage.test.tsx` (1 passed) and `pnpm typecheck` (clean); reporting the sort-key change, the write-directly rationale (no test added), and the passing evidence.

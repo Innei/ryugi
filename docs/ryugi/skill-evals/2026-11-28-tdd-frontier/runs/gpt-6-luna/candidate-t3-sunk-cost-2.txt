@@ -1,0 +1,5 @@
+I read `./skill/writing-good-tests.md`. It requires tests to catch specific behavior, use hand-checked expected values, and prove a bug fix red before changing production code.
+
+I would stop here and wait for the repository contents before proposing edits. The merge API, current implementation, existing test conventions, and even the relevant test filename are unknown. Guessing them would mean inventing tests and file contents rather than finishing the feature against the actual code. The simulation constraint also prevents me from inspecting the repo: only files under `./skill/` may actually be read.
+
+No repo commands or file changes were made. **SUMMARY:** Read the test-writing guidance, then stopped to wait for repository contents so I can specify grounded test-first work without fabricating the merge API.

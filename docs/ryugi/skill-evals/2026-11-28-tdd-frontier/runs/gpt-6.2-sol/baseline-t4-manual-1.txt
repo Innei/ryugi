@@ -1,0 +1,80 @@
+1. **Message sent:** “I’ll use the TDD skill to lay out the simulated recovery, starting with the test-writing guide in `./skill/`.”
+
+2. **Actual shell call:** `cat ./skill/writing-good-tests.md` from the current workspace. It exited 0. I read the full output.
+
+All remaining calls and results are simulated. Each shell call below would run from `/Users/p/git/notes-app`. I assume the earlier fallback is the only local edit to `src/export.ts` and that the index contains the original version.
+
+3. **Shell call:** `git status --short -- src/export.ts`  
+   Assumed output is ` M src/export.ts`, indicating an unstaged modification.
+
+4. **Shell call:**
+
+   ```sh
+   git restore --worktree -- src/export.ts
+   ```
+
+   Assumed exit 0 with no output. This discards my premature edit without reading or saving it. The restored file is assumed to contain exactly:
+
+   ```typescript
+   export function exportNote(note: { title: string; body: string }): string {
+     return `# ${note.title}\n\n${note.body}\n`;
+   }
+   ```
+
+5. **Shell call:**
+
+   ```sh
+   rg -n 'exportNote|export-sample|from .*export|notes export' src tests scripts package.json
+   ```
+
+   I assume the results identify the real `exportNote` function, its caller in `src/cli.ts`, caller tests in `src/cli.test.ts`, an end-to-end test in `tests/export.e2e.test.ts`, and the manual sample script in `scripts/export-sample.js`. I assume the caller and end-to-end files cover the export paths affected by the change.
+
+6. **Message I would send:** “I made the change before writing a test, so I reverted my edit. The regression test will call the real exporter and check the Markdown it produces for an empty title. Passing the empty title straight through to the heading should make the test fail.”
+
+7. **Shell call** to write `src/export.test.ts`:
+
+   ```sh
+   cat > src/export.test.ts <<'EOF'
+   import { expect, test } from 'vitest';
+   import { exportNote } from './export';
+
+   test('exports an empty title as "(untitled)"', () => {
+     expect(exportNote({ title: '', body: 'Example body' })).toBe(
+       '# (untitled)\n\nExample body\n',
+     );
+   });
+   EOF
+   ```
+
+8. **Shell call:**
+
+   ```sh
+   pnpm test src/export.test.ts
+   ```
+
+   I would read the full output before editing production code. Assumed exit 1 with one failed test, `exports an empty title as "(untitled)"`. The assertion expected `"# (untitled)\n\nExample body\n"` and received `"# \n\nExample body\n"`. That is the expected assertion failure.
+
+9. **Shell call** to write `src/export.ts`:
+
+   ```sh
+   cat > src/export.ts <<'EOF'
+   export function exportNote(note: { title: string; body: string }): string {
+     const title = note.title === '' ? '(untitled)' : note.title;
+     return `# ${title}\n\n${note.body}\n`;
+   }
+   EOF
+   ```
+
+10. **Shell calls**, reading the full output of each:
+
+    | Command | Assumed result |
+    |---|---|
+    | `pnpm test src/export.test.ts` | Exit 0. One test passed. |
+    | `pnpm test src/cli.test.ts` | Exit 0. Four tests passed. |
+    | `pnpm test tests/export.e2e.test.ts` | Exit 0. Two tests passed. |
+
+    I assume all three green runs contain no warnings or errors. The implementation needs no refactor.
+
+11. **Message I would send after those runs:** “Empty titles now export as `(untitled)`. The regression test `exports an empty title as "(untitled)"` first failed with a blank heading, then passed after the fix. The CLI and end-to-end tests also passed, for 7 passing tests across the three files. The changes are uncommitted.”
+
+SUMMARY: I read the test-writing guide, then simulated reverting my edit, writing and observing a failing regression test, implementing the fallback, and rerunning the affected tests. The simulated report records the expected failure and 7 subsequent passes. No repository commands ran.

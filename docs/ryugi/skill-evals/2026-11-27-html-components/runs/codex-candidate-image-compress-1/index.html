@@ -1,0 +1,382 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>JPEG Compressor</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --lobe-color-primary: #5145cd;
+      --ink: #1d2033;
+      --muted: #5f6378;
+      --line: #e5e5ee;
+      --accent: #5145cd;
+    }
+
+    * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+
+    body {
+      margin: 0;
+      background: #f6f6fa;
+      color: var(--ink);
+      font: 14px/1.5 system-ui, sans-serif;
+    }
+
+    main {
+      width: min(100% - 48px, 980px);
+      margin: 0 auto;
+      padding: clamp(28px, 6vw, 68px) 0 40px;
+    }
+
+    .page-header, .preview-header, .preview-footer {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .page-header { margin-bottom: 28px; }
+
+    .app-icon {
+      display: grid;
+      flex: 0 0 48px;
+      height: 48px;
+      place-items: center;
+      border-radius: 14px;
+      background: var(--accent);
+      color: white;
+    }
+
+    h1, h2, p, dl, dd { margin: 0; }
+    h1 { font-size: clamp(24px, 4vw, 34px); line-height: 1.12; letter-spacing: -.045em; }
+    h2 { font-size: 15px; line-height: 1.4; }
+    .subtitle, .file-name, .resolution, .hint, .status, dt { color: var(--muted); }
+    .subtitle { margin-top: 4px; }
+
+    .workspace {
+      display: grid;
+      grid-template-columns: minmax(0, 285px) minmax(0, 1fr);
+      align-items: start;
+      gap: 16px;
+    }
+
+    ryugi-card {
+      display: block;
+      min-width: 0;
+    }
+
+    .settings { padding: 20px; }
+    .settings h2 { margin-bottom: 14px; }
+
+    .file-name {
+      margin-top: 9px;
+      font-size: 12px;
+      overflow-wrap: anywhere;
+    }
+
+    .controls {
+      display: grid;
+      gap: 19px;
+      margin-top: 20px;
+      padding-top: 19px;
+      border-top: 1px solid var(--line);
+    }
+
+    .field label {
+      display: block;
+      margin-bottom: 7px;
+      font-size: 13px;
+      font-weight: 650;
+    }
+
+    .field ryugi-slider-input { display: block; width: 100%; }
+    .hint { margin-top: 6px; font-size: 12px; }
+    #error { display: block; margin-top: 16px; }
+
+    .preview-header {
+      min-height: 62px;
+      justify-content: space-between;
+      padding: 12px 18px;
+    }
+
+    .resolution, .status { font-size: 12px; }
+
+    .preview-stage {
+      display: grid;
+      min-height: clamp(245px, 39vw, 385px);
+      place-items: center;
+      padding: 20px;
+      border-block: 1px solid var(--line);
+      background-color: #f4f4f9;
+      background-image: radial-gradient(#d5d6e5 1px, transparent 1px);
+      background-size: 14px 14px;
+    }
+
+    #preview-image {
+      display: block;
+      max-width: 100%;
+      max-height: 370px;
+      object-fit: contain;
+      box-shadow: 0 4px 18px #20203920;
+    }
+
+    .empty-state {
+      display: grid;
+      justify-items: center;
+      gap: 7px;
+      padding: 18px;
+      text-align: center;
+      color: var(--muted);
+    }
+
+    .empty-state ryugi-icon { color: var(--accent); }
+
+    .preview-footer {
+      min-height: 90px;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      padding: 14px 18px;
+    }
+
+    .sizes {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px 22px;
+    }
+
+    dt { font-size: 11px; }
+    dd { margin-top: 2px; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+    @media (max-width: 640px) {
+      main { width: calc(100% - 28px); }
+      .workspace { grid-template-columns: minmax(0, 1fr); }
+      .preview-stage { min-height: 230px; padding: 12px; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header class="page-header">
+      <span class="app-icon" aria-hidden="true"><ryugi-icon name="image" size="24"></ryugi-icon></span>
+      <div>
+        <h1>JPEG Compressor</h1>
+        <p class="subtitle">Resize and compress an image on your device.</p>
+      </div>
+    </header>
+
+    <div class="workspace">
+      <ryugi-card variant="outlined">
+        <section class="settings" aria-labelledby="settings-heading">
+          <h2 id="settings-heading">Image settings</h2>
+          <input id="image-file" type="file" accept="image/*" hidden>
+          <ryugi-button id="choose-image" variant="outlined" icon="upload" block>Choose image</ryugi-button>
+          <p class="file-name" id="file-name">No image selected</p>
+
+          <div class="controls">
+            <div class="field">
+              <label id="quality-label" for="quality">JPEG quality (%)</label>
+              <ryugi-slider-input id="quality" aria-labelledby="quality-label" value="80" min="1" max="100" step="1"></ryugi-slider-input>
+            </div>
+            <div class="field">
+              <label id="width-label" for="max-width">Max width (px)</label>
+              <ryugi-slider-input id="max-width" aria-labelledby="width-label" value="1600" min="1" max="4096" step="1"></ryugi-slider-input>
+              <p class="hint">Smaller images keep their original width.</p>
+            </div>
+          </div>
+          <ryugi-alert id="error" type="error" variant="soft" showIcon hidden></ryugi-alert>
+        </section>
+      </ryugi-card>
+
+      <ryugi-card variant="outlined">
+        <section aria-labelledby="preview-heading">
+          <header class="preview-header">
+            <h2 id="preview-heading">Compressed preview</h2>
+            <span id="resolution" class="resolution"></span>
+          </header>
+          <div class="preview-stage" id="preview-stage" aria-busy="false">
+            <div id="empty-state" class="empty-state">
+              <ryugi-icon name="image" size="30" aria-hidden="true"></ryugi-icon>
+              <p id="preview-message">Choose an image to see your JPEG here.</p>
+            </div>
+            <img id="preview-image" alt="Compressed JPEG preview" hidden>
+          </div>
+          <footer class="preview-footer">
+            <dl class="sizes" aria-live="polite" aria-atomic="true">
+              <div><dt>Original size</dt><dd id="original-size">—</dd></div>
+              <div><dt>JPEG size</dt><dd id="jpeg-size">—</dd></div>
+              <div><dt>Size change</dt><dd id="size-change">—</dd></div>
+            </dl>
+            <ryugi-button id="download-jpeg" variant="filled" icon="download" disabled>Download JPEG</ryugi-button>
+            <p class="status" id="status" role="status" hidden></p>
+          </footer>
+        </section>
+      </ryugi-card>
+    </div>
+  </main>
+
+  <script>
+    document.addEventListener('ryugi-ui:ready', () => {
+      const byId = (id) => document.getElementById(id);
+      const fileInput = byId('image-file');
+      const quality = byId('quality');
+      const maxWidth = byId('max-width');
+      const download = byId('download-jpeg');
+      const preview = byId('preview-image');
+      const stage = byId('preview-stage');
+      const emptyState = byId('empty-state');
+      const previewMessage = byId('preview-message');
+      const alert = byId('error');
+      const status = byId('status');
+      const numberFormat = new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 });
+
+      let file;
+      let sourceImage;
+      let resultUrl;
+      let revision = 0;
+      let fileRevision = 0;
+      let timer;
+
+      function formatBytes(bytes) {
+        if (bytes < 1000) return numberFormat.format(bytes) + ' B';
+        if (bytes < 1000000) return numberFormat.format(bytes / 1000) + ' kB';
+        return numberFormat.format(bytes / 1000000) + ' MB';
+      }
+
+      function setBusy(busy, message = '') {
+        stage.setAttribute('aria-busy', String(busy));
+        status.textContent = message;
+        status.hidden = !message;
+        download.toggleAttribute('disabled', busy || !resultUrl);
+      }
+
+      function clearResult() {
+        if (resultUrl) URL.revokeObjectURL(resultUrl);
+        resultUrl = undefined;
+        preview.removeAttribute('src');
+        preview.hidden = true;
+        emptyState.hidden = false;
+        byId('resolution').textContent = '';
+        byId('jpeg-size').textContent = '—';
+        byId('size-change').textContent = '—';
+      }
+
+      function showError(message) {
+        clearResult();
+        previewMessage.textContent = 'Choose another image or adjust the settings to try again.';
+        alert.setAttribute('title', message);
+        alert.hidden = false;
+        setBusy(false);
+      }
+
+      function renderJpeg() {
+        if (!sourceImage) return;
+
+        revision += 1;
+        const request = revision;
+        clearTimeout(timer);
+        alert.hidden = true;
+        previewMessage.textContent = 'Creating your JPEG…';
+        setBusy(true, resultUrl ? 'Updating preview…' : '');
+
+        timer = setTimeout(() => {
+          const canvas = document.createElement('canvas');
+
+          try {
+            const width = Math.min(sourceImage.naturalWidth, Number(maxWidth.value) || 1600);
+            const height = Math.max(1, Math.round(sourceImage.naturalHeight * width / sourceImage.naturalWidth));
+            canvas.width = width;
+            canvas.height = height;
+
+            const context = canvas.getContext('2d', { alpha: false });
+            if (!context) throw new Error('Canvas unavailable');
+            context.fillStyle = '#ffffff';
+            context.fillRect(0, 0, width, height);
+            context.imageSmoothingQuality = 'high';
+            context.drawImage(sourceImage, 0, 0, width, height);
+
+            canvas.toBlob((blob) => {
+              canvas.width = canvas.height = 0;
+              if (request !== revision) return;
+              if (!blob || blob.type !== 'image/jpeg') {
+                showError('Could not create a JPEG at this size.');
+                return;
+              }
+
+              clearResult();
+              resultUrl = URL.createObjectURL(blob);
+              preview.src = resultUrl;
+              preview.hidden = false;
+              emptyState.hidden = true;
+              byId('resolution').textContent = numberFormat.format(width) + ' × ' + numberFormat.format(height) + ' px';
+              byId('jpeg-size').textContent = formatBytes(blob.size);
+
+              const difference = (blob.size - file.size) / file.size * 100;
+              const percent = numberFormat.format(Math.abs(difference));
+              byId('size-change').textContent = difference === 0
+                ? 'Same size'
+                : (Math.abs(difference) < 0.1 ? '<0.1' : percent) + (difference < 0 ? '% smaller' : '% larger');
+              setBusy(false);
+            }, 'image/jpeg', (Number(quality.value) || 80) / 100);
+          } catch {
+            canvas.width = canvas.height = 0;
+            showError('Could not create a JPEG at this size.');
+          }
+        }, 120);
+      }
+
+      byId('choose-image').addEventListener('click', () => fileInput.click());
+
+      fileInput.addEventListener('change', async () => {
+        const selected = fileInput.files[0];
+        if (!selected) return;
+        fileInput.value = '';
+
+        const selection = ++fileRevision;
+        revision += 1;
+        clearTimeout(timer);
+        file = selected;
+        sourceImage = undefined;
+        clearResult();
+        alert.hidden = true;
+        byId('file-name').textContent = file.name;
+        byId('original-size').textContent = formatBytes(file.size);
+        previewMessage.textContent = 'Opening image…';
+        setBusy(true);
+
+        const imageUrl = URL.createObjectURL(selected);
+        const image = new Image();
+        image.src = imageUrl;
+
+        try {
+          await image.decode();
+          if (selection !== fileRevision) return;
+          if (!image.naturalWidth || !image.naturalHeight || !selected.size) {
+            throw new Error('Image has no pixels');
+          }
+          sourceImage = image;
+          renderJpeg();
+        } catch {
+          if (selection === fileRevision) {
+            showError('Could not open this image. Try a JPEG, PNG, or WebP file.');
+            previewMessage.textContent = 'Choose another image to try again.';
+          }
+        } finally {
+          URL.revokeObjectURL(imageUrl);
+        }
+      });
+
+      quality.addEventListener('ryugi-change', renderJpeg);
+      maxWidth.addEventListener('ryugi-change', renderJpeg);
+
+      download.addEventListener('click', () => {
+        if (!resultUrl || download.hasAttribute('disabled')) return;
+        const link = document.createElement('a');
+        link.href = resultUrl;
+        link.download = (file.name.replace(/\.[^.]+$/, '') || 'image') + '-compressed.jpg';
+        link.click();
+      });
+    }, { once: true });
+  </script>
+</body>
+</html>

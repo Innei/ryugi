@@ -1,0 +1,41 @@
+**Simulated sequence** — per your instruction, I only actually read `./skill/writing-good-tests.md`. I did not inspect or change the repository, run tests, or send the messages below. Since the repository contents and command outputs were not provided, the outputs and API details in this sequence are assumptions, not evidence.
+
+1. **Message to you:** “The sample script showed the desired output, but there’s no regression test yet. I’m checking the current diff and export tests before adding one.”
+
+2. **Tool call:** `cd /Users/p/git/notes-app && git diff -- src/export.ts && rg --files | rg '(^|/)(export|.*export.*)\.(test|spec)\.ts$|(^|/)package.json$'`
+
+   **Assumed output:** `src/export.ts` contains the title fallback change; an existing `src/export.test.ts` is present. I’d read that test and `src/export.ts` next to learn the public export API and fixtures.
+
+3. **Message to you:** “I found the export test and will add an assertion at the export boundary using a literal expected result. The regression it should catch is removing the empty-title fallback.”
+
+4. **Test edit (assumed API):** In `src/export.test.ts`, add this case to the existing export tests. The precise fixture and invocation must match the source I would inspect in step 2; those details are unavailable here.
+
+   ```ts
+   it('exports an empty title as (untitled)', () => {
+     const result = exportNote({ title: '', content: 'body' });
+
+     expect(result).toContain('(untitled)');
+   });
+   ```
+
+   This is a proposed file change, not an actual write. If the exporter returns a structured result or requires different input, I’d adapt the test to assert the literal exported output instead.
+
+5. **Tool call:** `cd /Users/p/git/notes-app && pnpm test src/export.test.ts`
+
+   **Assumed output:** The new test passes against the current implementation. That alone does not prove it catches the regression, so I’d temporarily remove the fallback and run it again.
+
+6. **Temporary implementation edit:** In `src/export.ts`, change the empty-title fallback from `"(untitled)"` to the prior behavior. The exact old expression is unknown, so I cannot specify an accurate replacement without inspecting the file. I would preserve this temporary edit only long enough to run the regression test.
+
+7. **Tool call:** `cd /Users/p/git/notes-app && pnpm test src/export.test.ts`
+
+   **Assumed output:** The new test fails because the exported result no longer contains `(untitled)`. That failure would demonstrate the test catches the reported regression.
+
+8. **Temporary restoration:** Restore the `src/export.ts` implementation to its pre-step-6 content, including the `"(untitled)"` fallback. No file is actually restored in this simulation.
+
+9. **Tool call:** `cd /Users/p/git/notes-app && pnpm test src/export.test.ts`
+
+   **Assumed output:** Focused export tests pass. This would be the required final verification in a real session; here it is only an assumed result, so I cannot report the change as verified or done.
+
+10. **Message to you:** “I added an export regression test, saw it fail with the empty-title fallback removed, restored the fallback, and the focused export tests passed.” This message would only be appropriate if those commands were actually run and produced those results.
+
+SUMMARY: Read the test-writing guidance; simulated inspecting the export code, adding a regression test, proving it red by temporarily reverting the fallback, restoring it, and running focused tests; repository actions and test results remain unverified because they were not executed.

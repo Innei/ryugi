@@ -142,8 +142,8 @@ the package manager the repository uses: frozen when the lockfile is
 committed (`pnpm install --frozen-lockfile`, `npm ci`, …), a plain install
 when it is not. Never symlink or copy `node_modules` from another
 checkout: workspace packages would resolve to that checkout's source. Run
-the project's test command once; if it fails, report the failures and ask
-whether to go on.
+the tests of the area the work will touch once; if they fail, report the
+failures and ask whether to go on. The full suite waits for landing.
 
 ## Cleanup
 

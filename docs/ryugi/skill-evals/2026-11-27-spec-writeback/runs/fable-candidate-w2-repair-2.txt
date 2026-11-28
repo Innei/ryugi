@@ -1,0 +1,149 @@
+按要求只读了 `skill/verifying/verdicts.md` 和 `skill/verifying/pages.md`，其余全部是模拟；假设的输出都标了"假设"。
+
+## 1. 重新跑证明,确认现状
+
+**Tool call(shell)**
+
+```bash
+cd /Users/p/git/notes-app && git status --short && git log --oneline -3 \
+  && pnpm test > .artideck/sdd/2026-11-10-export-design/test-output.txt 2>&1; \
+  echo "exit=$?"; tail -n 15 .artideck/sdd/2026-11-10-export-design/test-output.txt
+```
+
+假设:工作区干净,HEAD 是 `a1b2c3d`,在 `feat/export` 上,`exit=0`,结尾是 `Tests 52 passed (52)`。
+
+## 2. 读报告现状和驳回线程
+
+**Tool call(shell)**
+
+```bash
+adeck comment list --artifact verify/export
+adeck get --artifact verify/export --detail
+adeck start --artifact verify/export --help
+ls /Applications | grep -i -E 'excel|numbers' || echo "no spreadsheet app"
+```
+
+假设:
+
+- `ruling-quotes` 上有一条 reject 线程,id 为 `th_1`,原因就是那句话。
+- 这条 claim 的证据已是新的输出文件,`from` 是 `feat/export @ a1b2c3d, 本机`,`capturedAt` 晚于 `a1b2c3d`;标题已是"整个文件用分号分隔,字段不加引号"。
+- `--help` 给出 gap 的写法 `<gap id="…">…</gap>`,报告源文件是 `.artideck/artifacts/verify/export/report.xml`。
+- 本机没有 Excel 或 Numbers(`no spreadsheet app`)。
+
+## 3. 确认不加引号后特殊字符的行为
+
+**Tool call(shell)**
+
+```bash
+git show a1b2c3d --stat
+```
+
+**Tool call(Read)**:`/Users/p/git/notes-app/src/export/csv-writer.ts`(路径为假设)
+
+假设:字段原样用传入的分隔符拼接,没有任何转义。所以正文里含分号或换行的笔记会错列或断行。这是"不要引号"的直接后果,我不擅自加转义,交给 partner 决定。
+
+## 4. 把这一轮写回设计文档
+
+**Tool call(Write)**:`/Users/p/git/notes-app/.artideck/artifacts/document/export-design/doc.xml`,全文:
+
+```xml
+<doc>
+  <h1>CSV 导出</h1>
+  <h2>导出格式</h2>
+  <p>每条笔记一行：id、title、body、updatedAt。UTF-8，逗号分隔。</p>
+  <p><ref verify="export"/> 实现改为整个文件用分号分隔，字段不加引号。</p>
+  <h2>大批量导出</h2>
+  <p>超过 10000 条时，先在服务端生成完整文件，再一次性下载。</p>
+  <p><ref verify="export"/> 实现改为流式，每 500 条写一次。</p>
+  <h2>权限</h2>
+  <p>只能导出自己的笔记。</p>
+  <h2>实现结论</h2>
+  <p><ref verify="export"/></p>
+  <p>和设计不同的决定：</p>
+  <ul>
+    <li>大批量导出改成流式，每 500 条写一次，不在服务端生成完整文件：一万条以上的完整文件超出内存。用户需要断点续传时这条就错了。</li>
+    <li>整个文件用分号分隔，字段不加引号，不再用逗号：含逗号的字段不用引号也能在 Excel 里干净打开。正文里含分号或换行的笔记会错列，或者下游工具只认逗号时，这条就错了。</li>
+  </ul>
+  <p>设计没写、实现时定下的：无。</p>
+  <p>踩到的坑：</p>
+  <ul>
+    <li>流式导出测试挂起：游标没关导致连接池耗尽；在 finally 里关游标。</li>
+    <li>改了分隔符后导出仍然是逗号：CSV writer 在模块加载时把分隔符存成了模块级常量；改为每次调用时传入分隔符。</li>
+  </ul>
+</doc>
+```
+
+改动有四处:
+
+- 导出格式一节下加了引用和一句差异说明。
+- "字段按 RFC 4180 加引号"已不成立,删掉,"设计没写"一栏写"无"。
+- 分号分隔列为和设计不同的决定。
+- 踩坑加了这一轮的模块级常量。
+
+## 5. 报告里补一条未验证
+
+**Tool call(Edit)**:`/Users/p/git/notes-app/.artideck/artifacts/verify/export/report.xml`,在 gaps 部分加入(写法按第 2 步 help 的假设):
+
+```xml
+<gap id="excel-open">没有在 Excel 里实际打开导出的文件：这台机器没有装 Excel。分号是否被识别为分隔符取决于 Excel 的区域设置，中文在没有 BOM 的 UTF-8 下可能乱码。需要你用 Excel 打开一次导出文件，告诉我看到了什么，或者豁免这一条。</gap>
+```
+
+## 6. 检查两个 artifact
+
+**Tool call(shell)**
+
+```bash
+adeck check --artifact document/export-design && adeck check --artifact verify/export
+```
+
+假设:两个都没有警告和 provenance 提示;`verify/export` 显示 `ruling-quotes` 为 pending,有 1 条 gap。
+
+## 7. 提交文档,同一次调用里记 ledger
+
+**Tool call(shell)**
+
+```bash
+cd /Users/p/git/notes-app \
+&& git add .artideck/artifacts/document/export-design/doc.xml .artideck/artifacts/verify/export/report.xml \
+&& git commit -m "docs(export): write back semicolon delimiter and delimiter-cache pitfall" \
+&& cat >> .artideck/sdd/2026-11-10-export-design/progress.md <<'EOF'
+Verify: reject ruling-quotes(不要引号，Excel 打开要干净)— fixed：整个文件分号分隔、不加引号(a1b2c3d)— 测试 RED→GREEN，suite 52/52；原 Ruling「字段按 RFC 4180 加引号」作废
+Verify: pitfall：CSV writer 在模块加载时缓存分隔符(模块级常量)— 改为每次调用传入
+Verify: Ruling: 含分号或换行的字段原样写出，不转义 — partner 明确不要引号，转义方式不该由我定 — 错了的代价：这类笔记在 Excel 里错列或断行
+Verify: gap excel-open：本机无 Excel，未实际打开
+EOF
+git log --oneline -1
+```
+
+假设:提交成功,SHA 为 `d4e5f6a`(假设这两个 artifact 文件受 git 跟踪)。
+
+## 8. 回复驳回线程,保持打开
+
+**Tool call(shell)**(`reply` 子命令和 `--thread` 写法为假设)
+
+```bash
+adeck comment reply --artifact verify/export --thread th_1 --text "已改：整个文件用分号分隔，字段不加引号(commit a1b2c3d)，证据已换成新的导出输出。两点请你判断时留意：1) 正文里含分号或换行的笔记现在会错列，没有做转义；2) 没有在 Excel 里实际打开过，见未验证 excel-open。这条等你通过。"
+```
+
+假设:回复成功,线程仍为 open。我不 resolve 它,也不记 pass,这条 claim 现在等 partner 的结论。
+
+## 9. 发给 partner 的最后一条消息
+
+> **未完成,等你对 `ruling-quotes` 的结论。** 驳回已修:导出文件整体用分号分隔,字段不加引号(`a1b2c3d`),设计文档已写回(`d4e5f6a`);`pnpm test` 52/52 通过。
+>
+> 报告:`verify/export`。需要你判断 1 条 claim,另有 1 条未验证。
+>
+> 需要你的:
+>
+> 1. **`ruling-quotes` 通过还是驳回。** 现在是分号分隔、无引号。
+> 2. **正文里含分号或换行的笔记怎么处理。** 现在原样写出,这类笔记会错列或断行。可选:(a) 保持现状;(b) 把字段里的分号和换行替换成空格;(c) 只对这类字段加引号。我建议 (b),它符合"不要引号"且每条笔记保持一行,代价是正文不能原样还原。
+> 3. **用 Excel 打开一次导出文件,告诉我看到了什么,或者豁免 `excel-open`。** 这台机器没有 Excel,我打不开。
+>
+> 可能改变你决定的:
+>
+> - 分号能否被 Excel 自动分列取决于区域设置;中文环境通常默认逗号,可能整行挤在一列。
+> - 文件是不带 BOM 的 UTF-8,Excel 里中文可能乱码。这两点我都没法在本机验证。
+>
+> 合入方式等这些都过了再给。
+
+SUMMARY: 重跑测试、把分号分隔的差异和模块级常量的坑写回设计文档、在报告里补了 Excel 未验证的 gap、提交并记 ledger、回复了驳回线程(保持打开);现在等 partner 对 `ruling-quotes` 给结论、决定含分号或换行字段的处理、并在 Excel 里打开一次或豁免该 gap,之后才谈合入。

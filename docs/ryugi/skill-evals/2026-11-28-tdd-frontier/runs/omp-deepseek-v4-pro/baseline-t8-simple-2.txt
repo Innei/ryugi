@@ -1,0 +1,235 @@
+# Simulation transcript — notes list sort by title
+
+**Context already known (not re-run):** `rg -l NotesList src` → `src/components/NotesList.tsx`, `src/pages/NotesPage.tsx`. `sortBy` is in `src/sort.ts`, covered by `src/sort.test.ts` (ascending, descending, string keys, ties). No NotesList test exists. `src/pages/NotesPage.test.tsx` renders the page with two notes. Worktree decision already made: work in place.
+
+The TDD skill (already loaded) and its `writing-good-tests.md` principles require: name the production change the test will catch before writing it — here it's `'createdAt'` → `'title'` in `NotesList.tsx`; assert real rendered behavior, not mock behavior.
+
+---
+
+## 1. Exploration (read-only)
+
+**Command 1** — `cat src/components/NotesList.tsx`
+*Assumed output:*
+```tsx
+import type { Note } from '../types';
+import { sortBy } from '../sort';
+
+type NotesListProps = {
+  notes: Note[];
+};
+
+export function NotesList({ notes }: NotesListProps) {
+  const sorted = sortBy(notes, 'createdAt');
+
+  return (
+    <ul>
+      {sorted.map((note) => (
+        <li key={note.id}>{note.title}</li>
+      ))}
+    </ul>
+  );
+}
+```
+
+**Command 2** — `cat src/sort.ts`
+*Assumed output (exact generic irrelevant; not changing this file):*
+```ts
+export type SortDirection = 'asc' | 'desc';
+
+export function sortBy<T extends Record<string, unknown>>(
+  items: readonly T[],
+  key: keyof T,
+  direction: SortDirection = 'asc',
+): T[] {
+  return [...items].sort((a, b) => {
+    const aValue = a[key];
+    const bValue = b[key];
+    if (aValue < bValue) return direction === 'asc' ? -1 : 1;
+    if (aValue > bValue) return direction === 'asc' ? 1 : -1;
+    return 0;
+  });
+}
+```
+
+**Command 3** — `cat src/types.ts`
+*Assumed output:*
+```ts
+export interface Note {
+  id: string;
+  title: string;
+  createdAt: number;
+}
+```
+
+**Command 4** — `cat src/pages/NotesPage.test.tsx`
+*Assumed output (presence assertions only, order-agnostic — so it stays green after the change):*
+```tsx
+import { render, screen } from '@testing-library/react';
+import { describe, expect, it } from 'vitest';
+import { NotesPage } from './NotesPage';
+
+describe('NotesPage', () => {
+  it('renders notes', () => {
+    render(
+      <NotesPage
+        notes={[
+          { id: '1', title: 'First note', createdAt: 1000 },
+          { id: '2', title: 'Second note', createdAt: 2000 },
+        ]}
+      />,
+    );
+
+    expect(screen.getByText('First note')).toBeTruthy();
+    expect(screen.getByText('Second note')).toBeTruthy();
+  });
+});
+```
+
+**Command 5** — `rg "sortBy" src` (confirm no other caller sorts by `createdAt`)
+*Assumed output:*
+```
+src/sort.ts:4:export function sortBy<
+src/sort.test.ts:3:import { sortBy } from './sort';
+src/components/NotesList.tsx:8:  const sorted = sortBy(notes, 'createdAt');
+```
+
+Only `NotesList.tsx` calls `sortBy`, so the one-line change is the complete fix.
+
+---
+
+## 2. RED — write the failing test
+
+**Command 6** — write `src/components/NotesList.test.tsx`:
+```bash
+cat > src/components/NotesList.test.tsx <<'EOF'
+import { render, screen } from '@testing-library/react';
+import { describe, expect, it } from 'vitest';
+import { NotesList } from './NotesList';
+
+describe('NotesList', () => {
+  it('renders notes sorted by title', () => {
+    render(
+      <NotesList
+        notes={[
+          { id: '1', title: 'banana', createdAt: 1000 },
+          { id: '2', title: 'apple', createdAt: 2000 },
+        ]}
+      />,
+    );
+
+    const items = screen.getAllByRole('listitem');
+    expect(items.map((item) => item.textContent)).toEqual(['apple', 'banana']);
+  });
+});
+EOF
+```
+
+Design note: `title` order (`apple`, `banana`) is the opposite of `createdAt` order (`banana`=1000, `apple`=2000), so this test passes iff the sort key is `title`.
+
+---
+
+## 3. Verify RED — watch it fail
+
+**Command 7** — `pnpm test src/components/NotesList.test.tsx`
+*Assumed output (exit 1):*
+```
+ RUN  v1.6.0 /Users/p/git/notes-app
+
+ ❯ src/components/NotesList.test.tsx (1)
+   ❯ NotesList (1)
+     × renders notes sorted by title
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/components/NotesList.test.tsx > NotesList > renders notes sorted by title
+AssertionError: expected [ 'banana', 'apple' ] to deeply equal [ 'apple', 'banana' ]
+
+- Expected
++ Received
+
+  [
++   "banana",
+    "apple",
+-   "banana",
+  ]
+
+ Test Files  1 failed (1)
+      Tests  1 failed (1)
+```
+
+Confirms: fails (not errors), for the expected reason — the list is currently ordered by `createdAt` (`banana` first), not by `title`.
+
+---
+
+## 4. GREEN — minimal change
+
+**Command 8** — `sed -i '' "s/sortBy(notes, 'createdAt')/sortBy(notes, 'title')/" src/components/NotesList.tsx`
+
+Resulting `src/components/NotesList.tsx`:
+```tsx
+import type { Note } from '../types';
+import { sortBy } from '../sort';
+
+type NotesListProps = {
+  notes: Note[];
+};
+
+export function NotesList({ notes }: NotesListProps) {
+  const sorted = sortBy(notes, 'title');
+
+  return (
+    <ul>
+      {sorted.map((note) => (
+        <li key={note.id}>{note.title}</li>
+      ))}
+    </ul>
+  );
+}
+```
+
+---
+
+## 5. Verify GREEN — watch it pass
+
+**Command 9** — `pnpm test src/components/NotesList.test.tsx`
+*Assumed output (exit 0):*
+```
+ RUN  v1.6.0 /Users/p/git/notes-app
+
+ ✓ src/components/NotesList.test.tsx (1)
+   ✓ NotesList (1)
+     ✓ renders notes sorted by title
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+```
+
+---
+
+## 6. Full-suite + typecheck (the change's whole reach)
+
+**Command 10** — `pnpm test`
+*Assumed output (exit 0):*
+```
+ Test Files  3 passed (3)
+      Tests  6 passed (6)
+```
+(3 files: `sort.test.ts`, `NotesPage.test.tsx`, `NotesList.test.tsx`; `NotesPage.test.tsx` only asserts presence, so it stays green.)
+
+**Command 11** — `pnpm typecheck`
+*Assumed output (exit 0, no output):* tsc compiles cleanly — `sortBy` on the string key `title` is type-valid.
+
+---
+
+## Message to human partner
+
+> Done — the notes list now sorts by title.
+>
+> - Added `src/components/NotesList.test.tsx` (`renders notes sorted by title`). Watched it fail first: got `['banana', 'apple']`, expected `['apple', 'banana']`, because the list was sorted by `createdAt`.
+> - Changed `sortBy(notes, 'createdAt')` → `sortBy(notes, 'title')` in `src/components/NotesList.tsx`.
+> - Verified this session:
+>   - `pnpm test src/components/NotesList.test.tsx` — 1 passed.
+>   - `pnpm test` — 3 files / 6 tests passed (sort, NotesPage, NotesList).
+>   - `pnpm typecheck` — exit 0.
+
+SUMMARY: I read `NotesList.tsx`, `sort.ts`, `types.ts`, `NotesPage.test.tsx`, and grepped `sortBy` callers (only NotesList) to confirm scope; wrote a failing `NotesList.test.tsx` asserting title order with titles in the opposite order of `createdAt`; watched it fail (`['banana','apple']` vs `['apple','banana']`); changed `'createdAt'` to `'title'`; watched the test pass; then ran the full suite (3 files/6 tests) and `pnpm typecheck` (exit 0) and reported the change and evidence to the partner.

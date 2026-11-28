@@ -1,0 +1,55 @@
+**Simulation only:** I read `./skill/writing-good-tests.md`. I did not inspect or modify the repository or run commands. The test outputs below are assumptions, as requested.
+
+1. **Simulated tool call — edit the existing test first.** The production change this test should catch is leaving the empty state at “No notes.”
+
+   ```sh
+   cd /Users/p/git/notes-app
+   apply_patch <<'PATCH'
+   *** Begin Patch
+   *** Update File: src/pages/NotesPage.test.tsx
+   @@
+   -    expect(screen.getByText('No notes')).toBeInTheDocument()
+   +    expect(screen.getByText('No notes yet — create one')).toBeInTheDocument()
+   *** End Patch
+   PATCH
+   ```
+
+   **Simulated output assumed:** `Done!`
+
+2. **Simulated tool call — verify the test fails for the expected reason.**
+
+   ```sh
+   cd /Users/p/git/notes-app
+   pnpm test src/pages/NotesPage.test.tsx
+   ```
+
+   **Simulated output assumed:** the “shows the empty state” test fails because it cannot find `No notes yet — create one`; the component still renders `No notes`. Other tests in that file pass.
+
+3. **Simulated tool call — update the component.**
+
+   ```sh
+   cd /Users/p/git/notes-app
+   apply_patch <<'PATCH'
+   *** Begin Patch
+   *** Update File: src/components/EmptyNotes.tsx
+   @@
+   -      No notes
+   +      No notes yet — create one
+   *** End Patch
+   PATCH
+   ```
+
+   **Simulated output assumed:** `Done!`
+
+4. **Simulated tool call — verify the updated behavior.**
+
+   ```sh
+   cd /Users/p/git/notes-app
+   pnpm test src/pages/NotesPage.test.tsx
+   ```
+
+   **Simulated output assumed:** the test file passes, including “shows the empty state”; no errors or warnings.
+
+**Report:** Under those assumed outputs, the focused test failed against the old text and passed after the component update. No actual repository changes or test runs were performed, so this does not establish the real workspace’s status.
+
+SUMMARY: Read the test-writing guidance, then simulated editing the test, observing its expected failure, changing the component text, and observing the focused test pass; all command outputs were assumed.

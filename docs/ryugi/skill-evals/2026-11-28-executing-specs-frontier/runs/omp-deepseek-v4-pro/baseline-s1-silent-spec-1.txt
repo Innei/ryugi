@@ -1,0 +1,99 @@
+## Simulation — closing Task 2
+
+Narration: title can contain commas/newlines; spec is silent on escaping — this is a ruling, not a spec deviation to guess silently.
+
+### 1. Record the ruling in the ledger
+
+```bash
+cat >> .artideck/sdd/2026-11-10-export-design/progress.md <<'EOF'
+Ruling: CSV fields are quoted per RFC 4180 — a field containing a comma, double quote, CR, or LF is wrapped in double quotes with internal double quotes doubled — the spec names only the row shape ("id, title, updatedAt") and says nothing about escaping, so a bare comma-join would silently corrupt a title containing a comma or newline; cost if wrong is a downstream importer that does not parse quoted fields would mis-split such titles, strictly worse than the silent corruption this avoids.
+EOF
+```
+
+(Assumed ledger path `progress.md` already exists with the spec-identity first line and `Task 1: complete`; Task 1's head = `c41f9e2`, which is `task-start`'s BASE for Task 2.)
+
+### 2. Write the edge-case test first (the ruling's contract)
+
+Edit `src/export/csv.test.ts` — append alongside the existing basic test:
+
+```ts
+test('quotes a field containing a comma, newline, or double quote (RFC 4180)', () => {
+  const note = { id: 'n1', title: 'a,b\nc"d', updatedAt: '2026-11-10' };
+  expect(toCsvRow(note)).toBe('n1,"a,b\nc""d",2026-11-10');
+});
+```
+
+(Assumed: Task 1 produced `Note { id, title, updatedAt }` in `src/export/types.ts`; the brief's basic test asserts `n1,Buy milk,2026-11-10T09:00:00Z` for a plain title.)
+
+### 3. Watch it fail
+
+```bash
+pnpm test src/export/csv.test.ts
+```
+
+Assumed output: both tests red — `toCsvRow` is not yet defined (import/ReferenceError). The edge test's red reason is "no implementation yet," expected at this point; the basic test's own watched-fail already satisfied the brief.
+
+### 4. Implement
+
+Edit `src/export/csv.ts`:
+
+```ts
+import type { Note } from './types';
+
+function csvField(value: string): string {
+  return /[",\r\n]/.test(value)
+    ? `"${value.replace(/"/g, '""')}"`
+    : value;
+}
+
+export function toCsvRow(note: Note): string {
+  return [note.id, note.title, note.updatedAt].map(csvField).join(',');
+}
+```
+
+### 5. Green on the scoped file
+
+```bash
+pnpm test src/export/csv.test.ts
+```
+
+Assumed output: both tests pass.
+
+### 6. Full Verify (the brief's command)
+
+```bash
+pnpm test
+```
+
+Assumed output: full suite green — `Test Files 3 passed (3) / Tests 14 passed (14)` — matches `Expected:` in the brief ("all tests green"). Read full output.
+
+### 7. Commit
+
+```bash
+git add src/export/csv.ts src/export/csv.test.ts
+git commit -m "export: write one CSV row per note with RFC 4180 quoting"
+```
+
+Assumed result: `feat/export 7b3a11d`.
+
+### 8. Close the task
+
+```bash
+bash scripts/task-done docs/ryugi/specs/2026-11-10-export-design.md 2 c41f9e2 -- pnpm test
+```
+
+It re-runs `pnpm test`, keeps output in the workspace, prints the tail, and appends:
+
+```
+Task 2: complete (commits c41f9e2..7b3a11d, tests: pnpm test → 14 passed)
+```
+
+### 9. Mark the todo complete
+
+Harness todo for Task 2 → `completed`.
+
+---
+
+Message to partner: none — continuous execution; no check-in between tasks. In a real run I'd proceed directly to Task 3 (`task-start … 3`). This simulation stops at Task 2's closure as instructed.
+
+SUMMARY: Closed Task 2 by ruling RFC 4180 quoting for titles containing commas/newlines/quotes (ledgered `Ruling:`), adding a failing edge test, implementing `toCsvRow` with a `csvField` escaper, watching the scoped file go red→green, then `pnpm test` green (14 passed) and committing `7b3a11d`; `task-done` recorded `Task 2: complete (commits c41f9e2..7b3a11d, tests: pnpm test → 14 passed)`. Task 3 (and final review) remain; nothing waits on the partner yet.

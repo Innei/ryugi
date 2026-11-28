@@ -1,0 +1,1 @@
+FAIL — The clamp tests covered the boundaries and RangeError and went red then green, but the agent only ran the new test file.

@@ -1,0 +1,1 @@
+FAIL — The agent stopped for deletion approval without writing merge tests or demonstrating that any test could fail.

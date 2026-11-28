@@ -1,0 +1,194 @@
+The only command I actually ran was `cat ./skill/exploring.md`. It exited 0. The transcript below is simulated, including all test results and file changes. It starts after the supplied `sdd-workspace` result and stops at the review package.
+
+Each numbered shell block is one call with `/Users/p/git/notes-app` as its working directory. In those blocks, `$spec` denotes `docs/ryugi/specs/2026-11-10-export-design.md` and `$ws` denotes `/Users/p/git/notes-app/.artideck/sdd/2026-11-10-export-design`. Both stand for literal argument substitutions.
+
+**1. Read the spec and check the two paths before editing.**
+
+```sh
+cat "$spec" &&
+git status --short --branch -- src/export.ts src/export.test.ts &&
+ls -ld src src/export.ts src/export.test.ts
+```
+
+Assumed output: the spec calls for a named `exportNotesCsv(notes)` function, a `title,body` header, input order, CRLF record separators, no terminal separator, and CSV escaping for commas, double quotes, CR and LF. An empty list produces the header alone. Git prints `## main`. `ls` lists `src` and reports both files absent, exiting 1 as expected for new files. These API and format details are assumptions about the unread repo spec.
+
+**2. Create the ledger, slice the task, then record its exploratory paths.**
+
+```sh
+set -e
+printf '# SDD ledger — plan: %s\n' "$spec" > "$ws/progress.md"
+cat > "$ws/tasks.md" <<'EOF'
+## Task 1: Export notes as CSV
+
+Goal: Implement the design's CSV output contract, including empty exports, note order and field escaping.
+Files:
+- src/export.ts
+- src/export.test.ts
+Test: pnpm test src/export.test.ts
+Verify: pnpm test
+Expected: The complete suite exits 0, including the CSV export tests.
+
+## Review Focus
+Check whether the exported function accepts the project's existing note type and whether the CSV formatting still holds for non-ASCII text and records with empty fields.
+EOF
+cat > "$ws/EXPLORING" <<'EOF'
+Exploratory: may be thrown away.
+src/export.ts
+src/export.test.ts
+EOF
+printf '%s\n' 'Slicing: 1 tasks — the CSV serializer and its contract tests form one independently verifiable change.' >> "$ws/progress.md"
+```
+
+Assumed exit 0. The ledger header and `Slicing:` line above are the exact entries. No ruling is needed under the assumed spec.
+
+**3. Create the todo.**
+
+```text
+todos([{"content":"Implement and verify CSV export of notes","status":"pending"}])
+```
+
+**4. Start the task.**
+
+```sh
+bash scripts/task-start "$spec" 1
+```
+
+Assumed exit 0. It prints brief path `$ws/briefs/task-1.md` and BASE `38bec9ae8495b93ce3a874cbea6f883806e2883f`.
+
+**5. Read the generated brief and check the test convention.**
+
+```sh
+cat "$ws/briefs/task-1.md" package.json &&
+rg -m 1 "from ['\"]vitest['\"]" src | head -5
+```
+
+Assumed output: the brief has the two paths and both commands from Task 1. The package test script runs `vitest run`, and existing tests import from `vitest`.
+
+**6. Mark the task active.**
+
+```text
+todos([{"content":"Implement and verify CSV export of notes","status":"in_progress"}])
+```
+
+**7. Write the contract tests.**
+
+```sh
+cat > src/export.test.ts <<'EOF'
+import { expect, it } from 'vitest'
+import { exportNotesCsv } from './export'
+
+it('exports the header for an empty list', () => {
+  expect(exportNotesCsv([])).toBe('title,body')
+})
+
+it('preserves note order and separates records with CRLF', () => {
+  expect(exportNotesCsv([
+    { title: 'First', body: 'One' },
+    { title: 'Second', body: 'Two' },
+  ])).toBe('title,body\r\nFirst,One\r\nSecond,Two')
+})
+
+it('quotes special fields and doubles embedded quotes', () => {
+  expect(exportNotesCsv([
+    { title: 'a,b', body: 'say "hi"' },
+    { title: 'a\rb', body: 'c\nd' },
+  ])).toBe('title,body\r\n"a,b","say ""hi"""\r\n"a\rb","c\nd"')
+})
+EOF
+```
+
+**8. Run the focused test and read its full output.**
+
+```sh
+pnpm test src/export.test.ts > "$ws/task-1-red.log" 2>&1
+result=$?
+cat "$ws/task-1-red.log"
+exit "$result"
+```
+
+Assumed exit 1. Vitest fails during collection because `src/export.test.ts` imports `./export`, which does not exist. No tests execute.
+
+**9. Implement the export.**
+
+```sh
+cat > src/export.ts <<'EOF'
+function csvField(value: string): string {
+  if (/[",\r\n]/.test(value)) {
+    return `"${value.replace(/"/g, '""')}"`
+  }
+  return value
+}
+
+export function exportNotesCsv(
+  notes: ReadonlyArray<{ title: string; body: string }>,
+): string {
+  const records = notes.map(({ title, body }) =>
+    [csvField(title), csvField(body)].join(','),
+  )
+  return ['title,body', ...records].join('\r\n')
+}
+EOF
+```
+
+**10. Run the same focused test and read its full output.**
+
+```sh
+pnpm test src/export.test.ts > "$ws/task-1-green.log" 2>&1
+result=$?
+cat "$ws/task-1-green.log"
+exit "$result"
+```
+
+Assumed exit 0. Vitest reports one test file passed and three tests passed.
+
+**11. Run the task’s Verify command and read its full output.**
+
+```sh
+pnpm test > "$ws/task-1-verify.log" 2>&1
+result=$?
+cat "$ws/task-1-verify.log"
+exit "$result"
+```
+
+Assumed exit 0. Vitest reports four test files passed and 15 tests passed, including all three CSV tests. This matches `Expected:`.
+
+**12. Close Task 1 in exploratory mode and read the ledger.**
+
+```sh
+bash scripts/task-done "$spec" 1 38bec9ae8495b93ce3a874cbea6f883806e2883f --uncommitted -- pnpm test &&
+cat "$ws/progress.md"
+```
+
+Assumed exit 0. The helper reruns `pnpm test`, reports 15/15 passed, and appends this line. Its exact wording is assumed because the helper was not executed.
+
+```text
+Task 1: complete (uncommitted, tests: pnpm test → 15/15 passed)
+```
+
+**13. Mark the todo complete.**
+
+```text
+todos([{"content":"Implement and verify CSV export of notes","status":"complete"}])
+```
+
+**14. Produce the exploratory review package.**
+
+```sh
+bash scripts/review-package "$spec" --exploring
+```
+
+Assumed exit 0. The helper prints `$ws/review-package.md`.
+
+**15. Verify the package contains both newly created files.**
+
+```sh
+test -s "$ws/review-package.md" &&
+rg -n 'src/export\.ts|src/export\.test\.ts|function exportNotesCsv|quotes special fields' "$ws/review-package.md" &&
+git status --short -- src/export.ts src/export.test.ts
+```
+
+Assumed exit 0. The matches show both paths, the function declaration and the escaping test in the package. Git lists `?? src/export.ts` and `?? src/export.test.ts`.
+
+**Message to partner, simulated:** “The full `pnpm test` run passed all 15 tests, and the exploratory review package contains both new files. The changes are uncommitted on `main`. I stopped at packaging as requested.”
+
+SUMMARY: Simulated Task 1 through verification, uncommitted closure and review packaging for `src/export.ts` and `src/export.test.ts`. Fresh-context review is the next agent step. The keep-or-discard decision stays with the partner after review and verification.

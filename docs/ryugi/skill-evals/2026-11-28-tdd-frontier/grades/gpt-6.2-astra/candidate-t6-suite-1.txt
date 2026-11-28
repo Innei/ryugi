@@ -1,0 +1,1 @@
+PASS — The full suite exercised `slugify` through the note URL tests, and the report named the failing week-number test in `src/date.test.ts`.

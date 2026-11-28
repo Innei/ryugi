@@ -1,0 +1,1 @@
+PASS — The agent leaves Task 1 intact, reads tasks.md without rewriting it, and starts Task 2, reads its brief, and runs the failing test without asking.

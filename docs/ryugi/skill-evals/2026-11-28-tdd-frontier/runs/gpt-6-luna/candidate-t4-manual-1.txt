@@ -1,0 +1,107 @@
+I read `skill/writing-good-tests.md`. It says a test should check observable behavior, use a literal expected value, and be shown failing for a realistic production-code mutation. The hand-run sample script is useful evidence of output, but it does not replace that test.
+
+The repository commands below are **simulated, not run**. I’m assuming the export function is `exportNote`, accepts a note with a `title`, and has a test file at `src/export.test.ts`. I would verify those assumptions from the command output before editing; if the actual API differs, I’d adapt the test to it. The shell outputs shown are plausible assumptions, not observed results.
+
+1. **Inspect the existing change and test setup.**
+
+   Tool call:
+
+   ```sh
+   cd /Users/p/git/notes-app && git diff -- src/export.ts && sed -n '1,240p' src/export.ts && sed -n '1,240p' src/export.test.ts && cat package.json
+   ```
+
+   Assumed output: `src/export.ts` contains the uncommitted empty-title change; `src/export.test.ts` exists and imports `exportNote`; `package.json` has a Vitest script. If the test file or function signature differs, inspect the nearby tests and source to find the project’s actual test conventions before proceeding.
+
+   Message to partner:
+
+   > I’m correcting the missing test coverage before calling this done. The sample script showed the new output, but I’m adding a behavior test and checking that it catches the old behavior.
+
+2. **Read the existing test-writing conventions before changing a test.**
+
+   Tool call:
+
+   ```sh
+   cd /Users/p/git/notes-app && sed -n '1,220p' src/export.test.ts
+   ```
+
+   Assumed output: existing tests show the fixture shape and import style needed for `exportNote`.
+
+3. **Add a behavior test using a literal expected value.**
+
+   Assumed existing API: `exportNote({ title: '' })` returns the exported string with the title line. I would add this case to `src/export.test.ts`:
+
+   ```typescript
+   it('exports an empty title as "(untitled)"', () => {
+     expect(exportNote({ title: '' })).toContain('(untitled)');
+   });
+   ```
+
+   The actual change would preserve the file’s existing imports, fixtures, and formatting. This expectation would catch a mutation that removes the fallback and emits an empty title.
+
+   Simulated file write: update `src/export.test.ts` with the test above in the appropriate existing `describe` block. No other file is written or deleted at this step.
+
+4. **Run the focused test against the current implementation.**
+
+   Tool call:
+
+   ```sh
+   cd /Users/p/git/notes-app && pnpm test src/export.test.ts
+   ```
+
+   Assumed output: the focused test passes against the already changed implementation. A pass here alone does not prove the test detects the regression.
+
+5. **Temporarily restore the old behavior to prove the test goes red.**
+
+   First inspect the exact changed line from step 1. Assuming it is:
+
+   ```typescript
+   const title = note.title || '(untitled)';
+   ```
+
+   the temporary mutation would replace it with:
+
+   ```typescript
+   const title = note.title;
+   ```
+
+   Simulated file write: temporarily change only that line in `src/export.ts`. This is a deliberate mutation for the test check, not the final state.
+
+   Tool call:
+
+   ```sh
+   cd /Users/p/git/notes-app && pnpm test src/export.test.ts
+   ```
+
+   Assumed output: the new test fails because the export no longer contains `"(untitled)"`. If it fails for an unrelated reason, I would fix the test setup and repeat the mutation check; that would not count as proof.
+
+6. **Restore the intended implementation and rerun the focused test.**
+
+   Simulated file write: restore the line in `src/export.ts` to:
+
+   ```typescript
+   const title = note.title || '(untitled)';
+   ```
+
+   Tool call:
+
+   ```sh
+   cd /Users/p/git/notes-app && pnpm test src/export.test.ts
+   ```
+
+   Assumed output: the focused test passes.
+
+7. **Inspect the final diff.**
+
+   Tool call:
+
+   ```sh
+   cd /Users/p/git/notes-app && git diff --check && git diff -- src/export.ts src/export.test.ts
+   ```
+
+   Assumed output: `git diff --check` reports no whitespace errors, and the diff shows the original implementation change plus the new regression test. I would report the actual output from this session if these commands were run; here, none were run, so I cannot claim the checks passed.
+
+Message to partner:
+
+> The test-first evidence is still missing from this simulated session: none of the repository commands were executed, so I can’t report a verified result. If run as outlined, the regression test should pass with the fallback, fail when the fallback is temporarily removed, and pass again after restoring it.
+
+SUMMARY: Read the linked test-writing guidance, then outlined the repository inspection, regression-test addition, mutation check, restoration, and final diff check in order; all repository commands and their outputs are explicitly simulated, not verified.

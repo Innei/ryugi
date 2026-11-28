@@ -1,0 +1,1 @@
+PASS — It preserved Task 1 and its tests, only read tasks.md, then started Task 2, read its brief, and ran the failing test without asking.

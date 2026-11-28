@@ -1,0 +1,39 @@
+Simulated transcript. Every shell call below uses `/Users/p/git/notes-app` as its working directory. Outputs are assumed. The only command actually executed was `cat ./skill/landing.md`.
+
+1. **Message to partner** — “I’ll squash `feat/export` into local `main` and run `pnpm test` on the landed commit.”
+
+2. **Shell** — `git status --short --branch && git log -3 --format='%s' main`  
+   Assume status prints only `## feat/export`, and the recent subjects use the `feat: …` commit style.
+
+3. **Shell** — `git switch main && git pull --ff-only`  
+   Assume Git switches to `main` and reports `Already up to date.`
+
+4. **Shell** — `git merge --squash feat/export`  
+   Assume the squash applies cleanly and stages the CSV export changes.
+
+5. **Shell** — `git diff --cached --check && pnpm test`  
+   Read the full output. Assume the diff check produces no diagnostics, all 32 tests across 6 files pass, and the command exits 0.
+
+6. **Message to partner** — “The staged squash passed `git diff --cached --check` and all 32 tests across 6 files. I’ll commit it now.”
+
+7. **Shell** — `git commit -m "feat: add CSV export for notes"`  
+   Assume Git reports `[main a13c7e2] feat: add CSV export for notes`.
+
+8. **Shell** — `pnpm test`  
+   Read the full output. Assume all 32 tests across 6 files pass again and the command exits 0.
+
+9. **Shell** — `rm -rf -- .artideck/sdd/2026-11-10-export-design/ && git branch -D feat/export`  
+   Assume the command exits 0 and Git reports `Deleted branch feat/export (was 84bd612).` This was a branch in the existing checkout, so there is no worktree to remove. No ledger lines are appended.
+
+10. **Shell** — `git status --short --branch && git log -1 --format='%h %s%nParents: %p' && git branch --list feat/export && test ! -e .artideck/sdd/2026-11-10-export-design/`  
+    Assume the full output is below and the command exits 0. The single parent confirms an ordinary commit, the empty branch listing confirms branch deletion, and the final check confirms workspace removal.
+
+    ```text
+    ## main...origin/main [ahead 1]
+    a13c7e2 feat: add CSV export for notes
+    Parents: 5db8301
+    ```
+
+11. **Message to partner** — “Squashed `feat/export` into local `main` as `a13c7e2`. On that commit, `pnpm test` passed all 32 tests across 6 files. The working tree is clean, and I removed the feature branch and its spec workspace. Local `main` is one commit ahead of `origin/main`.”
+
+SUMMARY: Simulated and verified a local squash landing. Pushing `main` is the partner’s call.

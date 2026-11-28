@@ -1,0 +1,104 @@
+Simulated transcript. No commands or edits were executed. The file layout, test runner, command output, and commit IDs below are assumed.
+
+1. **Message to partner:** “I’m using executing-specs to finish Task 2. I’ll cover titles with commas, quotes, and line breaks in the CSV test.”
+
+2. **Shell** in `/Users/p/git/notes-app`:
+
+   ```sh
+   git status --short --branch &&
+   git rev-parse HEAD &&
+   cat .artideck/sdd/2026-11-10-export-design/progress.md &&
+   sed -n '/^## Task 2:/,/^## Task 3:/p' .artideck/sdd/2026-11-10-export-design/tasks.md &&
+   cat src/export.ts test/export.test.ts
+   ```
+
+   **Assumed output:** `feat/export` is at `31e6c4a`, the Task 2 base. Task 1 is complete, the Task 2 todo is already in progress, and the only working-tree change is the failing test in `test/export.test.ts`. Task 2’s Verify command is `pnpm test`. The existing `exportNotes` function writes the header and ends each record with LF. The project uses Vitest.
+
+3. **Shell** to append the ruling:
+
+   ```sh
+   printf '%s\n' 'Task 2: Ruling: Quote CSV fields containing commas, double quotes, carriage returns, or line feeds, and double any quotes inside those fields — this preserves each title and keeps one CSV record per note — if a downstream reader expects every physical line to be a record, it will need a CSV parser for multiline titles.' >> .artideck/sdd/2026-11-10-export-design/progress.md
+   ```
+
+4. **Edit** `test/export.test.ts`. Keep the existing failing test and append:
+
+   ```ts
+   it('preserves CSV delimiters and line breaks inside a title', () => {
+     expect(exportNotes([
+       { id: '1', title: 'Draft, "v2"\nNext line', updatedAt: '2026-11-10' },
+       { id: '2', title: 'First line\rSecond line', updatedAt: '2026-11-11' },
+       { id: '3', title: 'Plain title', updatedAt: '2026-11-12' },
+     ])).toBe(
+       'id,title,updatedAt\n' +
+       '1,"Draft, ""v2""\nNext line",2026-11-10\n' +
+       '2,"First line\rSecond line",2026-11-11\n' +
+       '3,Plain title,2026-11-12\n',
+     )
+   })
+   ```
+
+5. **Shell** to prove the new regression test fails:
+
+   ```sh
+   pnpm exec vitest run test/export.test.ts -t 'preserves CSV delimiters and line breaks inside a title'
+   ```
+
+   **Assumed output:** Exit `1`. Vitest ran the selected test. The assertion expected three records after the header and received only the header. This confirms the new case fails against the header-only implementation.
+
+6. **Edit** `src/export.ts`. Keep the existing signature and header. Initialize `rows` with `'id,title,updatedAt'` and use this body after that initialization:
+
+   ```ts
+   for (const { id, title, updatedAt } of notes) {
+     rows.push([id, title, updatedAt].map(escapeCsvField).join(','))
+   }
+   return `${rows.join('\n')}\n`
+   ```
+
+   Add this file-local function:
+
+   ```ts
+   function escapeCsvField(value: string): string {
+     return /[",\r\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value
+   }
+   ```
+
+7. **Shell** to prove the focused tests and the full suite pass before committing:
+
+   ```sh
+   pnpm exec vitest run test/export.test.ts &&
+   pnpm test &&
+   git diff --check &&
+   git status --short
+   ```
+
+   **Assumed output:** Exit `0`. The focused run reports `3 passed`, including the previously failing row test and the new escaping test. `pnpm test` reports `18 passed` across 4 files. `git diff --check` emits no diagnostics. Status lists only `src/export.ts` and `test/export.test.ts` as tracked changes. The simulated command output is read in full.
+
+8. **Shell** to stage the two paths, commit, and close Task 2 in the same call:
+
+   ```sh
+   git add -- src/export.ts test/export.test.ts &&
+   git commit -m "Write escaped CSV rows for notes export" &&
+   bash scripts/task-done docs/ryugi/specs/2026-11-10-export-design.md 2 31e6c4a -- pnpm test
+   ```
+
+   **Assumed output:** Exit `0`. Git creates `b83d920`. The close script reruns `pnpm test`, which reports `18 passed` across 4 files, saves the full output, and appends this ledger line:
+
+   ```text
+   Task 2: complete (commits 31e6c4a..b83d920, tests: pnpm test → 18 passed)
+   ```
+
+9. **Shell** to read the saved verification output and confirm the ledger:
+
+   ```sh
+   cat .artideck/sdd/2026-11-10-export-design/task-2-verify.log &&
+   tail -n 2 .artideck/sdd/2026-11-10-export-design/progress.md &&
+   git status --short --branch
+   ```
+
+   **Assumed output:** The close script used `task-2-verify.log` for its log. The full log shows 4 test files and 18 tests passed, the ledger ends with the ruling and completion line above, and `feat/export` has a clean working tree.
+
+10. **Todo tool:** Update `Task 2: Write rows` to `completed`.
+
+11. **Message to partner:** “In the simulation, Task 2 closed at `b83d920`. The focused CSV tests passed, and the closing `pnpm test` run passed all 18 tests. CSV readers can recover titles containing commas, double quotes, or line breaks. I stopped before Task 3 as requested.”
+
+SUMMARY: Simulated Task 2 through regression testing, commit, and ledger closure. Task 3 remains for the agent to pick up when the partner resumes execution.

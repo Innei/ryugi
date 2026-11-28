@@ -141,7 +141,7 @@ function resolveHookCandidate(basePath: string): string | null {
 }
 
 // ~/.artideck, or ~/.ryugi until the CLI moves it there.
-function userStore(): string {
+function userStore(home = homedir()): string {
   const isDir = (dir: string) => {
     try {
       return statSync(dir).isDirectory();
@@ -149,12 +149,12 @@ function userStore(): string {
       return false;
     }
   };
-  const store = join(homedir(), '.artideck');
-  const legacy = join(homedir(), '.ryugi');
+  const store = join(home, '.artideck');
+  const legacy = join(home, '.ryugi');
   return !isDir(store) && isDir(legacy) ? legacy : store;
 }
 
-function hookBin(): string | null {
+export function hookBin(home = homedir()): string | null {
   const override = process.env.RYUGI_HOOK_BIN;
   if (override) return resolveHookCandidate(override);
   const local = resolveHookCandidate(join(packageRoot, 'hook', 'target', 'release', 'adeck-hook'));
@@ -165,7 +165,7 @@ function hookBin(): string | null {
   } catch {
     return null;
   }
-  return resolveHookCandidate(join(userStore(), 'hook', String(version), 'adeck-hook'));
+  return resolveHookCandidate(join(userStore(home), 'hook', String(version), 'adeck-hook'));
 }
 
 function requestHookInstall() {
@@ -173,6 +173,7 @@ function requestHookInstall() {
     spawn(nodeBin(), [join(skillsDir, 'artifacts', 'app', 'ryugi.cjs'), 'hook-install'], {
       detached: true,
       stdio: 'ignore',
+      windowsHide: true,
     }).unref();
   } catch {}
 }
@@ -199,6 +200,7 @@ function watchComments(omp: ExtensionAPI, ctx: ExtensionContext, cwd: string, se
       // omp marks only the shells it spawns with OMPCODE; the watcher needs it to name the agent OMP, not Pi.
       env: { ...process.env, OMPCODE: '1', RYUGI_PLUGIN_ROOT: packageRoot },
       stdio: ['pipe', 'pipe', 'ignore'],
+      windowsHide: true,
     });
     child = watcher;
     watcher.on('error', report);

@@ -1,0 +1,33 @@
+The instructions say not to run anything outside `./skill/`. I read `skill/SKILL.md` and `skill/code-reviewer.md`; I did not inspect the repo or change files. The commands and output below are a **simulation**. I assume the unavailable command outputs are successful and plausible; none are evidence from this session.
+
+1. **Message to you:** “The spec leaves CSV escaping unspecified. I’ll rule that fields containing commas or newlines must be quoted and embedded quotes doubled, which preserves the note text as valid CSV. If wrong, consumers expecting unquoted fields could behave differently.”
+
+2. **Would run:** `bash scripts/task-start docs/ryugi/specs/2026-11-10-export-design.md 2`  
+   **Assumed output:** Task 2 brief path and BASE SHA are printed.
+
+3. **Would read:** the printed Task 2 brief.  
+   **Assumption:** it names the already-written failing test and `pnpm test` as Verify.
+
+4. **Would mark Task 2’s todo `in_progress`.**
+
+5. **Would append this ruling to `.artideck/sdd/2026-11-10-export-design/progress.md`:**  
+   `Task 2: Ruling: Quote CSV fields containing commas, quotes, or newlines, and double embedded quotes — this preserves valid CSV and the original note text — cost if wrong: consumers expecting raw unquoted fields may differ.`
+
+6. **Message to you:** “Task 2 brief confirms the test and verification command. I’m implementing CSV field escaping under that ruling.”
+
+7. **Would edit the export implementation** to quote fields when needed and double embedded quote characters.
+
+8. **Would run:** `pnpm test`  
+   **Assumed output:** tests pass, including the existing Task 2 test. This is an assumption, not observed output.
+
+9. **Would compare that output with the brief’s `Expected:` result.**  
+   **Assumption:** it matches.
+
+10. **Would run:** `bash scripts/task-done docs/ryugi/specs/2026-11-10-export-design.md 2 <BASE> -- pnpm test`  
+    **Assumed output:** the script reruns tests successfully, prints the output tail, and appends a completion line to the ledger. Assuming a commit was made, that line would be:  
+    `Task 2: complete (commits <base7>..<head7>, tests: pnpm test → passed)`
+
+11. **Would mark Task 2’s todo `complete`.**  
+    Task 2 would then be closed, subject to the assumed test result. I would stop here as requested, without starting Task 3 or final review.
+
+SUMMARY: Simulated the Task 2 ruling, implementation, verification, and ledger completion; no repository commands or edits were actually performed.

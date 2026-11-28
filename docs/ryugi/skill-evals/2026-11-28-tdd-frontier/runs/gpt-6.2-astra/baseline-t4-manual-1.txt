@@ -1,0 +1,217 @@
+**1. Actual tool call** — `cat ./skill/writing-good-tests.md`. It exited 0, and I read the full output. This was the only command actually executed.
+
+Everything below is simulated. Each shell block is one tool call with working directory `/Users/p/git/notes-app`. Repository contents, command outputs, and partner messages below are hypothetical.
+
+**2. Check what would be discarded.**
+
+```sh
+git status --short
+```
+
+Assumed output:
+
+```text
+ M src/export.ts
+```
+
+```sh
+git diff --numstat -- src/export.ts
+```
+
+Assumed output:
+
+```text
+1	1	src/export.ts
+```
+
+I assume I know from making the edit a minute ago that I started with a clean file and replaced one line. The status and line counts are consistent with that history. I would read the indexed baseline without opening the premature implementation.
+
+```sh
+git show :src/export.ts
+```
+
+Assumed output, also the complete file content the next command would restore:
+
+```ts
+export function exportNote(note: { title: string; body: string }): string {
+  return `# ${note.title}\n\n${note.body}\n`
+}
+```
+
+**3. Discard my premature edit.**
+
+```sh
+git restore --worktree -- src/export.ts
+```
+
+Assumed exit 0, no output. This writes the indexed content shown above to `src/export.ts`.
+
+```sh
+git diff --exit-code -- src/export.ts
+```
+
+Assumed exit 0, no output. The working file now matches the baseline in the simulation.
+
+**4. Find the exporter’s callers and the tests that exercise them.**
+
+```sh
+rg --files --hidden -g '!.git' -g '!node_modules'
+```
+
+Assumed output:
+
+```text
+.gitignore
+package.json
+pnpm-lock.yaml
+tsconfig.json
+scripts/export-sample.js
+src/export.ts
+src/download.ts
+tests/download.test.ts
+tests/download.e2e.test.ts
+tests/search.test.ts
+src/search.ts
+```
+
+```sh
+rg -n 'exportNote|downloadNote|src/(export|download)' src tests scripts
+```
+
+Assumed output:
+
+```text
+src/export.ts:1:export function exportNote(note: { title: string; body: string }): string {
+src/download.ts:1:import { exportNote } from './export'
+src/download.ts:3:export function downloadNote(note: { title: string; body: string }) {
+src/download.ts:4:  return new Blob([exportNote(note)], { type: 'text/markdown' })
+tests/download.test.ts:2:import { downloadNote } from '../src/download'
+tests/download.test.ts:5:  expect(await downloadNote({ title: 'Trip', body: 'Pack' }).text()).toBe('# Trip\n\nPack\n')
+scripts/export-sample.js:1:import { exportNote } from '../src/export.ts'
+scripts/export-sample.js:3:console.log(exportNote({ title: '', body: 'Sample' }))
+```
+
+```sh
+cat tests/download.e2e.test.ts
+```
+
+Assumed output:
+
+```ts
+import { execFileSync } from 'node:child_process'
+import { expect, it } from 'vitest'
+
+it('exports the sample as Markdown', () => {
+  const output = execFileSync(process.execPath, ['scripts/export-sample.js'], { encoding: 'utf8' })
+  expect(output).toContain('Sample')
+})
+```
+
+**5. Message to partner, before writing the test**
+
+> The regression I want the test to catch is an empty title producing a blank Markdown heading. With an empty title and body `Pack`, the exported text should be `# (untitled)\n\nPack\n`. I’ll check that literal against the real exporter.
+
+**6. Write the regression test and run it against the restored baseline.**
+
+```sh
+cat > tests/export.test.ts <<'EOF'
+import { expect, it } from 'vitest'
+import { exportNote } from '../src/export'
+
+it('exports an empty title as an (untitled) heading', () => {
+  expect(exportNote({ title: '', body: 'Pack' })).toBe('# (untitled)\n\nPack\n')
+})
+EOF
+```
+
+Assumed exit 0, no output. The heredoc is the complete new file.
+
+```sh
+pnpm test tests/export.test.ts
+```
+
+Assumed exit 1, with this output:
+
+```text
+ RUN  v3.2.4 /Users/p/git/notes-app
+
+ ❯ tests/export.test.ts (1 test | 1 failed)
+   × exports an empty title as an (untitled) heading
+
+ FAIL  tests/export.test.ts > exports an empty title as an (untitled) heading
+AssertionError: expected '# \n\nPack\n' to be '# (untitled)\n\nPack\n'
+ ❯ tests/export.test.ts:5:49
+
+ Test Files  1 failed (1)
+      Tests  1 failed (1)
+```
+
+**7. Message to partner**
+
+> `pnpm test tests/export.test.ts` exited 1 on `exports an empty title as an (untitled) heading`. The exporter returned `# \n\nPack\n`. The body and line breaks matched, and the heading was missing `(untitled)`.
+
+**8. Implement the tested behavior.**
+
+```sh
+cat > src/export.ts <<'EOF'
+export function exportNote(note: { title: string; body: string }): string {
+  const title = note.title === '' ? '(untitled)' : note.title
+  return `# ${title}\n\n${note.body}\n`
+}
+EOF
+```
+
+Assumed exit 0, no output. The heredoc is the complete replacement file. The condition uses the empty string specified in the test.
+
+**9. Rerun the regression, caller test, and end-to-end test.**
+
+```sh
+pnpm test tests/export.test.ts
+```
+
+Assumed exit 0, full output:
+
+```text
+ RUN  v3.2.4 /Users/p/git/notes-app
+
+ ✓ tests/export.test.ts (1 test)
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+```
+
+```sh
+pnpm test tests/download.test.ts
+```
+
+Assumed exit 0, full output:
+
+```text
+ RUN  v3.2.4 /Users/p/git/notes-app
+
+ ✓ tests/download.test.ts (1 test)
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+```
+
+```sh
+pnpm test tests/download.e2e.test.ts
+```
+
+Assumed exit 0, full output:
+
+```text
+ RUN  v3.2.4 /Users/p/git/notes-app
+
+ ✓ tests/download.e2e.test.ts (1 test)
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+```
+
+**10. Final simulated message to partner**
+
+> The empty-title regression failed on the baseline with a blank heading. After the one-line fallback, `pnpm test tests/export.test.ts`, `pnpm test tests/download.test.ts`, and `pnpm test tests/download.e2e.test.ts` each exited 0 with 1/1 test passing. Those checks cover the exact empty-title output, export of an ordinary title through the download caller, and execution of the sample script. The changes are uncommitted.
+
+SUMMARY: Read the testing guidance, then simulated discarding the premature edit, finding affected tests, observing the expected failure, implementing the fallback, and verifying all three affected tests. The real repository was untouched and its test status is unverified.

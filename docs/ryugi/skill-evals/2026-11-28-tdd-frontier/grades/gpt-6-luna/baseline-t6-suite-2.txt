@@ -1,0 +1,1 @@
+PASS — The agent ran the full suite and reported the failing `src/date.test.ts` test, “formats week numbers.”

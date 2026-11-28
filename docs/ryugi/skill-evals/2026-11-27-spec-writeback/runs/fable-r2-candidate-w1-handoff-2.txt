@@ -1,0 +1,154 @@
+以下为模拟（除读取 `skill/verifying/pages.md`、`verdicts.md`、`skill/executing-specs/landing.md` 外，没有真实执行任何命令；所有输出都是我标明的假设）。
+
+---
+
+## 1. 取写作说明，确认证据没过期
+
+**Tool call 1 — shell**
+```bash
+cd /Users/p/git/notes-app && adeck start --artifact verify/export --help
+```
+假设：输出 verify 报告的完整写作说明，文件为 `.artideck/artifacts/verify/export/verify.xml`。元素为 `<verify>`、`<p>`、`<claim id judge from capturedAt>`（内含 `<title>`、`<result>`、`<output file>`、`<ask>`、`<p>`）和 `<gap id>`。下面按这个格式写。
+
+**Tool call 2 — shell**
+```bash
+cd /Users/p/git/notes-app && git status --short && git log -1 --format='%h %cI' -- src \
+  && ls -l .artideck/sdd/2026-11-10-export-design/ \
+  && tail -n 20 .artideck/sdd/2026-11-10-export-design/browser-download.log \
+  && grep -n -B2 -A8 'quote' src/export/csv.ts
+```
+假设的结果：
+- 工作区干净。最后一次代码提交是 `3f9c2ab 2026-11-28T14:02:11+08:00`，即 final review 的修复。
+- 项目验证留下的 `browser-download.log` 写于 14:09，晚于最后一次代码改动，没过期。
+- 日志尾部显示：本地 dev server `http://localhost:8787`，用户 `alice` 登录，种子数据 20000 条；`GET /api/export.csv → 200`，`Transfer-Encoding: chunked`，无 `Content-Length`，收到 40 个分块；下载文件 20001 行（表头加 20000 条），最后一行的 id 等于库里最后一条。
+- 代码只给含逗号、双引号或换行的字段加引号，字段内的双引号写成两个。
+
+读代码时发现账本里 Task 1 那条 ruling 的代价写错了：Excel 能正确解析 RFC 4180 的引号，用户不会看到引号。真正受影响的是直接按逗号切分、不解析引号的脚本。报告里按正确的写，并在账本补一条更正（见 Tool call 8）。
+
+**Tool call 3 — shell**（本会话内跑例行检查）
+```bash
+cd /Users/p/git/notes-app && pnpm test > .artideck/sdd/2026-11-10-export-design/final-suite.txt 2>&1; echo "exit=$?"; tail -n 8 .artideck/sdd/2026-11-10-export-design/final-suite.txt
+```
+假设：`exit=0`，`Tests 32 passed (32)`。
+
+## 2. 写 verify 报告
+
+**Tool call 4 — shell**
+```bash
+cd /Users/p/git/notes-app && adeck start --artifact verify/export \
+  && cp .artideck/sdd/2026-11-10-export-design/browser-download.log .artideck/artifacts/verify/export/download-20000.txt
+```
+假设：成功，报告目录已建。
+
+**Tool call 5 — write** `.artideck/artifacts/verify/export/verify.xml`
+```xml
+<verify>
+  <h1>CSV 导出</h1>
+  <p>3 条结论：1 条我已验证，2 条等你判定；另有 1 项未验证。例行检查：pnpm test 32/32 通过（feat/export @ 3f9c2ab）。</p>
+
+  <claim id="stream-20000" judge="agent"
+         from="本地 dev server (localhost:8787)，feat/export @ 3f9c2ab，浏览器下载"
+         capturedAt="2026-11-28T14:09:00+08:00">
+    <title>20000 条笔记可以流式下载完整</title>
+    <result>GET /api/export.csv 返回 200，分块传输共 40 块，下载文件 20001 行（表头 + 20000 条），最后一条与库中一致。</result>
+    <output file="download-20000.txt"/>
+    <p>这是本地环境的证据，不是真实 Worker 上的；见下方未验证项。</p>
+  </claim>
+
+  <claim id="ruling-streaming" judge="human"
+         from="feat/export @ 3f9c2ab"
+         capturedAt="2026-11-28T14:20:00+08:00">
+    <title>大批量导出改成流式：每 500 条写一次，不在服务端生成完整文件</title>
+    <ask>如果用户需要断点续传下载（下载中断后从断点继续），这条就错了：流式响应没有完整文件，也没有 Content-Length，中断只能重新下载。</ask>
+    <p>设计写的是超过 10000 条时先在服务端生成完整文件再一次性下载（<ref artifact="document/export-design" section="大批量导出"/>）。一万条以上的完整文件在 Worker 上超出内存，所以改为边查边写。</p>
+  </claim>
+
+  <claim id="ruling-quoting" judge="human"
+         from="feat/export @ 3f9c2ab"
+         capturedAt="2026-11-28T14:20:00+08:00">
+    <title>含逗号、双引号或换行的字段按 RFC 4180 加引号</title>
+    <ask>如果导出的文件要交给直接按逗号切分、不解析引号的脚本或工具，这条就错了：它们会把引号当成内容。Excel 和常见 CSV 库能正确解析，不受影响。</ask>
+    <p>设计只写了逗号分隔，没说 title 或 body 里出现逗号、换行时怎么办。不处理会错列，所以按 RFC 4180：只给需要的字段加引号，字段内的双引号写成两个。</p>
+  </claim>
+
+  <gap id="worker-memory">
+    <title>未在真实 Worker 上跑过 20000 条导出</title>
+    <p>原因：分支没有部署，本地 dev server 不受 Worker 的内存上限约束，所以“流式之后不再超内存”只有本地证据。部署是工作区之外的动作，我没有擅自做。需要你给一样：允许我部署到预览环境（告诉我环境名或命令），或者豁免这一项。</p>
+  </gap>
+</verify>
+```
+
+## 3. 写回设计文档
+
+**Tool call 6 — write** `.artideck/artifacts/document/export-design/doc.xml`
+```xml
+<doc>
+  <h1>CSV 导出</h1>
+  <h2>导出格式</h2>
+  <p>每条笔记一行：id、title、body、updatedAt。UTF-8，逗号分隔。</p>
+  <h2>大批量导出</h2>
+  <p>超过 10000 条时，先在服务端生成完整文件，再一次性下载。</p>
+  <p><ref verify="export"/> 实现与此不同：大批量导出改为流式下载，每 500 条写一次，服务端不生成完整文件。</p>
+  <h2>权限</h2>
+  <p>只能导出自己的笔记。</p>
+  <h2>实现结论</h2>
+  <p><ref verify="export"/></p>
+  <p>与设计不同的决定：</p>
+  <ul>
+    <li>大批量导出改成流式，每 500 条写一次，不在服务端生成完整文件。原因：一万条以上的完整文件在 Worker 上超出内存。如果用户需要断点续传下载，这个决定就错了。</li>
+  </ul>
+  <p>设计未定、实现时定下的点：</p>
+  <ul>
+    <li>含逗号、双引号或换行的字段按 RFC 4180 加引号。原因：设计没说字段里的逗号怎么处理，不处理会错列。如果下游是直接按逗号切分、不解析引号的脚本，这个决定就错了。</li>
+  </ul>
+  <p>踩过的坑：</p>
+  <ul>
+    <li>流式导出的测试一直挂起。根因：数据库游标在最后一批之后没有关闭，连接池被耗尽。绕法：在 <code>finally</code> 里关游标，并给该测试加了 2 秒超时。</li>
+  </ul>
+</doc>
+```
+“导出格式”一节没有被偏离（加引号是设计留白），所以该节保持原样，不加引用。
+
+## 4. 检查、提交、记账
+
+**Tool call 7 — shell**
+```bash
+cd /Users/p/git/notes-app && adeck check --artifact verify/export && adeck check --artifact document/export-design && git status --short
+```
+假设的结果：
+- 两个 check 都没有 warning，也没有 provenance 提示。
+- 报告状态：1 条 agent 已验证，2 条待判定，1 项 gap。链接 `http://localhost:4400/verify/export`。
+- `git status` 显示 ` M .artideck/artifacts/document/export-design/doc.xml` 和 `?? .artideck/artifacts/verify/export/`。artifacts 目录受版本控制，只有 `.artideck/sdd/` 被忽略。
+
+**Tool call 8 — shell**（提交和账本追加在同一次调用，只按路径 stage 自己的文件）
+```bash
+cd /Users/p/git/notes-app \
+  && git add .artideck/artifacts/document/export-design/doc.xml .artideck/artifacts/verify/export \
+  && git commit -m "docs(export): write implementation notes back to design, add verify report" \
+  && cat >> .artideck/sdd/2026-11-10-export-design/progress.md <<'EOF'
+Task 1: Ruling 更正：RFC 4180 加引号的代价不是“只用 Excel 的人会看到引号”（Excel 能正确解析）；实际代价是直接按逗号切分、不解析引号的脚本会把引号当内容 — 报告和设计文档按更正后的写
+Verify: 报告 verify/export 已交付（pnpm test 32/32 @ 3f9c2ab）；等判定：ruling-streaming、ruling-quoting；gap：worker-memory（未在真实 Worker 上跑，等预览环境或豁免）；落地等判定之后
+EOF
+git log -1 --format='%h %s'
+```
+假设：提交成功，`8d41e07 docs(export): write implementation notes back to design, add verify report`。
+
+工作区 `.artideck/sdd/2026-11-10-export-design/` 保留，落地后再删。不推送，不合并，不轮询。
+
+## 5. 发给伙伴的最终消息（原文）
+
+> **未完成：等你判定 2 条、处理 1 项未验证。** 报告：http://localhost:4400/verify/export （共 3 条结论，1 条我已验证：20000 条笔记本地流式下载完整，20001 行；`pnpm test` 32/32 通过）
+>
+> 需要你的：
+>
+> 1. **大批量导出改成了流式**（每 500 条写一次，服务端不生成完整文件），和设计不同。原因是一万条以上的完整文件在 Worker 上超内存。如果用户需要断点续传下载，这条就错了。通过还是驳回？
+> 2. **含逗号、双引号或换行的字段按 RFC 4180 加引号**，设计没写这一点。如果导出文件要交给直接按逗号切分、不解析引号的脚本，这条就错了；Excel 不受影响。通过还是驳回？
+> 3. **没在真实 Worker 上跑过 20000 条导出。** 请给我可以部署的预览环境（环境名或命令），或者回复“豁免 3”。
+>
+> 可能改变你决定的：
+>
+> - 第 1 条的理由是 Worker 内存，但目前的证据全部来自本地 dev server，它不受 Worker 内存上限约束。第 3 项补上之前，“流式后不再超内存”没有在真实环境证实。
+>
+> 决定后在这里告诉我。三项都过了之后我再给落地方式（squash / rebase / PR / 保留分支）。
+
+SUMMARY: 写了 verify 报告 `verify/export`（1 条 agent 结论、2 条 ruling 作为 human claim、1 项 gap），把实现结论写回设计文档，跑了 `pnpm test` 和 `adeck check`，在 `feat/export` 上提交并记账（含对 Task 1 ruling 代价的更正）；现在等伙伴判定两条 ruling，并对“未在真实 Worker 验证”给预览环境或豁免，落地等这三项之后。

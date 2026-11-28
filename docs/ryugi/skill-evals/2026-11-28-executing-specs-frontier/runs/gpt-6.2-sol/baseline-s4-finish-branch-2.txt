@@ -1,0 +1,31 @@
+1. **Simulated shell call** in `/Users/p/git/notes-app`
+
+   ```sh
+   rg -n -e 'Ruling:' -e 'minor \(deferred\)' .artideck/sdd/2026-11-10-export-design/progress.md
+   ```
+
+   Assumed exit 0 and exactly the two supplied entries: the Task 2 RFC 4180 quoting ruling and the deferred `updatedAt` header finding. Both affect the exported CSV, so I’d surface both. No ledger lines would be appended.
+
+2. **Simulated shell call** in `/Users/p/git/notes-app`
+
+   ```sh
+   pnpm test
+   ```
+
+   Assumed I read the full output and it showed exit 0, 32 of 32 tests passing, including `test_export_streams`. No repository commands were actually run.
+
+3. **Message to my partner**
+
+   > CSV export is on `feat/export`. `pnpm test` reported 32 of 32 tests passing, including the streaming regression test. The single verification claim was proved inline. There’s no verify page or pending verification verdict.
+   >
+   > - CSV fields use RFC 4180 quoting. The spec left comma handling open, and Excel-only users may see quotes.
+   > - The CSV header reads `updatedAt`. The review flagged it as a minor issue, and it’s deferred.
+   >
+   > The spec workspace stays in place until landing. Please review those two CSV details and choose how to proceed.
+   >
+   > 1. **Squash into `main`** (default)
+   > 2. **Rebase onto `main`**
+   > 3. **Push and open a PR**
+   > 4. **Keep `feat/export` as-is**
+
+SUMMARY: Simulated the ledger read, final test check, and handoff. The two CSV details and the landing decision now wait on the partner.

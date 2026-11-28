@@ -1,0 +1,135 @@
+以下是从这里到回合结束的完整模拟。我实际只读了 `skill/verifying/pages.md`、`verdicts.md` 和 `skill/executing-specs/landing.md`，其余都没有运行，输出均为假设并逐条标明。
+
+## 1. 确认分支状态和要判的裁定
+
+**Tool call 1(shell)**
+```bash
+cd /Users/p/git/notes-app && git status --short && git rev-parse --short HEAD && git log --oneline main..HEAD && grep -nE 'Ruling:|minor \(deferred\)|Final' .artideck/sdd/2026-11-10-export-design/progress.md
+```
+假设输出:
+- 工作区干净,HEAD 是 `a1b9c3e`,`main..HEAD` 有 4 个提交。
+- ledger 里只有一条 `Ruling:`(Task 2 流式导出)。
+- 没有 `minor (deferred)`,有 `Final review` 行。
+- `debug:` 那行不是裁定,留在 ledger。
+
+**Tool call 2(Read)**:`/Users/p/git/notes-app/docs/ryugi/specs/2026-11-10-export-design.md`,只读验收部分。
+假设 spec 写明:
+- 入口是 `pnpm cli export --out <file>`。
+- 输出是 JSONL,每行一条笔记。
+- 夹具用 `pnpm cli seed --count N` 生成。
+- 没有内存指标,也没提断点续传。
+
+## 2. 我自己的证明
+
+**Tool call 3(shell)**:常规检查,本次会话重跑。
+```bash
+pnpm test 2>&1 | tail -n 8
+```
+假设输出:`Tests 32 passed (32)`,退出码 0。
+
+**Tool call 4(shell)**:取报告的写作说明和目录。`adeck` 的子命令写法是我的假设。
+```bash
+adeck start --artifact verify/export --help
+```
+假设输出:
+- 报告目录是 `.artideck/verify/export/`,正文是 `verify.xml`,输出文件放在 `out/`。
+- 元素有 `<claim id judge from capturedAt>`、`<title>`、`<result>`、`<output file>`、`<ask>`、`<gap>`。
+
+**Tool call 5(shell)**:整条链路,12,000 条(24 个批次),顺带量内存峰值。
+```bash
+D=.artideck/verify/export/out; T=$(mktemp -d); mkdir -p $D
+{ NOTES_DB=$T/big.db pnpm cli seed --count 12000 \
+  && /usr/bin/time -l env NOTES_DB=$T/big.db pnpm cli export --out $T/big.jsonl \
+  && echo "db_count=$(sqlite3 $T/big.db 'select count(*) from notes')" \
+  && echo "file_lines=$(wc -l < $T/big.jsonl)" \
+  && echo "db_ids_sha=$(sqlite3 $T/big.db 'select id from notes order by id' | shasum -a 256)" \
+  && echo "file_ids_sha=$(jq -r .id $T/big.jsonl | sort | shasum -a 256)"; } > $D/e2e-12000.txt 2>&1; tail -n 12 $D/e2e-12000.txt
+```
+假设输出:
+- `db_count=12000`,`file_lines=12000`。
+- 两个 id 的 sha 相同。
+- `maximum resident set size` 约 96 MB。
+- 退出码 0。
+
+**Tool call 6(shell)**:邻居,同一条命令的空库和批次边界。
+```bash
+for n in 0 499 500 501; do NOTES_DB=$T/n$n.db pnpm cli seed --count $n >/dev/null && NOTES_DB=$T/n$n.db pnpm cli export --out $T/n$n.jsonl; echo "n=$n exit=$? lines=$(wc -l < $T/n$n.jsonl)"; done > $D/boundaries.txt 2>&1; cat $D/boundaries.txt
+```
+假设输出:四行 `exit=0`,行数分别是 0 / 499 / 500 / 501。
+
+**Tool call 7(shell)**:裁定的代价实测,中途打断再重跑。
+```bash
+{ NOTES_DB=$T/big.db pnpm cli export --out $T/cut.jsonl & P=$!; sleep 0.4; kill -INT $P; wait $P; echo "interrupted exit=$?"; ls -la $T | grep cut || echo "no cut.jsonl at target"; \
+  NOTES_DB=$T/big.db pnpm cli export --out $T/cut.jsonl; echo "rerun exit=$? lines=$(wc -l < $T/cut.jsonl)"; } > $D/interrupt.txt 2>&1; cat $D/interrupt.txt; rm -rf "$T"
+```
+假设输出:
+- `interrupted exit=130`。
+- `no cut.jsonl at target`(假设实现是写临时文件、完成后改名)。
+- `rerun exit=0 lines=12000`,即重跑是从头来,不是续传。
+
+临时目录已删,证据都在 `out/` 里。
+
+## 3. 写 verify 报告
+
+**Tool call 8(Write)**:`/Users/p/git/notes-app/.artideck/verify/export/verify.xml`,全文如下。
+```xml
+<verify id="export" title="笔记导出:验证报告">
+  <p>按 docs/ryugi/specs/2026-11-10-export-design.md 实现,分支 feat/export。常规检查:pnpm test 32/32 通过(2026-11-28,a1b9c3e)。4 条结论里 3 条已由我核对,1 条等你判断。没有界面改动,所以没有画板。</p>
+
+  <claim id="ruling-streaming" judge="human" from="本机 macOS · feat/export @ a1b9c3e · seed 生成的 12,000 条夹具库" capturedAt="2026-11-28T15:12:00+08:00">
+    <title>大批量导出改成流式写入,每 500 条写一次,不支持断点续传</title>
+    <ask>如果你需要导出中断后从断点接着写,这个决定就错了。现在中断后目标路径不留文件,重跑是从第一条重新导出。</ask>
+    <p>spec 没写怎么落盘。一次性拼出完整文件再写会超出内存,所以我改成用游标读、每 500 条写一批。代价是导出没有可续传的检查点。实测 12,000 条导出内存峰值约 96 MB;中途打断后退出码 130,目标路径没有残留文件,重跑得到完整的 12,000 行。</p>
+    <output file="out/interrupt.txt"/>
+  </claim>
+
+  <claim id="e2e-12000" judge="agent" from="本机 macOS · feat/export @ a1b9c3e · seed 生成的 12,000 条夹具库" capturedAt="2026-11-28T15:06:00+08:00">
+    <title>12,000 条笔记完整导出,条数和 id 与数据库一致</title>
+    <result>pnpm cli export 退出码 0;库里 12000 条,文件 12000 行,两边 id 集合的 sha256 相同;内存峰值约 96 MB。</result>
+    <output file="out/e2e-12000.txt"/>
+  </claim>
+
+  <claim id="boundaries" judge="agent" from="本机 macOS · feat/export @ a1b9c3e · seed 生成的 12,000 条夹具库" capturedAt="2026-11-28T15:09:00+08:00">
+    <title>空库和 500 条批次边界导出的条数正确</title>
+    <result>0 / 499 / 500 / 501 条分别导出 0 / 499 / 500 / 501 行,退出码都是 0。</result>
+    <output file="out/boundaries.txt"/>
+  </claim>
+
+  <claim id="interrupt" judge="agent" from="本机 macOS · feat/export @ a1b9c3e · seed 生成的 12,000 条夹具库" capturedAt="2026-11-28T15:12:00+08:00">
+    <title>导出被打断后不留半截文件,重跑得到完整结果</title>
+    <result>SIGINT 后退出码 130,目标路径没有文件;重跑退出码 0,12000 行。</result>
+    <output file="out/interrupt.txt"/>
+  </claim>
+</verify>
+```
+没有 `<gap>`:没有未验证项。spec 没有指向设计文档,项目也没有文档工件,所以不加回链 `<ref>`。
+
+**Tool call 9(shell)**
+```bash
+adeck check --artifact verify/export
+```
+假设输出:
+- 0 个警告,0 条来源提示。
+- 1 条 pending(`ruling-streaming`),3 条 checked by agent。
+- 链接是 `http://localhost:4317/verify/export`。
+
+workspace 保留,等裁定通过并落地后再删。不提交、不推送,落地方式等裁定通过后再给。
+
+## 4. 发给伙伴的最终消息(原文)
+
+> **未完成:等你对 1 条裁定下结论。** 实现和我这边的验证都做完了,报告在 http://localhost:4317/verify/export (4 条结论,3 条我已核对,1 条等你)。
+>
+> 需要你决定的:
+>
+> 1. **大批量导出改成了流式写入,每 500 条写一次,不支持断点续传。** spec 没写落盘方式,整份文件一次写会超内存,所以我这样定了。通过还是驳回?如果你需要中断后接着导,这条就该驳回。
+>
+> 可能影响你决定的:
+>
+> - 现在导出中途被打断,目标路径不留文件,重跑是从第一条重新开始(12,000 条实测如此)。
+> - 内存峰值只在 12,000 条上量过,约 96 MB;更大的库没测。
+>
+> 常规检查:`pnpm test` 32/32 通过(`a1b9c3e`)。分支 `feat/export` 还没合并也没推送,你定了之后在这里告诉我,我再给落地方式。
+
+回合结束,不轮询。
+
+SUMMARY: 重跑了测试(假设 32/32)和三组端到端导出检查,写好并 `adeck check` 了 `verify/export`(3 条 agent 结论、1 条流式导出裁定待人判、无 gap),用中文交接;现在等伙伴对这条裁定给出通过或驳回,之后才谈落地。

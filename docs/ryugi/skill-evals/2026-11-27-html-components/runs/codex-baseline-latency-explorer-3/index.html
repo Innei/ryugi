@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Endpoint Latency Explorer</title>
+<style>
+  :root {
+    color-scheme: light;
+    --ink: #201e2b;
+    --muted: #625e71;
+    --light: #f7f6fa;
+    --line: #e8e5ef;
+    --violet: #6138bd;
+    --p50: #c8b6fa;
+    --p95: #7952d0;
+    --slow: #9f3b21;
+    --slow-bg: #fff0e8;
+    font-family: "DM Sans", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--light); color: var(--ink); font-size: 14px; }
+  button, input, select { font: inherit; }
+  .topbar { background: #fff; border-bottom: 1px solid var(--line); }
+  .top-inner, main { max-width: 1280px; margin: auto; padding-inline: clamp(16px, 4vw, 60px); }
+  .top-inner { min-height: 65px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 750; }
+  .brand-mark { width: 32px; height: 32px; border-radius: 9px; display: grid; place-items: center; color: #fff; background: #6036ba; }
+  .sample { display: inline-flex; align-items: center; gap: 7px; border: 1px solid var(--line); border-radius: 100px; padding: 5px 10px; color: var(--muted); font-size: 12px; }
+  .sample::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--p95); }
+  main { padding-block: 43px 56px; }
+  h1, h2, p { margin: 0; }
+  h1 { font-size: clamp(31px, 5vw, 48px); font-weight: 760; letter-spacing: -.055em; line-height: 1.1; }
+  .intro p { color: var(--muted); margin-top: 10px; font-size: 15px; }
+  .stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-block: 27px 25px; }
+  .stat { display: grid; gap: 8px; background: #fff; border: 1px solid var(--line); border-radius: 13px; padding: 16px 18px; }
+  .stat-label { display: flex; gap: 8px; align-items: center; color: var(--muted); font-size: 13px; font-weight: 650; }
+  .stat-label ryugi-icon { color: var(--violet); }
+  .stat strong { font-size: 29px; line-height: 1.1; letter-spacing: -.045em; font-variant-numeric: tabular-nums; }
+  .stat small { font-size: 12px; color: var(--muted); }
+  .stat-slow strong, .stat-slow .stat-label ryugi-icon { color: var(--slow); }
+  .panel { background: #fff; border: 1px solid var(--line); border-radius: 15px; overflow: hidden; }
+  .panel-head { padding: 19px 18px 16px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 16px; }
+  h2 { font-size: 19px; font-weight: 740; letter-spacing: -.025em; }
+  .legend { display: flex; flex-wrap: wrap; gap: 12px; color: var(--muted); font-size: 12px; }
+  .legend span { display: inline-flex; align-items: center; gap: 5px; }
+  .legend i { display: inline-block; width: 9px; height: 9px; border-radius: 3px; background: var(--p50); }
+  .legend span:last-child i { background: var(--p95); }
+  .controls { display: grid; grid-template-columns: minmax(190px, 1fr) minmax(115px, .39fr) minmax(130px, .46fr) minmax(120px, .38fr); align-items: end; gap: 12px; padding: 0 18px 17px; }
+  .field { display: grid; gap: 6px; min-width: 0; }
+  .field label { color: #4d485c; font-size: 12px; font-weight: 700; }
+  .input-wrap { position: relative; min-width: 0; }
+  input, select { width: 100%; min-width: 0; height: 38px; border: 1px solid #ded9e8; border-radius: 8px; background: #fff; color: var(--ink); padding: 0 10px; }
+  input::placeholder { color: #746e82; }
+  select { cursor: pointer; }
+  #path-search { padding-left: 33px; }
+  .search-icon { position: absolute; left: 10px; top: 11px; pointer-events: none; color: var(--muted); display: flex; }
+  #slow-threshold { padding-right: 34px; }
+  .unit { position: absolute; right: 10px; top: 10px; pointer-events: none; font-size: 12px; color: var(--muted); }
+  :focus-visible { outline: 2px solid var(--violet); outline-offset: 2px; }
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; white-space: nowrap; }
+  th, td { text-align: left; padding: 10px 12px; border-top: 1px solid #efedf4; }
+  th:first-child, td:first-child { padding-left: 18px; }
+  th:last-child, td:last-child { padding-right: 18px; }
+  th { background: #f8f7fb; color: #5a5369; font-size: 12px; font-weight: 700; }
+  td { height: 45px; font-size: 13px; }
+  th[aria-sort] { color: var(--violet); }
+  .numeric { text-align: right; font-variant-numeric: tabular-nums; }
+  .p95-value { font-weight: 750; }
+  tbody tr.slow { background: #fffaf7; }
+  tbody tr.slow .p95-value { color: var(--slow); }
+  tbody tr:hover { background: #f7f4fc; }
+  .method { display: inline-block; border-radius: 5px; text-align: center; min-width: 54px; padding: 3px 6px; font-size: 10px; font-weight: 800; letter-spacing: .025em; color: #2e5ba1; background: #eaf2ff; }
+  .method.POST { color: #226849; background: #e7f6ef; }
+  .method.PATCH { color: #794c14; background: #fbf0db; }
+  .method.PUT { color: #643ca8; background: #f0e8fc; }
+  .method.DELETE { color: #9c3d53; background: #faeaf0; }
+  code { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 12px; }
+  .profile { width: 23%; min-width: 112px; }
+  .profile small { margin-left: 4px; font-weight: 500; }
+  .track { position: relative; display: block; height: 7px; background: #efedf4; border-radius: 10px; overflow: hidden; }
+  .track i { position: absolute; height: 100%; left: 0; border-radius: inherit; }
+  .bar-p95 { width: var(--p95-width); background: var(--p95); }
+  .bar-p50 { width: var(--p50-width); background: var(--p50); }
+  .status { display: inline-flex; align-items: center; gap: 5px; color: var(--muted); font-size: 12px; }
+  .status::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: #91899f; }
+  .status.is-slow { padding: 3px 7px; border-radius: 100px; color: var(--slow); background: var(--slow-bg); font-weight: 750; }
+  .status.is-slow::before { background: #c35a36; }
+  .empty { height: 104px; text-align: center; color: var(--muted); }
+  .result { margin: 0; padding: 11px 18px; color: var(--muted); border-top: 1px solid var(--line); font-size: 12px; }
+  @media (max-width: 720px) {
+    main { padding-top: 29px; }
+    .controls { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .stat { padding: 12px 10px; }
+    .stat strong { font-size: 23px; }
+    .stats { gap: 7px; }
+    .stat-label { gap: 4px; }
+    .stat-label ryugi-icon { display: none; }
+  }
+  @media (max-width: 350px) {
+    .stats { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="top-inner">
+    <div class="brand"><span class="brand-mark"><ryugi-icon name="activity" size="19" aria-hidden="true"></ryugi-icon></span>API Performance</div>
+    <span class="sample">Sample data</span>
+  </div>
+</header>
+
+<main>
+  <section class="intro" aria-labelledby="title">
+    <h1 id="title">Endpoint latency</h1>
+    <p>Compare median (p50) and tail (p95) response times across 24 API endpoints.</p>
+  </section>
+
+  <section class="stats" aria-label="Filtered endpoint summary">
+    <div class="stat">
+      <div class="stat-label"><ryugi-icon name="layers" size="15" aria-hidden="true"></ryugi-icon>Endpoints shown</div>
+      <strong id="endpoint-count"></strong>
+      <small>of 24 total endpoints</small>
+    </div>
+    <div class="stat">
+      <div class="stat-label"><ryugi-icon name="activity" size="15" aria-hidden="true"></ryugi-icon>Median endpoint p95</div>
+      <strong id="median-p95"></strong>
+      <small>Across matching endpoints</small>
+    </div>
+    <div class="stat stat-slow">
+      <div class="stat-label"><ryugi-icon name="triangle-alert" size="15" aria-hidden="true"></ryugi-icon>Slow endpoints</div>
+      <strong id="slow-count"></strong>
+      <small id="threshold-summary"></small>
+    </div>
+  </section>
+
+  <section class="panel" aria-labelledby="table-title">
+    <div class="panel-head">
+      <h2 id="table-title">Endpoints</h2>
+      <div class="legend" aria-label="Latency profile legend">
+        <span><i></i>p50</span><span><i></i>p95</span>
+      </div>
+    </div>
+    <div class="controls">
+      <div class="field">
+        <label for="path-search">Search path</label>
+        <div class="input-wrap">
+          <span class="search-icon"><ryugi-icon name="search" size="15" aria-hidden="true"></ryugi-icon></span>
+          <input id="path-search" type="search" placeholder="e.g. /orders" autocomplete="off">
+        </div>
+      </div>
+      <div class="field">
+        <label for="http-method">HTTP method</label>
+        <select id="http-method">
+          <option value="">All methods</option>
+          <option>GET</option><option>POST</option><option>PUT</option><option>PATCH</option><option>DELETE</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="p95-sort">Sort by p95</label>
+        <select id="p95-sort">
+          <option value="desc">Highest first</option>
+          <option value="asc">Lowest first</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="slow-threshold">Slow if p95 exceeds</label>
+        <div class="input-wrap">
+          <input id="slow-threshold" type="number" min="0" step="any" value="350" aria-describedby="threshold-unit">
+          <span class="unit" id="threshold-unit">ms</span>
+        </div>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table aria-labelledby="table-title">
+        <thead><tr>
+          <th scope="col">Method</th>
+          <th scope="col">Endpoint path</th>
+          <th scope="col" class="numeric">p50 (ms)</th>
+          <th scope="col" id="p95-heading" class="numeric" aria-sort="descending">p95 (ms) <span id="sort-arrow" aria-hidden="true">↓</span></th>
+          <th scope="col" class="profile">Latency profile <small>· 0–1,000 ms</small></th>
+          <th scope="col">Status</th>
+        </tr></thead>
+        <tbody id="endpoint-rows"></tbody>
+      </table>
+    </div>
+    <p class="result" id="results" role="status"></p>
+  </section>
+</main>
+
+<script>
+  const endpoints = [
+    ['GET', '/v1/health', 8, 21],
+    ['GET', '/v1/users', 63, 174],
+    ['GET', '/v1/users/{id}', 34, 92],
+    ['POST', '/v1/users', 101, 278],
+    ['PATCH', '/v1/users/{id}', 79, 211],
+    ['DELETE', '/v1/users/{id}', 89, 248],
+    ['POST', '/v1/auth/token', 48, 127],
+    ['POST', '/v1/auth/refresh', 30, 78],
+    ['GET', '/v1/products', 87, 245],
+    ['GET', '/v1/products/{id}', 42, 111],
+    ['GET', '/v1/products/search', 150, 463],
+    ['PUT', '/v1/products/{id}/inventory', 95, 282],
+    ['GET', '/v1/orders', 119, 324],
+    ['GET', '/v1/orders/{id}', 64, 182],
+    ['POST', '/v1/orders', 188, 564],
+    ['PATCH', '/v1/orders/{id}', 116, 350],
+    ['POST', '/v1/orders/{id}/cancel', 134, 383],
+    ['POST', '/v1/payments', 268, 812],
+    ['GET', '/v1/payments/{id}', 70, 196],
+    ['POST', '/v1/payments/{id}/refund', 217, 647],
+    ['GET', '/v1/invoices/{id}', 85, 233],
+    ['GET', '/v1/reports/sales', 309, 925],
+    ['POST', '/v1/webhooks', 58, 158],
+    ['DELETE', '/v1/webhooks/{id}', 38, 106]
+  ].map(([method, path, p50, p95]) => ({ method, path, p50, p95 }));
+
+  const search = document.getElementById('path-search');
+  const methodFilter = document.getElementById('http-method');
+  const sort = document.getElementById('p95-sort');
+  const thresholdInput = document.getElementById('slow-threshold');
+  const rows = document.getElementById('endpoint-rows');
+  const p95Heading = document.getElementById('p95-heading');
+  const sortArrow = document.getElementById('sort-arrow');
+  const endpointCount = document.getElementById('endpoint-count');
+  const medianP95 = document.getElementById('median-p95');
+  const slowCount = document.getElementById('slow-count');
+  const thresholdSummary = document.getElementById('threshold-summary');
+  const results = document.getElementById('results');
+  const format = new Intl.NumberFormat('en', { maximumFractionDigits: 3 });
+
+  function createRow(endpoint, isSlow, hasThreshold) {
+    const { method, path, p50, p95 } = endpoint;
+    const row = document.createElement('tr');
+    row.classList.toggle('slow', isSlow);
+    row.innerHTML = `
+      <td><span class="method"></span></td>
+      <td><code></code></td>
+      <td class="numeric"></td>
+      <td class="numeric p95-value"></td>
+      <td class="profile"><span class="track" aria-hidden="true"><i class="bar-p95"></i><i class="bar-p50"></i></span></td>
+      <td><span class="status"></span></td>`;
+    const methodBadge = row.cells[0].firstElementChild;
+    methodBadge.textContent = method;
+    methodBadge.classList.add(method);
+    row.cells[1].firstElementChild.textContent = path;
+    row.cells[2].textContent = format.format(p50);
+    row.cells[3].textContent = format.format(p95);
+    const track = row.cells[4].firstElementChild;
+    track.style.setProperty('--p50-width', (p50 / 10) + '%');
+    track.style.setProperty('--p95-width', (p95 / 10) + '%');
+    const status = row.cells[5].firstElementChild;
+    status.classList.toggle('is-slow', isSlow);
+    status.textContent = hasThreshold ? (isSlow ? 'Slow' : 'Within limit') : '—';
+    return row;
+  }
+
+  function render() {
+    const query = search.value.trim().toLowerCase();
+    const selectedMethod = methodFilter.value;
+    const descending = sort.value === 'desc';
+    const threshold = thresholdInput.valueAsNumber;
+    const hasThreshold = Number.isFinite(threshold) && threshold >= 0;
+    const matches = endpoints
+      .filter(({ method, path }) => (!selectedMethod || method === selectedMethod) && path.toLowerCase().includes(query))
+      .sort((a, b) => descending ? b.p95 - a.p95 : a.p95 - b.p95);
+
+    let slowTotal = 0;
+    const fragment = document.createDocumentFragment();
+    for (const endpoint of matches) {
+      const isSlow = hasThreshold && endpoint.p95 > threshold;
+      if (isSlow) slowTotal += 1;
+      fragment.append(createRow(endpoint, isSlow, hasThreshold));
+    }
+    if (!matches.length) {
+      const row = document.createElement('tr');
+      const message = row.insertCell();
+      message.colSpan = 6;
+      message.className = 'empty';
+      message.textContent = 'No endpoints match your filters.';
+      fragment.append(row);
+    }
+    rows.replaceChildren(fragment);
+
+    p95Heading.setAttribute('aria-sort', descending ? 'descending' : 'ascending');
+    sortArrow.textContent = descending ? '↓' : '↑';
+    endpointCount.textContent = matches.length;
+    const lowerMiddle = Math.floor((matches.length - 1) / 2);
+    const upperMiddle = Math.floor(matches.length / 2);
+    medianP95.textContent = matches.length
+      ? format.format((matches[lowerMiddle].p95 + matches[upperMiddle].p95) / 2) + ' ms'
+      : '—';
+    slowCount.textContent = hasThreshold ? slowTotal : '—';
+    thresholdSummary.textContent = hasThreshold ? 'p95 above ' + format.format(threshold) + ' ms' : 'Enter a threshold of 0 ms or more';
+    results.textContent = 'Showing ' + matches.length + ' of ' + endpoints.length + ' endpoints'
+      + (hasThreshold ? ' · ' + slowTotal + ' slow' : '');
+  }
+
+  for (const control of [search, methodFilter, sort, thresholdInput]) {
+    control.addEventListener('input', render);
+    control.addEventListener('change', render);
+  }
+  render();
+</script>
+</body>
+</html>

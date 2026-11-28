@@ -1,0 +1,216 @@
+Simulation follows. Working in place (per the worktree decision), no git branch/commit steps. No intermediate messages to my partner — I work the RED→GREEN→verify cycle autonomously and report once.
+
+---
+
+**Step 1 — Read the test-writing rules the skill requires before touching any test.**
+
+```
+$ cat ./skill/writing-good-tests.md
+```
+
+*(Assumed content — the four rules the skill already summarizes. The one that governs here: **name the production change that would make the test fail before writing it**.)*
+
+---
+
+**Step 2 — Locate every reference to the string, then read the files I'm going to change.**
+
+```
+$ rg -n "No notes" --glob '!node_modules' .
+```
+
+*(Assumed output:)*
+
+```
+src/components/EmptyNotes.tsx:4:      <p>No notes</p>
+src/pages/NotesPage.test.tsx:23:      expect(screen.getByText('No notes')).toBeInTheDocument();
+```
+
+Only two references, matching the given `rg -l EmptyNotes src` result. `NotesPage.tsx` imports `EmptyNotes` but doesn't contain the literal, and no other test or e2e file references the string.
+
+```
+$ cat src/components/EmptyNotes.tsx
+```
+
+*(Assumed content:)*
+
+```tsx
+export function EmptyNotes() {
+  return (
+    <div className="empty-notes">
+      <p>No notes</p>
+    </div>
+  );
+}
+```
+
+```
+$ cat src/pages/NotesPage.test.tsx
+```
+
+*(Assumed content; the assertion line was supplied, the rest is plausible filler:)*
+
+```tsx
+import { render, screen } from '@testing-library/react';
+import NotesPage from './NotesPage';
+
+describe('NotesPage', () => {
+  test('shows the empty state', () => {
+    render(<NotesPage notes={[]} />);
+    expect(screen.getByText('No notes')).toBeInTheDocument();
+  });
+
+  test('renders notes', () => {
+    render(<NotesPage notes={[{ id: '1', title: 'First note' }]} />);
+    expect(screen.getByText('First note')).toBeInTheDocument();
+  });
+});
+```
+
+---
+
+**Step 3 — RED. Update the existing assertion to the desired text first.**
+
+Production change that would make this (updated) test fail: rendering the empty-state text as anything other than exactly `No notes yet — create one` (e.g. reverting to `No notes`). That's the behavior the test now guards.
+
+Edit `src/pages/NotesPage.test.tsx`, line 23:
+
+```diff
+-    expect(screen.getByText('No notes')).toBeInTheDocument();
++    expect(screen.getByText('No notes yet — create one')).toBeInTheDocument();
+```
+
+Run it and read the full output:
+
+```
+$ pnpm test src/pages/NotesPage.test.tsx
+```
+
+*(Assumed output — representative vitest run:)*
+
+```
+ RUN  v3.x.x ...
+
+ ❯ src/pages/NotesPage.test.tsx (2)
+   ❯ NotesPage (2)
+     × shows the empty state
+     ↓ renders notes
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/pages/NotesPage.test.tsx > NotesPage > shows the empty state
+TestingLibraryElementError: Unable to find an element with the text: No notes yet — create one.
+...
+<body>
+  <div>
+    <div class="empty-notes">
+      <p>No notes</p>
+    </div>
+  </div>
+</body>
+ ❯ src/pages/NotesPage.test.tsx:23:29
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 1 skipped (1)
+```
+
+RED confirmed: it's an assertion failure (not a syntax/type error), the message names exactly the missing text, and the DOM dump shows the component still renders `No notes` — i.e. the feature is missing, exactly the failure I intended.
+
+---
+
+**Step 4 — GREEN. Minimal production change.**
+
+Edit `src/components/EmptyNotes.tsx`, line 4:
+
+```diff
+-      <p>No notes</p>
++      <p>No notes yet — create one</p>
+```
+
+Run the same test again and read the full output:
+
+```
+$ pnpm test src/pages/NotesPage.test.tsx
+```
+
+*(Assumed output:)*
+
+```
+ RUN  v3.x.x ...
+
+ ✓ src/pages/NotesPage.test.tsx (2)
+   ✓ NotesPage (2)
+     ✓ shows the empty state
+     ✓ renders notes
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+```
+
+GREEN confirmed, output pristine.
+
+---
+
+**Step 5 — Verify the only reachable test, the exact diff, and the rest of the suite.**
+
+The repo-wide search in Step 2 showed the only test that can reach `EmptyNotes` (directly or via `NotesPage`) is `NotesPage.test.tsx`. Confirm the diff is exactly the two intended lines:
+
+```
+$ git diff
+```
+
+*(Assumed output:)*
+
+```diff
+diff --git a/src/components/EmptyNotes.tsx b/src/components/EmptyNotes.tsx
+index abc1234..def5678 100644
+--- a/src/components/EmptyNotes.tsx
++++ b/src/components/EmptyNotes.tsx
+@@ -1,6 +1,6 @@
+ export function EmptyNotes() {
+   return (
+     <div className="empty-notes">
+-      <p>No notes</p>
++      <p>No notes yet — create one</p>
+     </div>
+   );
+ }
+diff --git a/src/pages/NotesPage.test.tsx b/src/pages/NotesPage.test.tsx
+index 1112222..3334444 100644
+--- a/src/pages/NotesPage.test.tsx
++++ b/src/pages/NotesPage.test.tsx
+@@ -20,7 +20,7 @@ describe('NotesPage', () => {
+   test('shows the empty state', () => {
+     render(<NotesPage notes={[]} />);
+-    expect(screen.getByText('No notes')).toBeInTheDocument();
++    expect(screen.getByText('No notes yet — create one')).toBeInTheDocument();
+   });
+```
+
+Run the full suite once as the "other tests still pass" gate:
+
+```
+$ pnpm test
+```
+
+*(Assumed output:)*
+
+```
+ RUN  v3.x.x ...
+
+ Test Files  7 passed (7)
+      Tests  12 passed (12)
+```
+
+All green. No refactor needed — two one-line changes, no duplication introduced.
+
+---
+
+**Step 6 — Report to my partner.**
+
+> Done. Empty-state text changed from `No notes` to `No notes yet — create one`.
+>
+> TDD order: updated the `shows the empty state` assertion in `src/pages/NotesPage.test.tsx` first and watched it fail with `TestingLibraryElementError: Unable to find an element with the text: No notes yet — create one` (DOM still showed `No notes`) — a real assertion failure, not an error. Then changed the single line in `src/components/EmptyNotes.tsx` and watched the same test pass (2/2).
+>
+> Evidence: `pnpm test src/pages/NotesPage.test.tsx` — 2 passed. `pnpm test` (full suite) — 12 passed, 0 failed. Diff is exactly two lines: the `<p>` text in `EmptyNotes.tsx` and the matching assertion in the test. No other file references the old string (verified via `rg -n "No notes"` repo-wide).
+
+SUMMARY: Read `./skill/writing-good-tests.md`, located all `"No notes"` references (`rg -n "No notes" --glob '!node_modules' .` — only `EmptyNotes.tsx` and `NotesPage.test.tsx`), read both files; RED — updated the `NotesPage.test.tsx` assertion to `No notes yet — create one` and ran `pnpm test src/pages/NotesPage.test.tsx` (failed with the expected TestingLibraryElementError, DOM showing old text); GREEN — changed `EmptyNotes.tsx` `<p>` text and reran the same test (2 passed); verified with `git diff` (two lines) and full suite `pnpm test` (12 passed); reported the change and its evidence to my partner.

@@ -1,0 +1,1 @@
+Built [index.html](./index.html) with three sample drafts in mock search results, a preferred-draft picker, 1–5 tone ratings, a note field, and a live summary.

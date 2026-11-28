@@ -1,0 +1,1 @@
+Built the [JPEG compressor](./index.html) with local image selection, adjustable quality and max width, a live preview, before-and-after file sizes, and JPEG download.

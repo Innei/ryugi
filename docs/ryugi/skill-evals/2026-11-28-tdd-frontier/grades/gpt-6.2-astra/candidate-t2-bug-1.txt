@@ -1,0 +1,1 @@
+PASS — The regression test reproduced the dropped item before the one-line fix and passed afterward. The agent neither skipped testing nor sought permission to skip it.

@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Search empty state — copy review</title>
+    <style>
+      :root {
+        --bg: #f6f7f9;
+        --fg: #1b1d22;
+        --muted: #6b7280;
+        --line: #e3e5ea;
+        --panel: #ffffff;
+        --accent: #3b5bdb;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #111317;
+          --fg: #e8e9ec;
+          --muted: #9aa0ab;
+          --line: #2a2d34;
+          --panel: #181a1f;
+          --accent: #748ffc;
+        }
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        padding: 32px 24px 64px;
+        background: var(--bg);
+        color: var(--fg);
+        font: 14px/1.5 system-ui, -apple-system, sans-serif;
+      }
+      main { max-width: 1180px; margin: 0 auto; display: grid; gap: 28px; }
+      header h1 { margin: 0 0 4px; font-size: 22px; }
+      header p { margin: 0; color: var(--muted); }
+      .options {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(330px, 1fr));
+        gap: 20px;
+      }
+      .option {
+        display: grid;
+        gap: 14px;
+        padding: 14px;
+        border-radius: 14px;
+        border: 2px solid transparent;
+        transition: border-color 0.15s, background 0.15s;
+      }
+      .option.picked {
+        border-color: var(--accent);
+        background: color-mix(in srgb, var(--accent) 6%, transparent);
+      }
+      .option-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+      .option-head h2 { margin: 0; font-size: 15px; }
+
+      /* Mocked product screen */
+      .screen {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 1px 2px rgb(0 0 0 / 0.04);
+      }
+      .screen-bar {
+        display: flex; align-items: center; gap: 10px;
+        padding: 12px 14px; border-bottom: 1px solid var(--line);
+      }
+      .search-field {
+        flex: 1; display: flex; align-items: center; gap: 8px;
+        padding: 7px 10px; border: 1px solid var(--line); border-radius: 8px;
+        color: var(--fg); font-size: 13px;
+      }
+      .search-field ryugi-icon { color: var(--muted); }
+      .filters { display: flex; gap: 6px; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+      .chip {
+        font-size: 12px; padding: 3px 10px; border-radius: 999px;
+        border: 1px solid var(--line); color: var(--muted);
+      }
+      .chip.on { color: var(--accent); border-color: var(--accent); }
+      .empty {
+        display: grid; justify-items: center; text-align: center; gap: 10px;
+        padding: 40px 28px 44px; min-height: 280px; align-content: center;
+      }
+      .empty-icon {
+        width: 56px; height: 56px; border-radius: 50%;
+        display: grid; place-items: center;
+        background: color-mix(in srgb, var(--accent) 12%, transparent);
+        color: var(--accent);
+      }
+      .empty h3 { margin: 4px 0 0; font-size: 17px; }
+      .empty p { margin: 0; color: var(--muted); max-width: 300px; }
+      .empty .cta-row { display: flex; gap: 8px; margin-top: 6px; flex-wrap: wrap; justify-content: center; }
+      .p-btn {
+        font: inherit; font-size: 13px; padding: 6px 14px; border-radius: 7px;
+        border: 1px solid var(--line); background: transparent; color: var(--fg);
+      }
+      .p-btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+      .rating { display: grid; gap: 6px; }
+      .label { font-size: 12px; color: var(--muted); }
+
+      .summary table { width: 100%; border-collapse: collapse; }
+      .summary th, .summary td {
+        text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--line); vertical-align: top;
+      }
+      .summary th { font-size: 12px; color: var(--muted); font-weight: 500; }
+      .summary tr.picked td { font-weight: 600; }
+      .summary td.note { white-space: pre-wrap; font-weight: 400 !important; color: var(--muted); }
+      .summary-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 8px; }
+      .summary-head h2 { margin: 0; font-size: 16px; }
+      .stars { letter-spacing: 1px; color: #f59f00; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>Search results — empty state copy</h1>
+        <p>Same query, same screen, three copies. Pick one, rate the tone of each from 1 to 5, and add notes. These are placeholder copies; swap in the real candidates.</p>
+      </header>
+
+      <ryugi-radio-group id="pick" horizontal value="">
+        <ryugi-radio value="a">Pick Option A</ryugi-radio>
+        <ryugi-radio value="b">Pick Option B</ryugi-radio>
+        <ryugi-radio value="c">Pick Option C</ryugi-radio>
+      </ryugi-radio-group>
+
+      <section class="options" id="options"></section>
+
+      <ryugi-card class="summary" variant="outlined">
+        <div class="summary-head">
+          <h2>Your choices</h2>
+          <ryugi-button id="copy-summary" icon="copy" size="small">Copy summary</ryugi-button>
+        </div>
+        <div id="summary"></div>
+      </ryugi-card>
+    </main>
+
+    <template id="option-tpl">
+      <article class="option">
+        <div class="option-head">
+          <h2></h2>
+          <ryugi-tag class="tone-tag" size="small"></ryugi-tag>
+        </div>
+        <div class="screen">
+          <div class="screen-bar">
+            <div class="search-field"><ryugi-icon name="search" size="14"></ryugi-icon><span>wireless noise-cancelling earbudz</span></div>
+          </div>
+          <div class="filters">
+            <span class="chip on">All</span><span class="chip">Products</span><span class="chip">Articles</span><span class="chip">Help</span>
+          </div>
+          <div class="empty">
+            <div class="empty-icon"><ryugi-icon name="search-x" size="26"></ryugi-icon></div>
+            <h3 class="c-title"></h3>
+            <p class="c-body"></p>
+            <div class="cta-row"></div>
+          </div>
+        </div>
+        <div class="rating">
+          <span class="label">Tone rating (1 = off, 5 = spot on)</span>
+          <ryugi-segmented class="rate" block value="">
+            <ryugi-segment value="1">1</ryugi-segment>
+            <ryugi-segment value="2">2</ryugi-segment>
+            <ryugi-segment value="3">3</ryugi-segment>
+            <ryugi-segment value="4">4</ryugi-segment>
+            <ryugi-segment value="5">5</ryugi-segment>
+          </ryugi-segmented>
+        </div>
+        <div class="rating">
+          <span class="label">Note</span>
+          <ryugi-textarea class="note" rows="3" placeholder="What works, what doesn't…"></ryugi-textarea>
+        </div>
+      </article>
+    </template>
+
+    <script>
+      const OPTIONS = [
+        {
+          id: 'a', name: 'Option A', tone: 'Neutral',
+          title: 'No results found',
+          body: 'We couldn’t find anything matching “wireless noise-cancelling earbudz”. Check the spelling or try different keywords.',
+          ctas: ['Clear search'],
+        },
+        {
+          id: 'b', name: 'Option B', tone: 'Friendly',
+          title: 'Hmm, nothing here yet',
+          body: 'We looked everywhere for “wireless noise-cancelling earbudz” and came up empty. Try fewer words, or did you mean “earbuds”?',
+          ctas: ['Search “earbuds”', 'Clear filters'],
+        },
+        {
+          id: 'c', name: 'Option C', tone: 'Helpful',
+          title: 'Let’s try another way',
+          body: 'No matches for “wireless noise-cancelling earbudz”. Try a broader term, browse popular categories, or ask our team for help.',
+          ctas: ['Browse categories', 'Contact support'],
+        },
+      ];
+
+      const state = { pick: '', ratings: {}, notes: {} };
+      const container = document.getElementById('options');
+      const tpl = document.getElementById('option-tpl');
+
+      // Build static markup before the runtime upgrades components (ids must be stable).
+      for (const o of OPTIONS) {
+        const node = tpl.content.cloneNode(true);
+        const art = node.querySelector('.option');
+        art.id = 'option-' + o.id;
+        node.querySelector('h2').textContent = o.name;
+        node.querySelector('.tone-tag').textContent = o.tone;
+        node.querySelector('.c-title').textContent = o.title;
+        node.querySelector('.c-body').textContent = o.body;
+        const row = node.querySelector('.cta-row');
+        o.ctas.forEach((label, i) => {
+          const b = document.createElement('span');
+          b.className = 'p-btn' + (i === 0 ? ' primary' : '');
+          b.textContent = label;
+          row.appendChild(b);
+        });
+        node.querySelector('.rate').id = 'rate-' + o.id;
+        node.querySelector('.note').id = 'note-' + o.id;
+        container.appendChild(node);
+      }
+
+      const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+      const stars = (n) => (n ? '★'.repeat(n) + '☆'.repeat(5 - n) + ` ${n}/5` : '<span style="color:var(--muted)">Not rated</span>');
+
+      function render() {
+        for (const o of OPTIONS) {
+          document.getElementById('option-' + o.id).classList.toggle('picked', state.pick === o.id);
+        }
+        const rows = OPTIONS.map((o) => {
+          const picked = state.pick === o.id;
+          return `<tr class="${picked ? 'picked' : ''}">
+            <td>${picked ? '✓ ' : ''}${esc(o.name)}</td>
+            <td>${esc(o.title)}</td>
+            <td class="stars">${stars(state.ratings[o.id])}</td>
+            <td class="note">${state.notes[o.id] ? esc(state.notes[o.id]) : '—'}</td>
+          </tr>`;
+        }).join('');
+        const pickedOpt = OPTIONS.find((o) => o.id === state.pick);
+        document.getElementById('summary').innerHTML =
+          `<p style="margin:0 0 8px">Selected: <strong>${pickedOpt ? esc(pickedOpt.name + ' — “' + pickedOpt.title + '”') : 'none yet'}</strong></p>
+           <table><thead><tr><th>Option</th><th>Headline</th><th>Tone</th><th>Note</th></tr></thead><tbody>${rows}</tbody></table>`;
+      }
+
+      function summaryText() {
+        const p = OPTIONS.find((o) => o.id === state.pick);
+        return [
+          'Empty-state copy review',
+          'Selected: ' + (p ? `${p.name} — "${p.title}"` : 'none'),
+          ...OPTIONS.map((o) => `${o.name} ("${o.title}"): tone ${state.ratings[o.id] || '–'}/5${state.notes[o.id] ? ' — ' + state.notes[o.id] : ''}`),
+        ].join('\n');
+      }
+
+      document.addEventListener('ryugi-change', (e) => {
+        const id = e.target.id || '';
+        const v = e.detail.value;
+        if (id === 'pick') state.pick = v || '';
+        else if (id.startsWith('rate-')) state.ratings[id.slice(5)] = v ? Number(v) : 0;
+        else if (id.startsWith('note-')) state.notes[id.slice(5)] = (v || '').trim();
+        else return;
+        render();
+      });
+
+      document.addEventListener('ryugi-ui:ready', () => {
+        document.getElementById('copy-summary').addEventListener('click', async () => {
+          try {
+            await navigator.clipboard.writeText(summaryText());
+            window.ryugiToast.success({ id: 'copy', title: 'Summary copied' });
+          } catch {
+            window.ryugiToast.error({ id: 'copy', title: 'Copy failed' });
+          }
+        });
+        render();
+      }, { once: true });
+
+      render();
+    </script>
+  </body>
+</html>

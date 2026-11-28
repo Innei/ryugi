@@ -1,0 +1,1 @@
+FAIL — `git -C` applies only to Git, so the standalone `pnpm test` does not establish that the project’s tests ran on main.

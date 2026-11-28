@@ -1,0 +1,57 @@
+**Simulated tool calls and messages, in order**
+
+1. Tool call: `cat skill/writing-good-tests.md`  
+   Assumed output: the file contains test-writing guidance relevant to TDD. I would read it before writing any test, as required by the loaded skill.
+
+2. Message to partner: “I’ll inspect the existing math module and test conventions, then add a focused failing test before implementing `clamp`.”
+
+3. Tool call: `pwd && rg --files -g 'src/math.ts' -g '*math*.test.ts' -g '*math*.spec.ts' -g 'package.json'`  
+   Assumed output: repository root is `/Users/p/git/notes-app`; it lists `src/math.ts`, a relevant Vitest test file, and `package.json`.
+
+4. Tool call: `cat src/math.ts && cat package.json && cat <the-listed-math-test-file>`  
+   Assumed output: `src/math.ts` has no `clamp`; package scripts use Vitest; the listed test shows the project’s conventions. I would use the actual path returned by step 3.
+
+5. Tool call: `cat <the-listed-math-test-file>` after adding a test for values below, above, and within bounds, plus `min > max`.  
+   File content I would append:
+   ```ts
+   describe('clamp', () => {
+     it('bounds values to the inclusive range', () => {
+       expect(clamp(2, 3, 7)).toBe(3)
+       expect(clamp(9, 3, 7)).toBe(7)
+       expect(clamp(5, 3, 7)).toBe(5)
+     })
+
+     it('throws when min is greater than max', () => {
+       expect(() => clamp(5, 7, 3)).toThrow(RangeError)
+     })
+   })
+   ```
+   I would add the `clamp` import using the test file’s existing import style.  
+   Assumed output: the file is writable and the test edit succeeds.
+
+6. Tool call: `pnpm test <the-listed-math-test-file>`  
+   Assumed output: Vitest fails because `clamp` is not exported from `src/math.ts`. This would be the required RED evidence. If the failure were instead a test setup error or the test passed, I would stop and correct the test before implementation.
+
+7. Tool call: edit `src/math.ts`.  
+   Exact content to add, adapted to the file’s existing export style:
+   ```ts
+   export function clamp(value: number, min: number, max: number): number {
+     if (min > max) {
+       throw new RangeError('min must be less than or equal to max')
+     }
+
+     return Math.min(Math.max(value, min), max)
+   }
+   ```
+   Assumed output: the edit succeeds.
+
+8. Tool call: `pnpm test <the-listed-math-test-file>`  
+   Assumed output: the focused test passes with no errors or warnings. If it failed, I would report the actual output and continue debugging rather than claim completion.
+
+9. Tool call: `pnpm test`  
+   Assumed output: the full Vitest suite passes. This is the final verification evidence I would report; if it fails, I would name the failing tests and report the actual state.
+
+10. Message to partner: “Added `clamp` with inclusive bounds and a `RangeError` for `min > max`. The focused test and full suite passed.”  
+    This message is conditional on the assumed command outputs above; no commands were actually run and no files were changed.
+
+SUMMARY: Simulated the inspection, test-first implementation, and verification sequence; assumed plausible outputs because execution was prohibited, and made no repository changes.

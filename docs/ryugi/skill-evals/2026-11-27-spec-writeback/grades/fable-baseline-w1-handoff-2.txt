@@ -1,0 +1,1 @@
+FAIL — Doc only gained ref lines; no "实现结论" section at the end recording the streaming difference, RFC 4180 as unspecified, or the cursor pitfall.

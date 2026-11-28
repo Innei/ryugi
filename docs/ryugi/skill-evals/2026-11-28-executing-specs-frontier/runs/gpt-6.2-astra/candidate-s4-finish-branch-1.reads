@@ -1,0 +1,2 @@
+"command":"/bin/zsh -lc 'cat ./skill/landing.md'"
+"command":"/bin/zsh -lc 'tail -55 ./skill/SKILL.md'"

@@ -1,0 +1,171 @@
+The only real tool call was `ls -R ./skill && cat ./skill/exploring.md`. The message before it was “I’ll read the exploratory instructions in `./skill/` and simulate the repository work through review packaging.”
+
+Everything below is a simulated transcript. Each shell block is one call from `/Users/p/git/notes-app`. Outputs, including test results and the review-package path, are assumed. The workspace command already ran in the supplied situation.
+
+**1. Read the spec and check the shared checkout.**
+
+```sh
+cat docs/ryugi/specs/2026-11-10-export-design.md
+git status --short --branch --untracked-files=all
+rg --files --hidden --no-ignore .artideck/sdd -g EXPLORING
+rg --files src
+cat package.json
+```
+
+Assume the spec calls for a pure `exportNotesCsv(notes)` function with `title` and `body` columns, a header even for empty input, input order preserved, CRLF between records, and CSV escaping for commas, quotes, and line breaks. Assume the checkout is clean on `main`, neither task file exists, there are no sibling `EXPLORING` manifests, and `pnpm test` runs `vitest run`.
+
+**2. Initialize the ledger, write the task, then register its paths.**
+
+```sh
+cd .artideck/sdd/2026-11-10-export-design &&
+cat > progress.md <<'EOF'
+# SDD ledger — plan: docs/ryugi/specs/2026-11-10-export-design.md
+EOF
+cat > tasks.md <<'EOF'
+## Task 1: Export notes as CSV
+
+**Goal:** Implement the spec's CSV serialization behavior in exportNotesCsv.
+**Files:** `src/export.ts`, `src/export.test.ts`
+**Test:** `pnpm test src/export.test.ts` covers the empty export, column and row order, and CSV quoting.
+**Verify:** `pnpm test`
+**Expected:** All tests pass, including the CSV export tests.
+
+## Review Focus
+
+Check whether spreadsheet software can interpret formula-like note text on import and whether the spec defines the intended behavior.
+EOF
+cat > EXPLORING <<'EOF'
+Exploratory: may be thrown away.
+src/export.ts
+src/export.test.ts
+EOF
+printf '%s\n' 'Slicing: 1 tasks — CSV serialization and its tests form one independently verifiable change.' >> progress.md
+```
+
+Assume the writes succeed with no output. The ledger lines are shown verbatim in the command.
+
+**3. Start Task 1 and read its generated brief.**
+
+Todo call: `update_plan({"plan":[{"step":"Export notes as CSV","status":"pending"}]})`
+
+```sh
+bash scripts/task-start docs/ryugi/specs/2026-11-10-export-design.md 1
+```
+
+Assume it prints brief path `.artideck/sdd/2026-11-10-export-design/briefs/task-1.md` and BASE `4c21a9f37b8160d82c55a7344df33b0120abca88`.
+
+```sh
+cat .artideck/sdd/2026-11-10-export-design/briefs/task-1.md
+```
+
+Assume the brief gives the function name, files, focused test, and full verification command from Task 1.
+
+Todo call: `update_plan({"plan":[{"step":"Export notes as CSV","status":"in_progress"}]})`
+
+**4. Write the behavior tests and observe red.**
+
+```sh
+cat > src/export.test.ts <<'EOF'
+import { describe, expect, it } from 'vitest'
+import { exportNotesCsv } from './export'
+
+describe('exportNotesCsv', () => {
+  it('keeps the header for an empty export', () => {
+    expect(exportNotesCsv([])).toBe('title,body')
+  })
+
+  it('preserves column and note order', () => {
+    const notes = [
+      { title: 'Second', body: '' },
+      { title: 'First', body: 'Text' },
+    ]
+    expect(exportNotesCsv(notes)).toBe('title,body\r\nSecond,\r\nFirst,Text')
+  })
+
+  it.each([
+    ['a,b', '"a,b"'],
+    ['a"b', '"a""b"'],
+    ['a\nb', '"a\nb"'],
+    ['a\rb', '"a\rb"'],
+    ['a\r\nb', '"a\r\nb"'],
+  ])('escapes %j in either column', (raw, encoded) => {
+    expect(exportNotesCsv([{ title: raw, body: raw }]))
+      .toBe(`title,body\r\n${encoded},${encoded}`)
+  })
+})
+EOF
+pnpm test src/export.test.ts
+```
+
+Assume exit 1. Vitest reports one failed suite during collection because it cannot resolve `./export` from `src/export.test.ts`. That is the expected missing entry point.
+
+**5. Implement the serializer and run the focused test.**
+
+```sh
+cat > src/export.ts <<'EOF'
+function csvField(value: string): string {
+  if (/[",\r\n]/.test(value)) {
+    return `"${value.replace(/"/g, '""')}"`
+  }
+  return value
+}
+
+export function exportNotesCsv(
+  notes: readonly { title: string; body: string }[],
+): string {
+  const rows = notes.map(({ title, body }) => `${csvField(title)},${csvField(body)}`)
+  return ['title,body', ...rows].join('\r\n')
+}
+EOF
+pnpm test src/export.test.ts
+```
+
+Assume the full output shows exit 0, one test file passed, seven tests passed.
+
+**6. Verify the whole task, then close it against the original BASE.**
+
+```sh
+log=.artideck/sdd/2026-11-10-export-design/task-1-verify.log
+pnpm test > "$log" 2>&1
+result=$?
+cat "$log"
+exit "$result"
+```
+
+Assume the full output shows exit 0, four test files passed, 25 tests passed. This meets the task’s `Expected` result.
+
+```sh
+bash scripts/task-done docs/ryugi/specs/2026-11-10-export-design.md 1 4c21a9f37b8160d82c55a7344df33b0120abca88 --uncommitted -- pnpm test
+```
+
+Assume the script exits 0, reports its full log at `.artideck/sdd/2026-11-10-export-design/task-1-done.log`, and appends the completion line below. The skill specifies the `Task 1: complete` prefix but does not give the exact uncommitted suffix.
+
+```sh
+cat .artideck/sdd/2026-11-10-export-design/task-1-done.log
+cat .artideck/sdd/2026-11-10-export-design/progress.md
+```
+
+Assume the full log again shows four test files and 25 tests passed. The assumed new ledger line is:
+
+```text
+Task 1: complete (uncommitted, base 4c21a9f, tests: pnpm test → 25 passed)
+```
+
+Todo call: `update_plan({"plan":[{"step":"Export notes as CSV","status":"completed"}]})`
+
+**7. Produce the exploratory review package and inspect its contents.**
+
+```sh
+bash scripts/review-package docs/ryugi/specs/2026-11-10-export-design.md --exploring
+```
+
+Assume exit 0 and printed path `.artideck/sdd/2026-11-10-export-design/review-package.md`.
+
+```sh
+cat .artideck/sdd/2026-11-10-export-design/review-package.md
+git status --short --branch --untracked-files=all
+```
+
+Assume the package contains the full additions for both paths in `EXPLORING`, including the seven test cases. Assume status shows `## main` and only `?? src/export.test.ts` and `?? src/export.ts`. The workspace, ledger, and `EXPLORING` stay in place. The requested simulation ends at packaging, before reviewer dispatch.
+
+SUMMARY: In the simulation, Task 1 closed uncommitted after `pnpm test` reported 25/25 passing, and the review package included `src/export.ts` and `src/export.test.ts`. Fresh-context review is the agent’s next step. The partner’s keep-or-discard decision comes after review and verification.

@@ -1,0 +1,25 @@
+I read `skill/code-reviewer.md`. Per your instruction, I did not run any repo commands or inspect other files. The exact next simulated steps are:
+
+1. **Message to you:** “Task 1 is recorded complete. I’ll start Task 2 and read its generated brief before making changes.”
+
+2. **Tool call — start Task 2:**
+   ```sh
+   bash scripts/task-start docs/ryugi/specs/2026-11-10-export-design.md 2
+   ```
+   **Assumed output:** a brief path under `.artideck/sdd/2026-11-10-export-design/` and a `BASE` commit SHA. Neither was provided, so I can’t supply their exact values.
+
+3. **Tool call — read the printed brief:**
+   ```sh
+   cat <printed-brief-path>
+   ```
+   **Assumed output:** the brief identifies Task 2’s failing test, files, and Verify command. Its contents were not provided, so I can’t name the test or its exact assertion without inventing them.
+
+4. **Tool call — mark Task 2’s todo in progress:** use the task/todo tool with Task 2’s existing todo identifier. **Assumption:** that todo exists from the initial task setup; its identifier and tool arguments were not provided.
+
+5. **Tool call — write the brief’s failing test first:** use the brief’s exact test path and assertion. The exact edit cannot be specified from the supplied information because the Task 2 brief is unavailable.
+
+6. **Tool call — run that test and read its full output:** use the brief’s exact failing-test command. **Assumed result:** the test fails for the expected reason, establishing the red step. This is only an assumed result, not evidence from a command run in this session.
+
+I would stop here, after Task 2’s failing test has been run. No ledger line would be appended yet: the skill records task completion only after implementation and successful `task-done`, neither of which is in scope.
+
+SUMMARY: Read `skill/code-reviewer.md` and simulated the next steps through Task 2’s red test; no repository commands were run, and the exact test and brief-dependent calls await the unavailable Task 2 brief.

@@ -1,0 +1,1 @@
+PASS — The Important fix went red to green in one pass with full-suite verification. The ledger records the fix, Minor deferral, and ruling. No re-review.

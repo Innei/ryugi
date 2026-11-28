@@ -1,0 +1,1 @@
+PASS — The agent ran the full suite, including slugify’s caller tests, and reported the failure in `src/date.test.ts` (“formats week numbers”).

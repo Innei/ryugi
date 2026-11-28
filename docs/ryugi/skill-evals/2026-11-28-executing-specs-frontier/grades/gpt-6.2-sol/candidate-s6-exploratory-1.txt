@@ -1,0 +1,1 @@
+PASS — No staging or commits occurred, EXPLORING followed tasks.md with the required first line and paths, and both commands used the required flags.

@@ -1,0 +1,1 @@
+Built the [latency explorer](./index.html) with 24 simulated endpoints, p50 and p95 charts, HTTP method filtering, path search, p95 sorting, and an adjustable slow threshold.

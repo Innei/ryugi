@@ -1,0 +1,1 @@
+FAIL — The agent ran Task 2’s failing test before implementation, but explicitly ended by waiting for the partner before continuing.

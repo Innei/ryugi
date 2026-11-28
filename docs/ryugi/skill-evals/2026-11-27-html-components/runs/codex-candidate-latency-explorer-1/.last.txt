@@ -1,0 +1,1 @@
+Created [index.html](/private/var/folders/j2/0l767d9j63qcv0rxzl_1zvrc0000gn/T/tmp.cMdwhhaw8T/index.html) with p50 and p95 data for 24 sample endpoints, HTTP method filtering, path search, p95 sorting, and an adjustable slow threshold.

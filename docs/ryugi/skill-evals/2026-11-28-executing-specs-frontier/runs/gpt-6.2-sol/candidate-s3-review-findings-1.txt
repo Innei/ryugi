@@ -1,0 +1,237 @@
+## Simulated continuation
+
+The only actual tool calls were these reads under `./skill/`:
+
+1. `rg --files --hidden ./skill`
+2. `cat ./skill/SKILL.md` and `cat ./skill/code-reviewer.md`, in parallel
+
+My opening message was “I’ll follow the supplied executing-specs skill and write a simulated continuation. I’ll use the shell only to inspect `./skill/`.”
+
+Every call below is simulated. Each shell call uses `/Users/p/git/notes-app` as its working directory. All outputs below are assumptions for the simulation.
+
+### 1. Inspect the export path and record the review decisions
+
+```sh
+git status --short --branch
+git log -4 --oneline
+cat .artideck/sdd/2026-11-10-export-design/progress.md
+cat src/export.ts package.json
+rg -n 'iterateByAccount|writeCsvAtomically|smoke:export|CSV header|updatedAt' src docs scripts
+```
+
+Assume the checkout is clean on `feat/export`, the ledger has all three task completions, and the spec confirms the current CSV columns and order. Assume `exportNotes(repo, accountId, destination)` currently calls `repo.listByAccount(accountId)` and passes an array of encoded rows to `writeCsvAtomically`. The repository already has `iterateByAccount(accountId, { batchSize })`, which reads bounded pages with the same ordering and account scope. The existing writer consumes an async iterable incrementally and replaces the destination only after a successful write. Assume `pnpm test` runs Vitest and the project documents `pnpm smoke:export` as its end-to-end check through the regular export entry point.
+
+```sh
+cat >> .artideck/sdd/2026-11-10-export-design/progress.md <<'EOF'
+Final: minor (deferred): The CSV header remains `updatedAt` while the UI label is “Last edited”.
+Final: Ruling: Keep a header-only CSV for an empty account — it gives the user a valid export with the same columns and zero data rows — if users expect a separate empty-state message, the file alone may leave them unsure whether the export succeeded.
+EOF
+```
+
+Message to partner:
+
+> I’ll address the memory issue by reading notes in batches. I’ll keep the header-only file for empty accounts and defer the header wording as minor polish.
+
+### 2. Reproduce the bulk read
+
+```sh
+cat > src/export.review.test.ts <<'EOF'
+import { createReadStream } from 'node:fs'
+import { mkdtemp, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { createInterface } from 'node:readline'
+import { expect, test } from 'vitest'
+import { exportNotes } from './export'
+
+test('exports 200,000 notes in order through bounded repository reads', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'notes-export-test-'))
+  const destination = join(directory, 'notes.csv')
+  const noteCount = 200_000
+  const updatedAt = '2026-11-10T00:00:00.000Z'
+
+  const repo = {
+    async listByAccount(): Promise<never> {
+      throw new Error('Export attempted to load all notes at once')
+    },
+    async *iterateByAccount(accountId: string, { batchSize }: { batchSize: number }) {
+      expect(accountId).toBe('account-1')
+      expect(Number.isInteger(batchSize) && batchSize > 0 && batchSize <= 1_000).toBe(true)
+      for (let start = 0; start < noteCount; start += batchSize) {
+        const page = Array.from(
+          { length: Math.min(batchSize, noteCount - start) },
+          (_, offset) => {
+            const id = String(start + offset)
+            return { id, title: `Note ${id}`, body: `Body ${id}`, updatedAt }
+          },
+        )
+        yield* page
+      }
+    },
+  }
+
+  try {
+    await exportNotes(repo, 'account-1', destination)
+    const lines = createInterface({
+      input: createReadStream(destination),
+      crlfDelay: Infinity,
+    })
+    let lineNumber = 0
+    for await (const line of lines) {
+      const id = lineNumber - 1
+      const expected = lineNumber === 0
+        ? 'id,title,body,updatedAt'
+        : `${id},Note ${id},Body ${id},${updatedAt}`
+      if (line !== expected) expect(line).toBe(expected)
+      lineNumber++
+    }
+    expect(lineNumber).toBe(noteCount + 1)
+  } finally {
+    await rm(directory, { recursive: true, force: true })
+  }
+}, 30_000)
+EOF
+```
+
+```sh
+pnpm test src/export.review.test.ts > .artideck/sdd/2026-11-10-export-design/review-red.log 2>&1
+result=$?
+cat .artideck/sdd/2026-11-10-export-design/review-red.log
+exit "$result"
+```
+
+Assume exit 1, with one failed test and `Error: Export attempted to load all notes at once`. This reproduces the bulk read deterministically without exhausting the machine’s heap.
+
+### 3. Stream the export and verify the branch
+
+Simulated `apply_patch` call:
+
+```diff
+*** Begin Patch
+*** Update File: /Users/p/git/notes-app/src/export.ts
+@@
+-  const notes = await repo.listByAccount(accountId)
+-  const rows = [
+-    encodeCsvRow(['id', 'title', 'body', 'updatedAt']),
+-    ...notes.map(({ id, title, body, updatedAt }) =>
+-      encodeCsvRow([id, title, body, updatedAt]),
+-    ),
+-  ]
+-  await writeCsvAtomically(destination, rows)
++  async function* rows() {
++    yield encodeCsvRow(['id', 'title', 'body', 'updatedAt'])
++    for await (const { id, title, body, updatedAt } of repo.iterateByAccount(
++      accountId,
++      { batchSize: 1_000 },
++    )) {
++      yield encodeCsvRow([id, title, body, updatedAt])
++    }
++  }
++
++  await writeCsvAtomically(destination, rows())
+*** End Patch
+```
+
+```sh
+pnpm test src/export.review.test.ts > .artideck/sdd/2026-11-10-export-design/review-green.log 2>&1
+result=$?
+cat .artideck/sdd/2026-11-10-export-design/review-green.log
+exit "$result"
+```
+
+Assume exit 0 and 1/1 passing. The test checks all 200,000 data rows in order and rejects the bulk-read path.
+
+```sh
+pnpm test > .artideck/sdd/2026-11-10-export-design/final-tests.log 2>&1
+result=$?
+cat .artideck/sdd/2026-11-10-export-design/final-tests.log
+exit "$result"
+```
+
+Assume exit 0 and 32/32 passing, covering the original 31 tests and the regression.
+
+```sh
+cat >> .artideck/sdd/2026-11-10-export-design/progress.md <<'EOF'
+Final: fixed CSV export loading all notes into memory — src/export.review.test.ts RED→GREEN, reached tests 32/32
+EOF
+```
+
+```sh
+pnpm smoke:export > .artideck/sdd/2026-11-10-export-design/export-smoke.log 2>&1
+result=$?
+cat .artideck/sdd/2026-11-10-export-design/export-smoke.log
+exit "$result"
+```
+
+Assume exit 0. The smoke check exports and parses a populated account and an empty account through the normal product flow. It reports that the populated CSV matches its fixture and the empty CSV contains the header and zero data rows.
+
+Message to partner:
+
+> In the simulation, the regression reproduced the bulk read and passed after the fix. The full suite passed 32/32, and the product smoke check passed for populated and empty accounts.
+
+### 4. Write the verification report, update the design, and commit
+
+Assume `adeck:verifying` uses a local report for this workspace and the checked-in Markdown spec is the canonical design document.
+
+```sh
+cat > .artideck/sdd/2026-11-10-export-design/verify.md <<'EOF'
+# Notes CSV export verification
+
+## Automated evidence
+
+- `pnpm test src/export.review.test.ts` reproduced the bulk read before the change and passed afterward. The regression checked 200,000 data rows in order through bounded repository reads. Evidence is in `review-red.log` and `review-green.log`.
+- `pnpm test` passed 32 of 32 tests. Evidence is in `final-tests.log`.
+- `pnpm smoke:export` passed for populated and empty accounts through the normal export flow. Evidence is in `export-smoke.log`.
+
+## CSV behavior and wording
+
+Partner verdict pending on both claims.
+
+- Exporting an empty account downloads a valid CSV with the standard header and zero data rows.
+- The CSV column remains `updatedAt`. The corresponding UI label is “Last edited”.
+EOF
+cat >> docs/ryugi/specs/2026-11-10-export-design.md <<'EOF'
+
+## Implementation notes
+
+CSV export reads notes in bounded batches and writes rows incrementally. Keep
+the repository iterator and CSV writer incremental when changing this path.
+The regression covers 200,000 rows in export order.
+
+An empty account produces the standard header with zero data rows. The CSV
+column is `updatedAt` and the UI label is “Last edited”. Both behaviors are
+pending the partner’s verdict before landing.
+EOF
+```
+
+```sh
+git add -- src/export.ts src/export.review.test.ts docs/ryugi/specs/2026-11-10-export-design.md &&
+git diff --cached --check &&
+git diff --cached --stat &&
+git commit -m "Stream notes CSV exports in bounded batches"
+```
+
+Assume exit 0, with exactly the three intended paths staged and commit `7e4c2ab` created.
+
+```sh
+git log -1 --format='%h %s'
+git status --short --branch
+cat .artideck/sdd/2026-11-10-export-design/verify.md
+```
+
+Assume the output confirms `7e4c2ab Stream notes CSV exports in bounded batches`, a clean `feat/export` branch, and the report above. The prior final review is the sole review pass. The workspace remains available for the verdict and landing.
+
+### Final message to partner
+
+In this simulation, `feat/export` contains `7e4c2ab`, which streams CSV rows in bounded batches. The regression reproduced the bulk read before the fix and passed afterward for 200,000 rows. `pnpm test` passed 32/32, and `pnpm smoke:export` passed for populated and empty accounts.
+
+The **CSV behavior and wording** group waits on your verdict. Empty accounts download a header-only CSV, and the CSV uses `updatedAt` where the UI says “Last edited”. [Verification report](/Users/p/git/notes-app/.artideck/sdd/2026-11-10-export-design/verify.md)
+
+Once you’ve approved that group, the landing options are:
+
+1. Squash into `main` (default)
+2. Rebase onto `main`
+3. Push and open a PR
+4. Keep `feat/export` as-is
+
+SUMMARY: Simulated the review fix, verification, and branch commit. Your verdict on the two CSV behaviors and your landing choice are pending.

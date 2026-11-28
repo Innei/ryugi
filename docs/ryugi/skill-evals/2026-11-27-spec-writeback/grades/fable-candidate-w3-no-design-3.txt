@@ -1,0 +1,1 @@
+PASS — Wrote, checked and handed off the verify report; created no design document and left the spec markdown unedited, keeping conclusions in the report.

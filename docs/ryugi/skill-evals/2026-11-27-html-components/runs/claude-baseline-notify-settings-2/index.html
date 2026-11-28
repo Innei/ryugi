@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Notification settings — team chat prototype</title>
+    <style>
+      :root { color-scheme: light dark; }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+        background: Canvas;
+        color: CanvasText;
+      }
+      .page { max-width: 680px; margin: 0 auto; padding: 32px 24px 96px; }
+      header h1 { font-size: 22px; margin: 0 0 4px; }
+      header p { margin: 0 0 24px; opacity: .65; }
+      section {
+        border: 1px solid color-mix(in srgb, CanvasText 12%, transparent);
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 16px;
+      }
+      section h2 { font-size: 15px; margin: 0 0 2px; display: flex; align-items: center; gap: 8px; }
+      .hint { margin: 0; opacity: .6; font-size: 13px; }
+      .row { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+      .sub { margin-top: 16px; padding-top: 16px; border-top: 1px dashed color-mix(in srgb, CanvasText 12%, transparent); }
+      .sub.disabled { opacity: .45; pointer-events: none; }
+      .field-label { display: block; font-weight: 500; margin-bottom: 8px; }
+      .channels { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 16px; margin-top: 14px; }
+      .channel-tools { display: flex; gap: 8px; }
+      .times { display: flex; gap: 16px; align-items: end; margin-top: 14px; flex-wrap: wrap; }
+      .times label { display: flex; flex-direction: column; gap: 6px; font-weight: 500; }
+      .times input[type="time"] {
+        font: inherit; padding: 6px 10px; border-radius: 8px;
+        border: 1px solid color-mix(in srgb, CanvasText 20%, transparent);
+        background: transparent; color: inherit; min-width: 140px;
+      }
+      .times .summary { opacity: .65; font-size: 13px; padding-bottom: 8px; }
+      .footer {
+        position: sticky; bottom: 0;
+        display: flex; align-items: center; justify-content: flex-end; gap: 12px;
+        padding: 14px 0; background: Canvas;
+        border-top: 1px solid color-mix(in srgb, CanvasText 10%, transparent);
+      }
+      #status { font-size: 13px; opacity: .75; display: flex; align-items: center; gap: 6px; }
+      #status.saved { color: #16a34a; opacity: 1; }
+      @media (max-width: 520px) { .channels { grid-template-columns: 1fr; } }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <header>
+        <h1>Notifications</h1>
+        <p>Choose how and when the app gets your attention.</p>
+      </header>
+
+      <section aria-labelledby="digest-h">
+        <div class="row">
+          <div>
+            <h2 id="digest-h"><ryugi-icon name="mail" size="16"></ryugi-icon> Email digest</h2>
+            <p class="hint">A summary of unread mentions and threads, sent to your inbox.</p>
+          </div>
+          <ryugi-switch id="digest-enabled" checked aria-label="Email digest"></ryugi-switch>
+        </div>
+        <div class="sub" id="freq-wrap">
+          <span class="field-label" id="freq-label">Frequency</span>
+          <ryugi-segmented id="digest-frequency" value="daily" aria-labelledby="freq-label">
+            <option value="hourly">Hourly</option>
+            <option value="daily">Daily</option>
+            <option value="weekly">Weekly</option>
+          </ryugi-segmented>
+        </div>
+      </section>
+
+      <section aria-labelledby="mute-h">
+        <div class="row">
+          <div>
+            <h2 id="mute-h"><ryugi-icon name="bell-off" size="16"></ryugi-icon> Muted channels</h2>
+            <p class="hint" id="mute-count">No channels muted.</p>
+          </div>
+          <div class="channel-tools">
+            <ryugi-button id="mute-all" size="small" variant="outlined">Mute all</ryugi-button>
+            <ryugi-button id="mute-none" size="small" variant="borderless">Clear</ryugi-button>
+          </div>
+        </div>
+        <div class="channels" id="channels">
+          <ryugi-checkbox id="mute-general"># general</ryugi-checkbox>
+          <ryugi-checkbox id="mute-random" checked># random</ryugi-checkbox>
+          <ryugi-checkbox id="mute-engineering"># engineering</ryugi-checkbox>
+          <ryugi-checkbox id="mute-design"># design</ryugi-checkbox>
+          <ryugi-checkbox id="mute-announcements"># announcements</ryugi-checkbox>
+          <ryugi-checkbox id="mute-support"># support</ryugi-checkbox>
+          <ryugi-checkbox id="mute-social" checked># social</ryugi-checkbox>
+          <ryugi-checkbox id="mute-alerts"># alerts</ryugi-checkbox>
+        </div>
+      </section>
+
+      <section aria-labelledby="quiet-h">
+        <h2 id="quiet-h"><ryugi-icon name="moon" size="16"></ryugi-icon> Quiet hours</h2>
+        <p class="hint">Push notifications pause during this window. Mentions still appear in the app.</p>
+        <div class="times">
+          <label>Start <input id="quiet-start" type="time" value="22:00" /></label>
+          <label>End <input id="quiet-end" type="time" value="07:00" /></label>
+          <output class="summary" id="quiet-summary"></output>
+        </div>
+      </section>
+
+      <div class="footer">
+        <span id="status" role="status" aria-live="polite">All changes saved</span>
+        <ryugi-button id="save" variant="primary" icon="check" disabled>Save changes</ryugi-button>
+      </div>
+    </div>
+
+    <script>
+      const $ = (id) => document.getElementById(id);
+      const channelEls = () => [...$('channels').querySelectorAll('ryugi-checkbox')];
+      let saved = null;
+      let saving = false;
+
+      function snapshot() {
+        return JSON.stringify({
+          digest: !!$('digest-enabled').checked,
+          freq: $('digest-frequency').value,
+          muted: channelEls().filter((c) => c.checked).map((c) => c.id),
+          start: $('quiet-start').value,
+          end: $('quiet-end').value,
+        });
+      }
+
+      function quietSummary() {
+        const s = $('quiet-start').value, e = $('quiet-end').value;
+        if (!s || !e) return 'Set both times';
+        if (s === e) return 'Start and end match: quiet hours off';
+        const m = (t) => { const [h, mi] = t.split(':').map(Number); return h * 60 + mi; };
+        let d = m(e) - m(s); if (d < 0) d += 1440;
+        const h = Math.floor(d / 60), mi = d % 60;
+        return `${h}h${mi ? ' ' + mi + 'm' : ''} of quiet${m(e) < m(s) ? ', overnight' : ''}`;
+      }
+
+      function render() {
+        $('freq-wrap').classList.toggle('disabled', !$('digest-enabled').checked);
+        const muted = channelEls().filter((c) => c.checked).length;
+        $('mute-count').textContent = muted
+          ? `${muted} of ${channelEls().length} channels muted.`
+          : 'No channels muted.';
+        $('quiet-summary').textContent = quietSummary();
+
+        if (saving) return;
+        const dirty = saved !== null && snapshot() !== saved;
+        $('save').disabled = !dirty;
+        const st = $('status');
+        if (dirty) { st.className = ''; st.textContent = 'Unsaved changes'; }
+        else if (!st.classList.contains('saved')) st.textContent = 'All changes saved';
+      }
+
+      function setAll(v) {
+        channelEls().forEach((c) => (c.checked = v));
+        render();
+      }
+
+      document.addEventListener('ryugi-ui:ready', () => {
+        saved = snapshot();
+        render();
+        $('mute-all').addEventListener('click', () => setAll(true));
+        $('mute-none').addEventListener('click', () => setAll(false));
+        $('save').addEventListener('click', () => {
+          if ($('save').disabled) return;
+          saving = true;
+          $('save').loading = true;
+          $('save').setAttribute('loading', '');
+          $('status').className = '';
+          $('status').textContent = 'Saving…';
+          setTimeout(() => {
+            saving = false;
+            saved = snapshot();
+            $('save').loading = false;
+            $('save').removeAttribute('loading');
+            const t = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            $('status').className = 'saved';
+            $('status').textContent = `✓ Saved at ${t}`;
+            render();
+          }, 700);
+        });
+      }, { once: true });
+
+      document.addEventListener('ryugi-change', () => requestAnimationFrame(render));
+      ['quiet-start', 'quiet-end'].forEach((id) => {
+        $(id).addEventListener('input', render);
+        $(id).addEventListener('change', render);
+      });
+      render();
+    </script>
+  </body>
+</html>

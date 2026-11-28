@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Search empty state: copy review</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --surface: #fff; --text: #1d2129; --muted: #6b7280;
+    --border: #e5e7eb; --primary: #3b5bfd; --primary-soft: #eef1ff;
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#111317; --surface:#1a1d23; --text:#e7e9ee; --muted:#9aa1ad; --border:#2c3038; --primary:#7c93ff; --primary-soft:#232a45; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); }
+  main { max-width: 1240px; margin: 0 auto; padding: 32px 24px 48px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  .lede { color: var(--muted); margin: 0 0 24px; font-size: 14px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 20px; }
+  .option { background: var(--surface); border: 2px solid var(--border); border-radius: 14px; overflow: hidden; display: flex; flex-direction: column; transition: border-color .15s, box-shadow .15s; }
+  .option.picked { border-color: var(--primary); box-shadow: 0 0 0 4px var(--primary-soft); }
+  .opt-head { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--border); font-weight: 600; font-size: 14px; }
+  .opt-head .tone { font-weight: 400; color: var(--muted); font-size: 12px; }
+
+  /* Product preview */
+  .preview { background: var(--bg); padding: 14px; }
+  .app { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .searchbar { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-bottom: 1px solid var(--border); }
+  .searchbar .field { flex: 1; display: flex; align-items: center; gap: 8px; border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px; font-size: 13px; }
+  .searchbar .field svg { color: var(--muted); flex: none; }
+  .filters { display: flex; gap: 6px; padding: 8px 12px; border-bottom: 1px solid var(--border); font-size: 12px; color: var(--muted); }
+  .chip { border: 1px solid var(--border); border-radius: 999px; padding: 2px 9px; }
+  .chip.on { background: var(--primary-soft); border-color: transparent; color: var(--primary); }
+  .meta { padding: 8px 12px 0; font-size: 12px; color: var(--muted); }
+  .empty { text-align: center; padding: 28px 22px 32px; min-height: 260px; display: flex; flex-direction: column; align-items: center; }
+  .illus { width: 64px; height: 64px; border-radius: 50%; background: var(--primary-soft); color: var(--primary); display: grid; place-items: center; margin-bottom: 14px; }
+  .empty h3 { margin: 0 0 6px; font-size: 16px; }
+  .empty p { margin: 0 0 16px; font-size: 13px; color: var(--muted); line-height: 1.5; max-width: 290px; }
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+  .btn { font: inherit; font-size: 12.5px; border-radius: 7px; padding: 6px 12px; border: 1px solid var(--border); background: var(--surface); color: var(--text); cursor: default; }
+  .btn.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+  .tips { margin: 16px 0 0; padding: 0; list-style: none; font-size: 12px; color: var(--muted); text-align: left; }
+  .tips li::before { content: "•  "; }
+
+  /* Review controls */
+  .review { padding: 14px 16px 16px; display: grid; gap: 12px; border-top: 1px solid var(--border); margin-top: auto; }
+  .pick { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 14px; cursor: pointer; }
+  .pick input { width: 16px; height: 16px; accent-color: var(--primary); }
+  fieldset { border: 0; margin: 0; padding: 0; }
+  legend { font-size: 12px; color: var(--muted); margin-bottom: 6px; padding: 0; }
+  .rating { display: flex; gap: 6px; }
+  .rating label { position: relative; }
+  .rating input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+  .rating span { display: grid; place-items: center; width: 34px; height: 30px; border: 1px solid var(--border); border-radius: 7px; font-size: 13px; }
+  .rating input:checked + span { background: var(--primary); border-color: var(--primary); color: #fff; }
+  .rating input:focus-visible + span { outline: 2px solid var(--primary); outline-offset: 2px; }
+  .scale { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); margin-top: 4px; max-width: 200px; }
+  .note-label { font-size: 12px; color: var(--muted); display: block; margin-bottom: 6px; }
+  textarea { width: 100%; resize: vertical; font: inherit; font-size: 13px; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text); }
+
+  /* Summary */
+  .summary { margin-top: 28px; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 18px 20px; }
+  .summary h2 { font-size: 16px; margin: 0 0 4px; }
+  .verdict { font-size: 14px; margin: 0 0 14px; color: var(--muted); }
+  .verdict strong { color: var(--text); }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 9px 10px; border-top: 1px solid var(--border); vertical-align: top; }
+  th { font-size: 12px; color: var(--muted); font-weight: 500; border-top: 0; }
+  tr.picked td { background: var(--primary-soft); }
+  .pill { display: inline-block; font-size: 11px; padding: 1px 8px; border-radius: 999px; background: var(--primary); color: #fff; margin-left: 6px; }
+  .dim { color: var(--muted); }
+  .stars { letter-spacing: 1px; color: var(--primary); }
+  .row-actions { margin-top: 14px; display: flex; gap: 8px; align-items: center; font-size: 12px; color: var(--muted); }
+  .row-actions button { font: inherit; font-size: 12.5px; padding: 6px 12px; border-radius: 7px; border: 1px solid var(--border); background: var(--surface); color: var(--text); cursor: pointer; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Search results: empty-state copy</h1>
+  <p class="lede">Each card shows the no-results screen for the query <em>"wireless headphnes"</em> with one of the three candidate copies. Pick the one you want to ship, rate the tone of every option from 1 to 5, and add notes.</p>
+
+  <div class="grid" id="options"></div>
+
+  <section class="summary" aria-live="polite">
+    <h2>Your choices</h2>
+    <p class="verdict" id="verdict"></p>
+    <table>
+      <thead><tr><th style="width:28%">Option</th><th style="width:18%">Tone rating</th><th>Note</th></tr></thead>
+      <tbody id="summary-body"></tbody>
+    </table>
+    <div class="row-actions">
+      <button type="button" id="copy-summary">Copy summary as text</button>
+      <span id="copy-status"></span>
+    </div>
+  </section>
+</main>
+
+<script>
+  const OPTIONS = [
+    {
+      key: 'a', name: 'Option A: Helpful & direct', tone: 'Neutral',
+      title: 'No results for "wireless headphnes"',
+      body: 'Check the spelling or try a broader search term. You can also clear your filters to see more results.',
+      primary: 'Clear filters', secondary: 'Browse categories',
+      tips: null, suggest: 'wireless headphones',
+    },
+    {
+      key: 'b', name: 'Option B: Warm & friendly', tone: 'Casual',
+      title: 'Hmm, we couldn’t find a match',
+      body: 'We looked everywhere for "wireless headphnes" and came up empty. Want to try a different word, or let us show you what’s popular right now?',
+      primary: 'See popular items', secondary: 'Clear filters',
+      tips: null, suggest: null,
+    },
+    {
+      key: 'c', name: 'Option C: Guided', tone: 'Instructive',
+      title: 'Nothing matches your search yet',
+      body: 'Here are a few things that usually help:',
+      primary: 'Search "wireless headphones"', secondary: 'Reset search',
+      tips: ['Double-check spelling', 'Use fewer or more general words', 'Remove one or more filters'], suggest: null,
+    },
+  ];
+
+  const searchIcon = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>';
+  const emptyIcon = '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/><path d="M8.5 8.5l5 5M13.5 8.5l-5 5"/></svg>';
+  const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+  const container = document.getElementById('options');
+  container.innerHTML = OPTIONS.map((o) => `
+    <article class="option" id="card-${o.key}">
+      <div class="opt-head"><span>${o.name}</span><span class="tone">${o.tone}</span></div>
+      <div class="preview" aria-label="Product preview for ${o.name}">
+        <div class="app">
+          <div class="searchbar"><div class="field">${searchIcon}<span>wireless headphnes</span></div></div>
+          <div class="filters"><span class="chip on">In stock</span><span class="chip on">Under $100</span><span class="chip">Brand</span></div>
+          <div class="meta">0 results</div>
+          <div class="empty">
+            <div class="illus">${emptyIcon}</div>
+            <h3>${esc(o.title)}</h3>
+            <p>${esc(o.body)}${o.suggest ? `<br>Did you mean <a href="#" onclick="return false" style="color:var(--primary)">${o.suggest}</a>?` : ''}</p>
+            ${o.tips ? `<ul class="tips" style="margin:-6px 0 16px">${o.tips.map((t) => `<li>${t}</li>`).join('')}</ul>` : ''}
+            <div class="actions"><span class="btn primary">${esc(o.primary)}</span><span class="btn">${esc(o.secondary)}</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="review">
+        <label class="pick"><input type="radio" name="choice" id="pick-${o.key}" value="${o.key}"> Choose this copy</label>
+        <fieldset>
+          <legend>Tone rating</legend>
+          <div class="rating">
+            ${[1, 2, 3, 4, 5].map((n) => `<label><input type="radio" name="rate-${o.key}" id="rate-${o.key}-${n}" value="${n}" aria-label="${n} of 5"><span>${n}</span></label>`).join('')}
+          </div>
+          <div class="scale"><span>Off-tone</span><span>Spot on</span></div>
+        </fieldset>
+        <div>
+          <label class="note-label" for="note-${o.key}">Note</label>
+          <textarea id="note-${o.key}" rows="3" placeholder="What works, what doesn't…"></textarea>
+        </div>
+      </div>
+    </article>`).join('');
+
+  function state() {
+    const picked = document.querySelector('input[name="choice"]:checked')?.value || null;
+    return OPTIONS.map((o) => ({
+      ...o,
+      picked: picked === o.key,
+      rating: Number(document.querySelector(`input[name="rate-${o.key}"]:checked`)?.value || 0),
+      note: document.getElementById(`note-${o.key}`).value.trim(),
+    }));
+  }
+
+  function render() {
+    const s = state();
+    const chosen = s.find((o) => o.picked);
+    s.forEach((o) => document.getElementById(`card-${o.key}`).classList.toggle('picked', o.picked));
+    const rated = s.filter((o) => o.rating).length;
+    document.getElementById('verdict').innerHTML = chosen
+      ? `Picked: <strong>${chosen.name}</strong>. ${rated}/3 options rated.`
+      : `No option picked yet. ${rated}/3 options rated.`;
+    document.getElementById('summary-body').innerHTML = s.map((o) => `
+      <tr class="${o.picked ? 'picked' : ''}">
+        <td>${o.name}${o.picked ? '<span class="pill">Picked</span>' : ''}</td>
+        <td>${o.rating ? `<span class="stars">${'●'.repeat(o.rating)}${'○'.repeat(5 - o.rating)}</span> ${o.rating}/5` : '<span class="dim">Not rated</span>'}</td>
+        <td>${o.note ? esc(o.note).replace(/\n/g, '<br>') : '<span class="dim">No note</span>'}</td>
+      </tr>`).join('');
+  }
+
+  document.getElementById('copy-summary').addEventListener('click', async () => {
+    const s = state();
+    const chosen = s.find((o) => o.picked);
+    const text = [
+      `Search empty-state copy review`,
+      `Picked: ${chosen ? chosen.name : 'none'}`,
+      ...s.map((o) => `- ${o.name}: tone ${o.rating ? o.rating + '/5' : 'not rated'}${o.note ? `. Note: ${o.note}` : ''}`),
+    ].join('\n');
+    const status = document.getElementById('copy-status');
+    try { await navigator.clipboard.writeText(text); status.textContent = 'Copied.'; }
+    catch { status.textContent = 'Copy failed. Select the table instead.'; }
+  });
+
+  document.addEventListener('input', render);
+  document.addEventListener('change', render);
+  render();
+</script>
+</body>
+</html>

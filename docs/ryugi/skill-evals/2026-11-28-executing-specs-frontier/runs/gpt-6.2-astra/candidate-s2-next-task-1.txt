@@ -1,0 +1,62 @@
+Simulation only. The Task 1 completion line is given. I assume the Task 2 brief and test output below. All shell calls use `/Users/p/git/notes-app` as their working directory.
+
+1. `todos.update({"task":1,"status":"complete"})`  
+   The preceding `task-done` call already appended `Task 1: complete (commits a1b2c3d..d4e5f6a, tests: pnpm test export → 4/4 pass)` to the ledger.
+
+2. `shell("bash scripts/task-start docs/ryugi/specs/2026-11-10-export-design.md 2")`  
+   Assumed output:
+   ```text
+   Brief: .artideck/sdd/2026-11-10-export-design/briefs/task-2.md
+   BASE: d4e5f6a
+   ```
+
+3. `shell("cat .artideck/sdd/2026-11-10-export-design/briefs/task-2.md")`  
+   I assume the brief calls for CSV field escaping in the existing `exportNotesCsv` serializer. Its first case is a comma in a note title. The brief names `src/export.test.ts`, which already imports `test`, `expect`, and `exportNotesCsv`. Task 1 established the `title,body` header and LF row separator. The focused check is `pnpm test export`, with five passing tests expected after implementation.
+
+4. `todos.update({"task":2,"status":"in_progress"})`
+
+5. Message to partner: “Task 1’s check reported 4/4 passing. I’m starting Task 2 with a note title containing a comma.”
+
+6. `shell` with this exact command:
+   ```sh
+   cat >> src/export.test.ts <<'EOF'
+
+   test('quotes a title containing a comma', () => {
+     const csv = exportNotesCsv([{ title: 'Ideas, later', body: 'Draft' }])
+     expect(csv).toBe('title,body\n"Ideas, later",Draft')
+   })
+   EOF
+   ```
+   Assumed output is empty, with exit status 0.
+
+7. `shell("pnpm test export")`  
+   Assumed full output, with exit status 1:
+   ```text
+   > notes-app@1.0.0 test
+   > vitest run export
+
+    RUN  v3.2.4 /Users/p/git/notes-app
+
+    ❯ src/export.test.ts (5 tests | 1 failed) 5ms
+      × quotes a title containing a comma 3ms
+
+    FAIL  src/export.test.ts > quotes a title containing a comma
+   AssertionError: expected strings to be equal
+
+   - Expected
+   + Received
+
+     title,body
+   - "Ideas, later",Draft
+   + Ideas, later,Draft
+
+    ❯ src/export.test.ts:31:15
+
+    Test Files  1 failed (1)
+         Tests  1 failed | 4 passed (5)
+      Duration  220ms
+
+    ELIFECYCLE  Test failed. See above for more details.
+   ```
+
+SUMMARY: In the simulation, Task 2 reached red for the intended reason: the title’s comma produced an extra CSV field. The four existing tests passed. No new ledger line was appended. Implementation is next for the agent, with no partner decision pending.

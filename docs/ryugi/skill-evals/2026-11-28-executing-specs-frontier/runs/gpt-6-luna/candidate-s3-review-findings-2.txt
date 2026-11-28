@@ -1,0 +1,79 @@
+### Simulated continuation
+
+The review package is already available and the final reviewer has returned its findings. Per the executing-spec instructions, I would fix the Important finding with a reproducing test, defer the Minor finding, and make an explicit ruling on the declined behavior.
+
+1. **Message to you:** “The reviewer found that `exportNotes` loads all notes into memory, which could exhaust memory for a large account. I’ll address that with a regression test and a bounded-memory export. I’ll also record rulings for the header wording and empty-account behavior.”
+
+2. **Tool call — inspect the task workspace and export implementation:**
+
+   ```sh
+   cat .artideck/sdd/2026-11-10-export-design/tasks.md
+   cat .artideck/sdd/2026-11-10-export-design/progress.md
+   sed -n '1,180p' src/export.ts
+   ```
+
+   **Assumed output:** the ledger confirms all three original tasks are complete; `Review Focus` is available; `exportNotes` currently materializes all notes before producing CSV.
+
+3. **Tool call — inspect export tests and data-access APIs:**
+
+   ```sh
+   rg -n "exportNotes|CSV|updatedAt|Last edited|notes" src test tests
+   ```
+
+   **Assumed output:** identifies the export tests and the note-reading interface, including an API that can fetch notes in bounded batches. If the interface does not support batching, I would inspect its implementation and choose the smallest bounded-memory approach supported by the existing storage layer.
+
+4. **Tool call — write the regression test first, then run it:**
+
+   ```sh
+   pnpm test -- <export-test-path>
+   ```
+
+   **Assumed output:** the new large-account test fails against the current implementation because it detects that all notes are loaded at once. If the project’s test runner does not accept a file argument, I would use its documented equivalent.
+
+5. **Tool call — implement the bounded-memory export and rerun the focused test:**
+
+   ```sh
+   pnpm test -- <export-test-path>
+   ```
+
+   **Assumed output:** the export test passes; exported rows retain the expected ordering and CSV contents while notes are processed in bounded batches.
+
+6. **Tool call — run the complete suite and read its full output:**
+
+   ```sh
+   pnpm test
+   ```
+
+   **Assumed output:** all tests pass, including the regression test. I would report the actual result from this run; I would not rely on the earlier 31/31 result as evidence for the fix.
+
+7. **Ledger append:**
+
+   ```text
+   Final: fixed Important finding — <export-test-path> RED→GREEN, reached tests <N>/<N>
+   ```
+
+   **Assumed values:** `<N>` is the test count printed by the new full-suite run. The fix would be recorded only after the test output confirms both the regression and suite pass.
+
+8. **Ledger append:**
+
+   ```text
+   Final: minor (deferred): CSV header says `updatedAt` while the UI calls it “Last edited”.
+   ```
+
+9. **Ledger append:**
+
+   ```text
+   Final: Ruling: empty accounts export a header-only CSV — the spec does not define another empty-account result, and a header-only file is a usable, consistent CSV representation — cost if wrong: a user expecting an empty file receives a one-row file.
+   ```
+
+10. **Tool call — run the project’s verification workflow and read its instructions/evidence:**
+
+    ```sh
+    <adeck:verifying workflow from its loaded instructions, using the finished branch and the CSV export flow>
+    ```
+
+    **Assumed output:** verification confirms the export works in the running product and provides a report location. If it exposes a failure, I would reproduce it with a test, fix it under TDD, rerun the relevant checks, and record the result before continuing. I cannot give the exact command or report path because that workflow’s instructions and command output were not supplied in this scenario.
+
+11. **Stop for your landing decision.** This is a branch, so I would not merge, push, or open a PR on your behalf. I would provide the verify report link if the workflow produced one and offer the listed landing choices: squash into `main`, rebase onto `main`, push and open a PR, or keep the branch as-is.
+
+SUMMARY: Simulated fixing the Important memory finding, recording the Minor deferral and empty-account ruling, and verifying the finished branch; landing now waits on you.

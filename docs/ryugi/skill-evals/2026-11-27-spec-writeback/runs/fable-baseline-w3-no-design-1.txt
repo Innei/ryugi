@@ -1,0 +1,122 @@
+Simulation from the point of entering adeck:verifying. Nothing below was actually run except reading `skill/verifying/pages.md` and `verdicts.md`; every output is an assumption and is marked as one.
+
+## 1. Orient: state, rulings, how the project verifies
+
+**Tool call (shell):**
+```bash
+cd /Users/p/git/notes-app && git status --short && git rev-parse --short HEAD && git diff --stat main...HEAD && grep -nE 'Ruling:|minor \(deferred\)|Final' .artideck/sdd/2026-11-10-export-design/progress.md && jq .scripts package.json && ls AGENTS.md CLAUDE.md 2>/dev/null
+```
+*Assumed output:*
+- Tree is clean and HEAD is `a41c9e2`.
+- The diff touches `src/export/exporter.ts`, `src/db/cursor.ts`, `src/cli.ts` and their tests.
+- The ledger has exactly one `Ruling:` line (Task 2, streaming), no `minor (deferred)` lines, and a `Final review:` line.
+- Scripts are `test`, `typecheck`, `lint`, `notes` (the app's CLI) and `seed` (fixture seeder).
+- There is no AGENTS.md or CLAUDE.md, and no project skill for driving the app.
+- From the spec, read earlier this session: the feature is `pnpm notes export --out <file>`, writing one note per line as NDJSON.
+
+Only output claims exist (a CLI and a file), so this is a verify report with no artboard. The one ruling changes what a user gets, so it becomes a `judge="human"` claim. The `debug:` line stays in the ledger.
+
+## 2. Start the report
+
+**Tool call (shell):**
+```bash
+adeck start --artifact verify/export
+```
+*Assumed output:* it creates `.artideck/verify/export/doc.xml`, prints the verify writing description (`<claim id judge from capturedAt>` with `<title>`, `<result>`, `<output file>`, `<ask>`, `<gap>`), and prints the link `http://localhost:4411/verify/export`.
+
+## 3. Routine checks (fresh, this session)
+
+**Tool call (shell):**
+```bash
+pnpm test 2>&1 | tail -6; pnpm typecheck 2>&1 | tail -3; pnpm lint 2>&1 | tail -3
+```
+*Assumed output:* `Tests 32 passed (32)`; typecheck 0 errors; lint 0 problems.
+
+## 4. Run the chain: real dev data
+
+**Tool call (shell):**
+```bash
+mkdir -p .artideck/verify/export/output && { set -x; date -u +%FT%TZ; pnpm -s notes count; pnpm -s notes export --out /tmp/notes-export-dev.ndjson; echo "exit=$?"; wc -l < /tmp/notes-export-dev.ndjson; jq -c . /tmp/notes-export-dev.ndjson | wc -l; jq -r .id /tmp/notes-export-dev.ndjson | sort | uniq -d | wc -l; } > .artideck/verify/export/output/e2e-dev.txt 2>&1; tail -12 .artideck/verify/export/output/e2e-dev.txt
+```
+*Assumed output:* count `214`; `exit=0`; 214 lines; 214 lines parse as JSON; 0 duplicate ids.
+
+## 5. Run the chain: large batch across many 500-record flushes
+
+**Tool call (shell):**
+```bash
+export NOTES_DB=/tmp/notes-verify-large.db; { set -x; date -u +%FT%TZ; pnpm -s seed --count 12345; pnpm -s notes count; /usr/bin/time -l pnpm -s notes export --out /tmp/notes-export-large.ndjson; echo "exit=$?"; wc -l < /tmp/notes-export-large.ndjson; jq -c . /tmp/notes-export-large.ndjson | wc -l; jq -r .id /tmp/notes-export-large.ndjson | sort | uniq -d | wc -l; } > .artideck/verify/export/output/e2e-large.txt 2>&1; tail -14 .artideck/verify/export/output/e2e-large.txt
+```
+*Assumed output:* count `12345`; `exit=0` in 3.1 s with no hang; 12345 lines, all valid JSON, 0 duplicate ids; peak RSS 96 MB.
+
+## 6. What the ruling costs: interrupt mid-export
+
+**Tool call (shell):**
+```bash
+export NOTES_DB=/tmp/notes-verify-large.db; { set -x; date -u +%FT%TZ; rm -f /tmp/notes-export-int.ndjson; pnpm -s notes export --out /tmp/notes-export-int.ndjson & sleep 1; kill -INT $!; wait $!; echo "exit=$?"; wc -l < /tmp/notes-export-int.ndjson; pnpm -s notes export --out /tmp/notes-export-int.ndjson; echo "exit=$?"; wc -l < /tmp/notes-export-int.ndjson; } > .artideck/verify/export/output/interrupt.txt 2>&1; tail -10 .artideck/verify/export/output/interrupt.txt
+```
+*Assumed output:* the interrupted run exits 130 and leaves a file of 4500 lines (9 full batches). The rerun starts from the beginning, overwrites it, and ends with `exit=0` and 12345 lines.
+
+## 7. Walk the neighbours (`src/db/cursor.ts` is shared)
+
+**Tool call (shell):**
+```bash
+unset NOTES_DB; pnpm -s notes list | wc -l; pnpm -s notes search "todo" | wc -l; echo "exit=$?"
+```
+*Assumed output:* `list` prints 214 rows; `search` prints 17 rows; both exit 0 without hanging.
+
+## 8. Write the report
+
+**Tool call (write)** — `/Users/p/git/notes-app/.artideck/verify/export/doc.xml`, full content:
+
+```xml
+<verify id="export" title="导出功能验证">
+  <p>规格 docs/ryugi/specs/2026-11-10-export-design.md，分支 feat/export @ a41c9e2。例行检查：pnpm test 32/32 通过，typecheck 0 错误，lint 0 问题。相邻流程已在运行中的 CLI 里走过：notes list（214 行）、notes search（17 行），均正常退出。共 3 条结论：2 条由我验证，1 条等你判定。</p>
+
+  <claim id="e2e-dev" judge="agent" from="本机 macOS，feat/export @ a41c9e2，本地开发库" capturedAt="2026-11-28T15:12:00+08:00">
+    <title>真实开发库的笔记能完整导出</title>
+    <result>库中 214 条，导出文件 214 行，全部是合法 JSON，无重复 id，退出码 0。</result>
+    <output file="output/e2e-dev.txt"/>
+  </claim>
+
+  <claim id="e2e-large" judge="agent" from="本机 macOS，feat/export @ a41c9e2，seed 生成的 12,345 条临时库" capturedAt="2026-11-28T15:16:00+08:00">
+    <title>大批量导出跨多个 500 条批次后数据完整，进程正常结束</title>
+    <result>12,345 条导出 12,345 行，全部是合法 JSON，无重复 id；3.1 秒退出，没有挂起；内存峰值 96 MB。</result>
+    <output file="output/e2e-large.txt"/>
+  </claim>
+
+  <claim id="ruling-streaming" judge="human" from="本机 macOS，feat/export @ a41c9e2，seed 生成的 12,345 条临时库" capturedAt="2026-11-28T15:19:00+08:00">
+    <title>大批量导出改成流式写入，每 500 条写一次</title>
+    <ask>如果导出需要断点续传，或者中断后不能留下半截文件，这个决定就是错的。现在的行为是：中断时文件里留下已写完的批次，重新导出从头开始并覆盖。这样可以吗？</ask>
+    <p>原因：完整文件在内存里拼好再写出会超出内存，所以改成边读边写。代价已实测：导出 12,345 条时在第 1 秒中断，留下 4,500 行（9 个完整批次），退出码 130；重跑后覆盖为完整的 12,345 行。</p>
+    <output file="output/interrupt.txt"/>
+  </claim>
+
+  <gaps/>
+</verify>
+```
+
+## 9. Check, then clean scratch
+
+**Tool call (shell):**
+```bash
+adeck check verify/export && rm -f /tmp/notes-export-dev.ndjson /tmp/notes-export-large.ndjson /tmp/notes-export-int.ndjson /tmp/notes-verify-large.db && git status --short
+```
+*Assumed output:* `check` reports 0 warnings and 0 provenance notes, with 2 claims checked by agent, 1 pending on human and 0 gaps. Scratch files are removed, and the tree is still clean because `.artideck/` is git-ignored.
+
+Nothing is committed, pushed or landed. The spec workspace `.artideck/sdd/2026-11-10-export-design/` is kept until the branch lands.
+
+## 10. Final message to my partner (word for word)
+
+> **未完成：等你判定 1 条取舍。** 报告：http://localhost:4411/verify/export（共 3 条结论，2 条我已验证，1 条等你）
+>
+> 1. **流式导出，每 500 条写一次**：通过还是驳回？现在导出中途中断会留下半截文件（实测 12,345 条里留下 4,500 行），重跑从头开始并覆盖，不支持断点续传。
+> 2. **通过后怎么落地**（分支 `feat/export`）：① squash 进 `main`（默认）② rebase 到 `main` ③ push 并开 PR ④ 分支保持原样。
+>
+> 可能影响你决定的：
+> - 大批量那次用的是 seed 生成的 12,345 条合成数据；真实开发库只有 214 条，真实数据上的大批量没有跑过。
+>
+> 例行检查：`pnpm test` 32/32，typecheck 和 lint 无报错。决定后在这里告诉我。
+
+I end the turn here and do not poll.
+
+SUMMARY: I re-ran the routine checks and drove the export end to end (dev data, a 12,345-note batch, an interrupt, the neighbouring `list` and `search`), wrote and checked the verify report `verify/export` with two agent-judged claims and the streaming ruling as one human-judged claim, and handed it off in Chinese; the work now waits on my partner's verdict on that ruling and, once it passes, their choice of how to land `feat/export`.

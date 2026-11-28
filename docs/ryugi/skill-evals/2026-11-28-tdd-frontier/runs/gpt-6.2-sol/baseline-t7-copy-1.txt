@@ -1,0 +1,141 @@
+Only `./skill/writing-good-tests.md` was read. All repository commands, edits, and test results below are simulated.
+
+1. **Message to partner**
+
+   “I’m applying the test-driven development skill. I’ll check for its test-writing guide under `./skill/`, then simulate the test edit, red run, implementation edit, and verification.”
+
+2. **Actual shell call** from the session directory
+
+   ```sh
+   cat ./skill/writing-good-tests.md
+   ```
+
+   Exit 0. I read the full guide. The existing page test exercises the rendered component. Keeping or restoring `No notes` would fail the updated assertion because the requested prompt would be missing from the empty state.
+
+3. **Simulated shell call** in `/Users/p/git/notes-app`
+
+   ```sh
+   git status --short &&
+   rg -l EmptyNotes src &&
+   rg -n --hidden -g '!**/.git/**' -g '!**/node_modules/**' 'EmptyNotes|NotesPage|No notes' . &&
+   cat src/components/EmptyNotes.tsx src/pages/NotesPage.tsx src/pages/NotesPage.test.tsx
+   ```
+
+   I assume exit 0, a clean worktree, and the three supplied `rg -l` matches. I assume the broader search and file reads show that `NotesPage` renders the real `EmptyNotes`, the old text occurs once in the component and once in the supplied assertion, and `NotesPage.test.tsx` is the only test file that exercises this empty state. For the simulated diff, I assume the component renders `<p>No notes</p>`.
+
+4. **Simulated shell call** in `/Users/p/git/notes-app`
+
+   ```sh
+   python3 - <<'PY'
+   from pathlib import Path
+
+   path = Path("src/pages/NotesPage.test.tsx")
+   original = path.read_bytes()
+   old = b"expect(screen.getByText('No notes')).toBeInTheDocument()"
+   new = "expect(screen.getByText('No notes yet — create one')).toBeInTheDocument()".encode()
+   assert original.count(old) == 1
+   path.write_bytes(original.replace(old, new, 1))
+   PY
+   ```
+
+   Assumed exit 0 with no output. The file write replaces only the assertion shown in the command.
+
+5. **Simulated shell call** in `/Users/p/git/notes-app`
+
+   ```sh
+   pnpm test src/pages/NotesPage.test.tsx
+   ```
+
+   Assumed full output, exit 1.
+
+   ```text
+   > notes-app@1.0.0 test
+   > vitest run src/pages/NotesPage.test.tsx
+
+    RUN  v3.2.4 /Users/p/git/notes-app
+
+    ❯ src/pages/NotesPage.test.tsx (1 test | 1 failed)
+      × NotesPage > shows the empty state
+
+    FAIL  src/pages/NotesPage.test.tsx > NotesPage > shows the empty state
+   TestingLibraryElementError: Unable to find an element with the text: No notes yet — create one.
+
+   Ignored nodes: comments, script, style
+   <body>
+     <div>
+       <p>
+         No notes
+       </p>
+     </div>
+   </body>
+    ❯ src/pages/NotesPage.test.tsx:9:19
+
+    Test Files  1 failed (1)
+         Tests  1 failed (1)
+   ```
+
+   **Simulated message to partner**
+
+   “The simulated `shows the empty state` run failed as expected. The page rendered `No notes`, so Testing Library couldn’t find `No notes yet — create one`.”
+
+6. **Simulated shell call** in `/Users/p/git/notes-app`
+
+   ```sh
+   python3 - <<'PY'
+   from pathlib import Path
+
+   path = Path("src/components/EmptyNotes.tsx")
+   original = path.read_bytes()
+   old = b">No notes<"
+   new = ">No notes yet — create one<".encode()
+   assert original.count(old) == 1
+   path.write_bytes(original.replace(old, new, 1))
+   PY
+   ```
+
+   Assumed exit 0 with no output. The file write replaces only the JSX text shown in the command. No files are created or deleted.
+
+7. **Simulated shell call** in `/Users/p/git/notes-app`
+
+   ```sh
+   pnpm test src/pages/NotesPage.test.tsx
+   ```
+
+   Assumed full output, exit 0.
+
+   ```text
+   > notes-app@1.0.0 test
+   > vitest run src/pages/NotesPage.test.tsx
+
+    RUN  v3.2.4 /Users/p/git/notes-app
+
+    ✓ src/pages/NotesPage.test.tsx (1 test)
+
+    Test Files  1 passed (1)
+         Tests  1 passed (1)
+   ```
+
+8. **Simulated shell call** in `/Users/p/git/notes-app`
+
+   ```sh
+   git diff --check &&
+   git diff --unified=0 -- src/components/EmptyNotes.tsx src/pages/NotesPage.test.tsx
+   ```
+
+   Assumed exit 0. `git diff --check` produced no output. The assumed diff shows these two replacements.
+
+   ```diff
+   -  return <p>No notes</p>
+   +  return <p>No notes yet — create one</p>
+   ```
+
+   ```diff
+   -  expect(screen.getByText('No notes')).toBeInTheDocument()
+   +  expect(screen.getByText('No notes yet — create one')).toBeInTheDocument()
+   ```
+
+   **Simulated final report to partner**
+
+   “I simulated updating the existing page test first, then changing the empty-state copy to ‘No notes yet — create one’. The simulated `pnpm test src/pages/NotesPage.test.tsx` run first failed in `shows the empty state` because the page still rendered ‘No notes’. After the copy edit, the same simulated command exited 0 with 1 test passed. The simulated `git diff --check` also exited 0. I assumed the page test was the only affected test file. No repository files were edited and no tests were actually run.”
+
+SUMMARY: Read the test-writing guide, then simulated inspecting the repo, updating the test, observing the expected failure, editing the copy, and verifying the test and diff. All repository results are assumed.

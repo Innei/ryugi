@@ -1,0 +1,1 @@
+PASS — The agent adds an empty-title test, observes it fail after reverting the fix and pass after restoring it, then runs the full suite before reporting.

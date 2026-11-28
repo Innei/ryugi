@@ -1,0 +1,1 @@
+I want to tune the shadow on our pricing cards. Make a page where I can adjust elevation, blur, spread, corner radius and shadow colour, see a sample pricing card update live, and copy the resulting CSS.

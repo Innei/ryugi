@@ -1,0 +1,170 @@
+**Simulation.** The opening message and the two read-only calls under `./skill/` were real. The calls, outputs, and messages below are simulated. No repository files, commits, or ledger entries were changed.
+
+All shell calls below use `/Users/p/git/notes-app` as the working directory. I assume the Task 2 brief has already been read, its todo is `in_progress`, its base is `8c2f6a17b73aa426ba16fac53971da22fa1a2b74`, and its Verify command is `pnpm test` with zero failures expected. I also assume the current draft writes ordinary rows correctly by joining fields with commas, and that the exporter uses string timestamps and LF record separators.
+
+1. **Message to partner**
+
+   > I’ll quote titles containing commas, line breaks, or double quotes so each note stays in one CSV record.
+
+2. **Edit tool** `apply_patch` with this patch.
+
+   ```diff
+   *** Begin Patch
+   *** Update File: src/export-csv.test.ts
+   @@
+    import { expect, test } from 'vitest';
+    import { exportNotesCsv } from './export-csv';
+   +
+   +test('writes a title with a comma, quotes, and a newline in one CSV record', () => {
+   +  const updatedAt = '2026-11-10T12:00:00.000Z';
+   +
+   +  expect(
+   +    exportNotesCsv([
+   +      { id: 'n1', title: 'Trip, "draft"\nDay two', updatedAt },
+   +      { id: 'n2', title: 'Packing list', updatedAt },
+   +    ]),
+   +  ).toBe(
+   +    'id,title,updatedAt\n' +
+   +      'n1,"Trip, ""draft""\nDay two",2026-11-10T12:00:00.000Z\n' +
+   +      'n2,Packing list,2026-11-10T12:00:00.000Z',
+   +  );
+   +});
+   *** End Patch
+   ```
+
+   Assumed result: patch applied.
+
+3. **Shell** `pnpm test`
+
+   Assumed full output, exit 1:
+
+   ```text
+   > notes-app@1.0.0 test /Users/p/git/notes-app
+   > vitest run
+
+    RUN  v3.2.4 /Users/p/git/notes-app
+
+    ❯ src/export-csv.test.ts (3 tests | 1 failed)
+      × writes a title with a comma, quotes, and a newline in one CSV record
+      ✓ writes the CSV header
+      ✓ writes one row per note
+
+    FAIL  src/export-csv.test.ts > writes a title with a comma, quotes, and a newline in one CSV record
+   AssertionError: expected received value to equal expected value
+
+     id,title,updatedAt
+   - n1,"Trip, ""draft""
+   - Day two",2026-11-10T12:00:00.000Z
+   + n1,Trip, "draft"
+   + Day two,2026-11-10T12:00:00.000Z
+     n2,Packing list,2026-11-10T12:00:00.000Z
+
+    ❯ src/export-csv.test.ts:12:5
+
+    Test Files  1 failed (1)
+         Tests  1 failed | 2 passed (3)
+
+    ELIFECYCLE  Test failed. See above for more details.
+   ```
+
+   The failure shows that the title is emitted without CSV escaping.
+
+4. **Edit tool** `apply_patch` with this patch.
+
+   ```diff
+   *** Begin Patch
+   *** Update File: src/export-csv.ts
+   @@
+   -    [id, title, updatedAt].join(','),
+   +    [id, title, updatedAt].map(escapeCsvField).join(','),
+   @@
+     return ['id,title,updatedAt', ...rows].join('\n');
+   }
+   +
+   +function escapeCsvField(value: string): string {
+   +  if (/[",\r\n]/.test(value)) {
+   +    return `"${value.replace(/"/g, '""')}"`;
+   +  }
+   +
+   +  return value;
+   +}
+   *** End Patch
+   ```
+
+   Assumed result: patch applied.
+
+5. **Shell** `pnpm test`
+
+   Assumed full output, exit 0:
+
+   ```text
+   > notes-app@1.0.0 test /Users/p/git/notes-app
+   > vitest run
+
+    RUN  v3.2.4 /Users/p/git/notes-app
+
+    ✓ src/export-csv.test.ts (3 tests)
+
+    Test Files  1 passed (1)
+         Tests  3 passed (3)
+   ```
+
+6. **Message to partner**
+
+   > `pnpm test` exited 0 with 3 of 3 tests passing, matching the Task 2 brief. The new regression failed on the unescaped title and passed after the fix.
+
+7. **Shell** stages the two Task 2 files, commits, and records the ruling in the same call.
+
+   ```sh
+   git add -- src/export-csv.ts src/export-csv.test.ts &&
+   git commit -m "Write CSV note rows with escaped fields" &&
+   printf '%s\n' 'Ruling: Task 2 quotes CSV fields containing commas, double quotes, carriage returns, or line feeds and doubles embedded double quotes — this preserves field values and keeps one CSV record per note — a consumer that splits records on physical lines will misread multiline titles.' >> .artideck/sdd/2026-11-10-export-design/progress.md
+   ```
+
+   Assumed full output, exit 0:
+
+   ```text
+   [feat/export 4f5d982] Write CSV note rows with escaped fields
+    2 files changed, 24 insertions(+), 1 deletion(-)
+   ```
+
+8. **Shell** runs the completion gate.
+
+   ```sh
+   bash scripts/task-done docs/ryugi/specs/2026-11-10-export-design.md 2 8c2f6a17b73aa426ba16fac53971da22fa1a2b74 -- pnpm test
+   ```
+
+   I assume the script exits 0, stores the test output in `.artideck/sdd/2026-11-10-export-design/task-2-test.log`, and prints its tail and the line it appended. The ledger line is:
+
+   ```text
+   Task 2: complete (commits 8c2f6a1..4f5d982, tests: pnpm test → 3 passed)
+   ```
+
+9. **Shell** reads the full final test output and confirms the ledger entry.
+
+   ```sh
+   cat .artideck/sdd/2026-11-10-export-design/task-2-test.log &&
+   tail -n 2 .artideck/sdd/2026-11-10-export-design/progress.md
+   ```
+
+   Assumed full output, exit 0:
+
+   ```text
+   > notes-app@1.0.0 test /Users/p/git/notes-app
+   > vitest run
+
+    RUN  v3.2.4 /Users/p/git/notes-app
+
+    ✓ src/export-csv.test.ts (3 tests)
+
+    Test Files  1 passed (1)
+         Tests  3 passed (3)
+   Ruling: Task 2 quotes CSV fields containing commas, double quotes, carriage returns, or line feeds and doubles embedded double quotes — this preserves field values and keeps one CSV record per note — a consumer that splits records on physical lines will misread multiline titles.
+   Task 2: complete (commits 8c2f6a1..4f5d982, tests: pnpm test → 3 passed)
+   ```
+
+10. **Todo tool** `{"task":2,"title":"Write rows","status":"completed"}`
+
+    Assumed result: Task 2 marked complete.
+
+SUMMARY: In the simulation, Task 2 closed at `4f5d982` after the CSV escaping regression went from failing to passing and the final `pnpm test` run recorded 3 of 3 tests passing. Task 3 remains with the executor and requires no partner decision.

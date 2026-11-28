@@ -1,0 +1,42 @@
+I read `./skill/SKILL.md`. Per your instruction, I’m simulating the remaining work; I have not run repository commands or changed files. Since the Task 2 brief wasn’t provided, I assume plausible outputs and test details below.
+
+1. **Check the spec workspace.** I would run:
+
+   ```sh
+   bash scripts/sdd-workspace docs/ryugi/specs/2026-11-10-export-design.md
+   ```
+
+   Assumed output: `.artideck/sdd/2026-11-10-export-design/`.
+
+2. **Read the spec, task list, ledger, and status.** I would run:
+
+   ```sh
+   cat docs/ryugi/specs/2026-11-10-export-design.md
+   cat .artideck/sdd/2026-11-10-export-design/tasks.md
+   cat .artideck/sdd/2026-11-10-export-design/progress.md
+   git status --short
+   ```
+
+   I’d expect the spec to describe CSV export of notes, `tasks.md` to contain the three existing tasks, and the ledger to show Task 1 complete. The provided status says `src/export.ts` is modified. I would leave that change untouched and inspect the Task 2 brief before deciding whether it relates to the task.
+
+3. **Start Task 2.** I would run:
+
+   ```sh
+   bash scripts/task-start docs/ryugi/specs/2026-11-10-export-design.md 2
+   ```
+
+   Assumed output: the Task 2 brief path and its BASE commit. I’d read that exact brief and mark Task 2 `in_progress` in the task todos. (The todo tool isn’t available here, so this is part of the simulation.)
+
+4. **Write Task 2’s specified failing test.** The actual file, test name, and assertion depend on the brief. For this simulation, I assume Task 2 covers writing CSV rows and specifies a test that checks that note fields are serialized correctly. I would edit only the test file named in the brief, leaving `src/export.ts` unchanged.
+
+5. **Run the brief’s test command and capture the red result.** Assuming the brief names `pnpm test export`, I would run:
+
+   ```sh
+   pnpm test export
+   ```
+
+   Assumed output: the new Task 2 test fails for the expected reason because row serialization is not implemented; the existing tests pass. I would read the complete output and stop there, before implementing code.
+
+No ledger line would be appended yet: the skill requires task completion bookkeeping alongside the commit, and Task 2 has not been implemented or completed.
+
+SUMMARY: Simulated the resume sequence through Task 2’s expected failing test. No repository commands were run and no files were changed; the next step in an actual run would depend on reading the Task 2 brief and observing the test output.

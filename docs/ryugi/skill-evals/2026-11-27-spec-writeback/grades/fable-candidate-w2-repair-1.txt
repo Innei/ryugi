@@ -1,0 +1,1 @@
+PASS — Design doc rewritten after repair: delimiter pitfall added, RFC 4180 quoting replaced by semicolon difference with verify ref, no verdicts, thread replied and left open.

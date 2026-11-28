@@ -1,0 +1,362 @@
+{
+  "claude-baseline-empty-copy-1": {
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "claude-baseline-empty-copy-2": {
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "claude-baseline-empty-copy-3": {
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "claude-baseline-image-compress-1": {
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "claude-baseline-image-compress-2": {
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "claude-baseline-image-compress-3": {
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "claude-baseline-latency-explorer-1": {
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "claude-baseline-latency-explorer-2": {
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "claude-baseline-latency-explorer-3": {
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "claude-baseline-notify-settings-1": {
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "claude-baseline-notify-settings-2": {
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "claude-baseline-notify-settings-3": {
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "claude-baseline-shadow-tuner-1": {
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "claude-baseline-shadow-tuner-2": {
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "claude-baseline-shadow-tuner-3": {
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "claude-candidate-empty-copy-1": {
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "claude-candidate-empty-copy-2": {
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "claude-candidate-empty-copy-3": {
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "claude-candidate-image-compress-1": {
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "claude-candidate-image-compress-2": {
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "claude-candidate-image-compress-3": {
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "claude-candidate-latency-explorer-1": {
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "claude-candidate-latency-explorer-2": {
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "claude-candidate-latency-explorer-3": {
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "claude-candidate-notify-settings-1": {
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "claude-candidate-notify-settings-2": {
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "claude-candidate-notify-settings-3": {
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "claude-candidate-shadow-tuner-1": {
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "claude-candidate-shadow-tuner-2": {
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "claude-candidate-shadow-tuner-3": {
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "codex-baseline-empty-copy-1": {
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "codex-baseline-empty-copy-2": {
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "codex-baseline-empty-copy-3": {
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "codex-baseline-image-compress-1": {
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "codex-baseline-image-compress-2": {
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "codex-baseline-image-compress-3": {
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "codex-baseline-latency-explorer-1": {
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "codex-baseline-latency-explorer-2": {
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "codex-baseline-latency-explorer-3": {
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "codex-baseline-notify-settings-1": {
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "codex-baseline-notify-settings-2": {
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "codex-baseline-notify-settings-3": {
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "codex-baseline-shadow-tuner-1": {
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "codex-baseline-shadow-tuner-2": {
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "codex-baseline-shadow-tuner-3": {
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "codex-candidate-empty-copy-1": {
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "codex-candidate-empty-copy-2": {
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "codex-candidate-empty-copy-3": {
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "codex-candidate-image-compress-1": {
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "codex-candidate-image-compress-2": {
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "codex-candidate-image-compress-3": {
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "codex-candidate-latency-explorer-1": {
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "codex-candidate-latency-explorer-2": {
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "codex-candidate-latency-explorer-3": {
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "codex-candidate-notify-settings-1": {
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "codex-candidate-notify-settings-2": {
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "codex-candidate-notify-settings-3": {
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "codex-candidate-shadow-tuner-1": {
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "codex-candidate-shadow-tuner-2": {
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  },
+  "codex-candidate-shadow-tuner-3": {
+    "status": "clean",
+    "runtime": "clean",
+    "cloud": "local_only",
+    "issues": []
+  }
+}

@@ -1,0 +1,268 @@
+Only the reads under `./skill/` were real. The transcript below is simulated. Each shell block is one tool call, with working directory `/Users/p/git/notes-app`. Outputs, file contents, and commit IDs are assumed.
+
+**1. Inspect the implementation and the existing verification record.**
+
+```sh
+git status --short --branch
+```
+
+Assumed output: `## feat/export`.
+
+```sh
+cat docs/ryugi/specs/2026-11-10-export-design.md \
+  .artideck/sdd/2026-11-10-export-design/tasks.md \
+  .artideck/sdd/2026-11-10-export-design/progress.md \
+  src/export.ts src/export.test.ts package.json
+```
+
+```sh
+rg -n --hidden -g '!node_modules' -g '!.git' -g '!.artideck' \
+  'exportNotes|iterateNotes|allNotes|SKILL\.md|verify:export' .
+```
+
+Assume the ledger confirms tasks 1–3 and contains no earlier user-facing rulings. The export function accepts a store and an awaited `write` callback. It writes `CSV_HEADER`, awaits `store.allNotes()`, then writes each `csvRow(note)`. The store already exposes `iterateNotes()`, which reads ordered pages of 256 using the same account filter, ordering, and read-consistency guarantees as `allNotes()`. Its existing integration tests cover page boundaries. The UI export entry point writes chunks to a file. Assume the project has a local product check, `pnpm run verify:export`, that exercises that entry point.
+
+**2. Grade all three review items before editing.**
+
+Partner message: “I’m fixing the export that can exhaust memory on large accounts. I’ll keep the header on empty exports and record the ‘Last edited’ wording difference as a deferred minor.”
+
+```sh
+cat >> .artideck/sdd/2026-11-10-export-design/progress.md <<'EOF'
+Final: Ruling: An empty account exports the usual CSV header and zero note rows — the file identifies its columns and accurately represents an account with no notes — someone expecting an empty file will see one line.
+Final: minor (deferred): The CSV column is named updatedAt while the app calls it “Last edited”; someone matching columns to the screen has to recognize the two names.
+EOF
+```
+
+The large-account failure is Important because it prevents someone from exporting their notes. The header wording is Minor because the correct timestamp is present and readable. Header-only output for an empty account is a reasonable behavior to retain.
+
+**3. Reproduce the read-ahead failure through `exportNotes`.**
+
+Assume `src/export.test.ts` already imports Vitest’s `test` and `expect`, `exportNotes`, and a `makeNote` fixture. The regression uses a lazy 200,000-note source and interrupts the destination on its first data row. This makes the number of notes read deterministic without depending on the Mac running out of memory.
+
+```sh
+cat >> src/export.test.ts <<'EOF'
+
+test('a 200k-note export writes its first note before reading the whole account', async () => {
+  let notesRead = 0
+  async function* iterateNotes() {
+    for (let index = 0; index < 200_000; index++) {
+      notesRead++
+      yield makeNote({ id: String(index), title: `note ${index}` })
+    }
+  }
+  const store = {
+    iterateNotes,
+    async allNotes() {
+      const notes = []
+      for await (const note of iterateNotes()) notes.push(note)
+      return notes
+    },
+  }
+
+  let writes = 0
+  const stopped = new Error('destination closed after first note')
+  await expect(exportNotes(store, async () => {
+    if (++writes === 2) throw stopped
+  })).rejects.toBe(stopped)
+
+  expect(writes).toBe(2)
+  expect(notesRead).toBeLessThanOrEqual(256)
+})
+EOF
+```
+
+```sh
+pnpm exec vitest run src/export.test.ts -t 'a 200k-note export' --reporter=dot
+```
+
+Assumed full result, omitting terminal formatting:
+
+```text
+RUN  v3.2.4 /Users/p/git/notes-app
+x
+FAIL src/export.test.ts > a 200k-note export writes its first note before reading the whole account
+AssertionError: expected 200000 to be less than or equal to 256
+  at src/export.test.ts:118:21
+Test Files  1 failed (1)
+Tests       1 failed | 7 skipped (8)
+Duration    0.82s
+```
+
+Exit `1`. The destination received its first note only after the exporter had read all 200,000. The failure is at the intended assertion.
+
+**4. Use the existing paged reader and verify the fix.**
+
+```sh
+python3 - <<'PY'
+from pathlib import Path
+p = Path("src/export.ts")
+s = p.read_text()
+old = "  const notes = await store.allNotes()\n  for (const note of notes) {"
+new = "  for await (const note of store.iterateNotes()) {"
+assert s.count(old) == 1, "export loop differs from the inspected source"
+p.write_text(s.replace(old, new))
+PY
+```
+
+```sh
+pnpm exec vitest run src/export.test.ts -t 'a 200k-note export' --reporter=dot
+```
+
+Assumed output, exit `0`:
+
+```text
+RUN  v3.2.4 /Users/p/git/notes-app
+·
+Test Files  1 passed (1)
+Tests       1 passed | 7 skipped (8)
+Duration    0.24s
+```
+
+```sh
+pnpm test
+```
+
+Assumed output, exit `0`:
+
+```text
+> notes-app@1.0.0 test
+> vitest run
+
+RUN  v3.2.4 /Users/p/git/notes-app
+✓ src/export.test.ts (8 tests)
+✓ src/store.test.ts (14 tests)
+✓ src/app.test.ts (10 tests)
+
+Test Files  3 passed (3)
+Tests       32 passed (32)
+Duration    1.14s
+```
+
+```sh
+git diff --check
+```
+
+Assumed exit `0`, no output. Having read the focused and full-suite results, I would commit the fix and append its evidence in the same call.
+
+```sh
+git add -- src/export.ts src/export.test.ts &&
+git commit -m "Stream notes from the paged reader during CSV export" &&
+cat >> .artideck/sdd/2026-11-10-export-design/progress.md <<'EOF'
+Final: fixed large-account CSV export exhausting memory — a 200k-note export writes its first note before reading the whole account RED→GREEN, reached tests 32/32.
+EOF
+```
+
+Assumed output:
+
+```text
+[feat/export 8d32fa1] Stream notes from the paged reader during CSV export
+ 2 files changed, 28 insertions(+), 2 deletions(-)
+```
+
+**5. Verify the running product on the committed branch.**
+
+```sh
+pnpm run verify:export
+```
+
+Assumed output, exit `0`:
+
+```text
+> notes-app@1.0.0 verify:export
+> node scripts/verify-export.mjs
+
+Launched local notes app with a temporary profile.
+Exported empty account: 1 header, 0 data records.
+Exported 200000-note account: 1 header, 200000 data records.
+Parsed CSV matches source account IDs, values and order.
+Timestamp column: updatedAt. UI label: Last edited.
+Temporary profile removed.
+```
+
+Partner message: “The regression read all 200,000 notes before the first data row with the old code. It passes with the paged reader, all 32 tests pass, and the app check exported and parsed all 200,000 records.”
+
+**6. Record the verification claims and check the handoff.**
+
+```sh
+rg -n 'Ruling:|minor \(deferred\)' \
+  .artideck/sdd/2026-11-10-export-design/progress.md
+```
+
+Assume the only user-facing entries are the two from step 2. For this simulation, assume the loaded verifying workflow uses a local Markdown report and the design is repository-backed. The two decisions get separate claims so the partner can accept one and reject the other.
+
+```sh
+cat > .artideck/sdd/2026-11-10-export-design/verify.md <<'EOF'
+# CSV export verification
+
+Implementation checked at `8d32fa1`. `pnpm test` passed 32/32.
+`pnpm run verify:export` exported and parsed 200,000 notes through the app.
+The parsed IDs, values and order matched the source account.
+
+## Empty-account export — awaiting partner verdict
+
+The downloaded CSV contains its column names and zero note records.
+The running-product check confirmed one header and zero data records.
+
+## Timestamp column name — awaiting partner verdict
+
+The downloaded CSV calls the timestamp `updatedAt`. The app displays
+“Last edited”. The running-product check confirmed both labels.
+The wording difference is deferred for the partner's verdict.
+EOF
+cat >> docs/ryugi/specs/2026-11-10-export-design.md <<'EOF'
+
+## Build verification
+
+The app exported 200,000 notes with matching IDs, values and order using
+the existing paged reader. Awaiting a complete list before writing the
+first note would reintroduce the large-account memory failure.
+
+Empty accounts produced the header and zero records. The CSV used
+`updatedAt` for the field displayed as “Last edited”. Both behaviors
+await the partner's verdict in the verification report.
+EOF
+```
+
+```sh
+cat .artideck/sdd/2026-11-10-export-design/verify.md
+git diff -- docs/ryugi/specs/2026-11-10-export-design.md
+git diff --check
+```
+
+Assume the output shows the report and the design addition exactly as written above, with no whitespace errors. I would commit the design writeback, keeping the ignored workspace for the pending verdicts.
+
+```sh
+git add -- docs/ryugi/specs/2026-11-10-export-design.md &&
+git commit -m "Record CSV export verification in the design"
+```
+
+Assumed output:
+
+```text
+[feat/export b69a31e] Record CSV export verification in the design
+ 1 file changed, 11 insertions(+)
+```
+
+```sh
+pnpm test && pnpm run verify:export && git status --short --branch
+```
+
+Assume I read the full output: the suite and product check print the same results as steps 4 and 5, followed by `## feat/export`. Exit `0`.
+
+**Final partner message**
+
+The app exported all 200,000 notes and the parsed CSV matched the source IDs, values, and order. All 32 tests passed on `feat/export` at `b69a31e`.
+
+Two groups in the [verification report](/Users/p/git/notes-app/.artideck/sdd/2026-11-10-export-design/verify.md) await your verdict:
+
+- **Empty-account export.** The file contains column names and zero note rows.
+- **Timestamp column name.** The CSV uses `updatedAt` for the field labeled “Last edited” in the app. I deferred the wording change.
+
+After both groups pass, the landing choices are:
+
+1. **Squash into `main`** (default)
+2. **Rebase onto `main`**
+3. **Push and open a PR**
+4. **Keep the branch as-is**
+
+SUMMARY: Simulated one RED→GREEN review fix, a 32/32 suite run, and a 200,000-record app check. The two verification verdicts and subsequent landing choice wait on the partner.

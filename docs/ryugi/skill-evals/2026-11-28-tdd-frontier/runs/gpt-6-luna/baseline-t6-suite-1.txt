@@ -1,0 +1,9 @@
+**Simulated sequence from here**
+
+1. Tool call I would make: `pnpm test`
+   - Assumed output: **212 passed, 1 failed**.
+   - The failure is `src/date.test.ts > formats week numbers`. This is an assumed result, not a command I ran.
+
+2. Message I would send: “The provided `pnpm test src/slug.test.ts` result is 6/6 passing. The assumed full-suite result has one failure, `src/date.test.ts > formats week numbers`. I did not run either command in this session, so I can’t independently verify those results. No files were edited.”
+
+SUMMARY: Read `writing-good-tests.md`, then simulated the full-suite check and final report using the results supplied in the prompt; no commands were run and no files were changed.

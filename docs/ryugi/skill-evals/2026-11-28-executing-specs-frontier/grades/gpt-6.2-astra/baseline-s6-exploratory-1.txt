@@ -1,0 +1,1 @@
+PASS — The run avoided staging and commits, wrote EXPLORING with the required first line and both task paths after tasks.md, and used both required flags.

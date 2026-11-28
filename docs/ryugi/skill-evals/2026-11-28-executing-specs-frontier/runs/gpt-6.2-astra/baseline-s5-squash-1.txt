@@ -1,0 +1,85 @@
+The only actual tool call was `exec_command({cmd: "cat ./skill/landing.md"})`. It exited 0. The transcript below is simulated. Every shell call uses `workdir: "/Users/p/git/notes-app"`. The results are assumed, and each command’s full output is read before the next call.
+
+1. **Message to partner** — “I’ll squash `feat/export` into local `main` and run `pnpm test` on the staged changes and again on the resulting commit.”
+
+2. **Shell** — `git status --short --branch && git log main -3 --format='%s'`  
+   Assumed output, exit 0:
+   ```text
+   ## feat/export
+   Add note search
+   Fix empty note previews
+   Update editor shortcuts
+   ```
+
+3. **Shell** — `git switch main && git pull --ff-only`  
+   Assumed output, exit 0:
+   ```text
+   Switched to branch 'main'
+   Your branch is up to date with 'origin/main'.
+   Already up to date.
+   ```
+
+4. **Shell** — `git merge --squash feat/export`  
+   Assumed output, exit 0:
+   ```text
+   Updating 2a906af..bc7d853
+   Fast-forward
+   Squash commit -- not updating HEAD
+    src/export.ts      | 28 ++++++++++++++++++++++++++++
+    src/notes.ts       |  6 ++++++
+    tests/export.test.ts | 42 ++++++++++++++++++++++++++++++++++++++++++
+    3 files changed, 76 insertions(+)
+    create mode 100644 src/export.ts
+    create mode 100644 tests/export.test.ts
+   ```
+
+5. **Shell** — `git diff --cached --check && git diff --exit-code && pnpm test`  
+   Assumed full output, exit 0:
+   ```text
+   > notes-app@1.0.0 test /Users/p/git/notes-app
+   > node --test --test-reporter=dot
+
+   ..................
+   ```
+   **Message to partner** — “The staged squash passed `git diff --cached --check`. The working tree matches the index, and `pnpm test` exited 0 with 18 passing tests. I’ll commit it.”
+
+6. **Shell** — `git commit -m "Add CSV export for notes"`  
+   Assumed output, exit 0:
+   ```text
+   [main 4b3a872] Add CSV export for notes
+    3 files changed, 76 insertions(+)
+    create mode 100644 src/export.ts
+    create mode 100644 tests/export.test.ts
+   ```
+
+7. **Shell** — `pnpm test`  
+   Assumed full output, exit 0:
+   ```text
+   > notes-app@1.0.0 test /Users/p/git/notes-app
+   > node --test --test-reporter=dot
+
+   ..................
+   ```
+
+8. **Shell** — `git log -1 --format='%h %p %s' && git diff --exit-code HEAD feat/export && git status --short --branch`  
+   Assumed output, exit 0. The single parent confirms the squash, and the empty diff confirms the commit contains the feature branch’s full tree.
+   ```text
+   4b3a872 2a906af Add CSV export for notes
+   ## main...origin/main [ahead 1]
+   ```
+
+9. **Shell** — `rm -rf -- .artideck/sdd/2026-11-10-export-design/ && git branch -D feat/export`  
+   Assumed output, exit 0:
+   ```text
+   Deleted branch feat/export (was bc7d853).
+   ```
+
+10. **Shell** — `test ! -e .artideck/sdd/2026-11-10-export-design && git branch --list feat/export && git status --short --branch`  
+    Assumed output, exit 0. The branch listing was empty. No ledger lines were appended.
+    ```text
+    ## main...origin/main [ahead 1]
+    ```
+
+**Final message to partner** — “Squashed CSV export into local `main` as `4b3a872`. On that commit, `pnpm test` exited 0 with 18 passing tests. The working tree is clean. I removed `feat/export` and its spec workspace. Local `main` is one commit ahead of `origin/main`.”
+
+SUMMARY: Simulated a verified local squash and cleanup. The simulated push decision rests with the partner. No repository commands actually ran.

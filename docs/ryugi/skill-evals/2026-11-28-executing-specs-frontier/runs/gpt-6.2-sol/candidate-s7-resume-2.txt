@@ -1,0 +1,151 @@
+Simulated transcript. No commands or edits were executed. Each shell call uses `/Users/p/git/notes-app` as its working directory.
+
+1. **Message to partner**
+
+   “I’m using the executing-specs skill to resume from the ledger and stop after running the next task’s failing test.”
+
+2. **Shell**
+
+   ```sh
+   bash scripts/sdd-workspace docs/ryugi/specs/2026-11-10-export-design.md
+   ```
+
+   Given output: `.artideck/sdd/2026-11-10-export-design/`.
+
+3. **Shell**
+
+   ```sh
+   cat .artideck/sdd/2026-11-10-export-design/progress.md .artideck/sdd/2026-11-10-export-design/tasks.md
+   ```
+
+   The supplied ledger records Task 1 as complete. I assume the existing task list assigns CSV row serialization to Task 2, specifies `pnpm test export` for verification, and assigns button wiring to Task 3.
+
+4. **Shell**
+
+   ```sh
+   cat docs/ryugi/specs/2026-11-10-export-design.md
+   ```
+
+   I assume the spec requires CSV fields containing commas to be enclosed in double quotes and uses CRLF between records.
+
+5. **Shell**
+
+   ```sh
+   git status --short --branch
+   git log -5 --oneline
+   git diff -- src/export.ts
+   ```
+
+   I assume status shows `feat/export` with only an unstaged change to `src/export.ts`, and the log shows `d4e5f6a` at `HEAD`. I assume the diff is an unfinished Task 2 edit that changes the row separator from `\n` to `\r\n`. The `writeRows` function still joins fields with plain commas.
+
+6. **Todo tool, `update_plan`**
+
+   ```json
+   {
+     "plan": [
+       {"step": "Task 1 — Parse export options", "status": "completed"},
+       {"step": "Task 2 — Write CSV rows", "status": "pending"},
+       {"step": "Task 3 — Wire the export button", "status": "pending"}
+     ]
+   }
+   ```
+
+   Task 1’s status comes from the ledger.
+
+7. **Shell**
+
+   ```sh
+   bash scripts/task-start docs/ryugi/specs/2026-11-10-export-design.md 2
+   ```
+
+   I assume it prints `.artideck/sdd/2026-11-10-export-design/task-2-brief.md` and BASE `d4e5f6a`.
+
+8. **Shell**
+
+   ```sh
+   cat .artideck/sdd/2026-11-10-export-design/task-2-brief.md
+   ```
+
+   I assume the brief names `writeRows(rows)` in `src/export.ts`, assigns its new tests to `src/export-rows.test.ts`, and sets `pnpm test export` as Verify with all export tests expected to pass after implementation.
+
+9. **Todo tool, `update_plan`**
+
+   ```json
+   {
+     "plan": [
+       {"step": "Task 1 — Parse export options", "status": "completed"},
+       {"step": "Task 2 — Write CSV rows", "status": "in_progress"},
+       {"step": "Task 3 — Wire the export button", "status": "pending"}
+     ]
+   }
+   ```
+
+10. **Shell**
+
+    ```sh
+    cat src/export.ts src/export.test.ts
+    ```
+
+    I assume this confirms that `writeRows` is exported and the existing tests use Vitest.
+
+11. **Shell**
+
+    ```sh
+    cat >> .artideck/sdd/2026-11-10-export-design/progress.md <<'EOF'
+    Task 2: Ruling: Keep the existing CRLF edit in src/export.ts while testing comma quoting — the edit matches the spec and a single-row test isolates quoting — if the edit has effects beyond record separators, the full export suite will need to check them before commit.
+    EOF
+    ```
+
+12. **Edit tool, `apply_patch`**
+
+    ```diff
+    *** Begin Patch
+    *** Add File: src/export-rows.test.ts
+    +import { expect, it } from 'vitest'
+    +import { writeRows } from './export'
+    +
+    +it('quotes a CSV field containing a comma', () => {
+    +  expect(writeRows([['Title, with comma', 'Body']])).toBe(
+    +    '"Title, with comma",Body',
+    +  )
+    +})
+    *** End Patch
+    ```
+
+    I assume the patch applies successfully.
+
+13. **Shell**
+
+    ```sh
+    pnpm test export
+    ```
+
+    I assume exit code `1` and read the full simulated output:
+
+    ```text
+    > notes-app test /Users/p/git/notes-app
+    > vitest run export
+
+    ✓ src/export.test.ts (4 tests)
+    ❯ src/export-rows.test.ts (1 test | 1 failed)
+      × quotes a CSV field containing a comma
+
+    FAIL  src/export-rows.test.ts > quotes a CSV field containing a comma
+    AssertionError: expected 'Title, with comma,Body' to be '"Title, with comma",Body'
+
+    Expected: "\"Title, with comma\",Body"
+    Received: "Title, with comma,Body"
+
+     ❯ src/export-rows.test.ts:5:54
+
+    Test Files  1 failed | 1 passed (2)
+         Tests  1 failed | 4 passed (5)
+
+    ELIFECYCLE Test failed. See above for more details.
+    ```
+
+14. **Message to partner**
+
+    “In the simulation, `pnpm test export` exited 1 with four passing tests and one failing test. The new test expected `"Title, with comma",Body` and received `Title, with comma,Body`. I stopped at that failure with the existing `src/export.ts` edit in place.”
+
+SUMMARY: Simulated resuming at Task 2 and running its first failing test. CSV quoting implementation is next on my side when you resume.

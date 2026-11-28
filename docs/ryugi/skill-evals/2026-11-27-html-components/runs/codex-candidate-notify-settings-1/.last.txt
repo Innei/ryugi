@@ -1,0 +1,1 @@
+Wrote [index.html](index.html) with an email digest toggle and frequency selector, multi-channel muting, quiet hours, and a Save button that confirms changes for the current session.

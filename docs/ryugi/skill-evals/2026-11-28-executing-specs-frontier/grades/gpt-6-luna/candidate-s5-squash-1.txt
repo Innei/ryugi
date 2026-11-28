@@ -1,0 +1,1 @@
+FAIL — The summary omits the required Git commands, the squash commit before tests, and explicit deletion with `git branch -D feat/export`.

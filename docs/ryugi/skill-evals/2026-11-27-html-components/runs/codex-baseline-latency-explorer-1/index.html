@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>API latency explorer</title>
+<style>
+:root {
+  color-scheme: light;
+  --ink: #211d2a;
+  --muted: #625b70;
+  --line: #ebe7ef;
+  --accent: #6741c9;
+  --soft: #f1ebff;
+  --slow: #a03831;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: #f9f8fb; color: var(--ink); }
+button, input, select { font: inherit; }
+button, select { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.masthead { background: #fff; border-bottom: 1px solid var(--line); }
+.masthead-inner, main { width: min(1160px, calc(100% - 64px)); margin: auto; }
+.masthead-inner { min-height: 63px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.brand { display: flex; align-items: center; gap: 11px; font-size: 14px; font-weight: 720; }
+.brand-mark { width: 33px; height: 33px; display: grid; place-items: center; background: var(--accent); color: #fff; border-radius: 9px; }
+.sample { display: flex; align-items: center; gap: 7px; border: 1px solid var(--line); padding: 6px 10px; border-radius: 20px; font-size: 12px; color: var(--muted); }
+.sample::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: #8e70d9; }
+main { padding: 42px 0 48px; }
+h1, h2, p { margin: 0; }
+h1 { font-size: clamp(32px, 5vw, 47px); line-height: 1.05; letter-spacing: -.055em; font-weight: 760; }
+.intro p { margin-top: 12px; color: var(--muted); font-size: 15px; line-height: 1.5; }
+.summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin: 27px 0 25px; }
+.metric { background: #fff; border: 1px solid var(--line); border-radius: 13px; padding: 15px 17px; min-width: 0; }
+.metric-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: var(--muted); font-size: 13px; font-weight: 650; }
+.metric-icon { display: grid; place-items: center; flex: 0 0 29px; height: 29px; color: var(--accent); background: var(--soft); border-radius: 8px; }
+.metric:last-child .metric-icon { color: var(--slow); background: #fbedeb; }
+.metric strong { display: block; margin: 2px 0 5px; font-size: 31px; letter-spacing: -.045em; font-variant-numeric: tabular-nums; }
+.metric small { color: var(--muted); font-size: 12px; line-height: 1.4; }
+.panel { background: #fff; border: 1px solid var(--line); border-radius: 15px; overflow: hidden; }
+.panel-head { padding: 19px 19px 15px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.heading { display: flex; align-items: center; gap: 9px; }
+h2 { font-size: 19px; letter-spacing: -.03em; }
+.count { background: var(--soft); color: #5632ad; font-size: 11px; font-weight: 700; border-radius: 20px; padding: 4px 8px; white-space: nowrap; }
+.legend { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; color: var(--muted); font-size: 11px; }
+.legend span { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+.swatch { width: 9px; height: 9px; border-radius: 3px; background: #7752d1; }
+.swatch.p95 { background: #cfbbf8; }
+.swatch.limit { background: none; border-left: 1px dashed var(--slow); width: 1px; height: 11px; border-radius: 0; }
+.filters { display: grid; grid-template-columns: 2fr .95fr 1.1fr 1fr; gap: 12px; padding: 0 19px 17px; }
+.field { min-width: 0; }
+.field > label { display: block; color: #4e465b; font-size: 12px; font-weight: 650; margin-bottom: 6px; }
+.control { position: relative; display: flex; align-items: center; }
+.control input, .control select { height: 39px; width: 100%; min-width: 0; color: var(--ink); background: #fff; border: 1px solid #dfdae6; border-radius: 8px; padding: 0 10px; font-size: 13px; }
+.control input::placeholder { color: #716a7b; }
+.control.search input { padding-left: 35px; }
+.control.search ryugi-icon { position: absolute; left: 11px; pointer-events: none; color: var(--muted); }
+.control.threshold input { padding-right: 48px; }
+.unit { pointer-events: none; position: absolute; right: 11px; color: var(--muted); font-size: 12px; }
+.table-wrap { overflow-x: auto; }
+table { width: 100%; min-width: 745px; table-layout: fixed; border-collapse: collapse; text-align: left; font-size: 13px; }
+th, td { padding: 0 12px; }
+th:first-child, td:first-child { padding-left: 19px; }
+th:last-child, td:last-child { padding-right: 19px; }
+thead { background: #f7f5fa; color: #554d62; }
+th { height: 39px; border-block: 1px solid var(--line); font-weight: 700; font-size: 11px; }
+th button { color: inherit; border: 0; background: transparent; padding: 4px 0; display: inline-flex; align-items: center; gap: 3px; font-weight: inherit; }
+th[aria-sort] button { color: #5632ad; }
+td { height: 48px; border-bottom: 1px solid #f0edf3; }
+tbody tr:last-child td { border-bottom: 0; }
+tbody tr:hover { background: #faf8ff; }
+tbody tr.slow { background: #fff8f7; }
+tbody tr.slow:hover { background: #fff1ef; }
+tbody tr.slow td:first-child { box-shadow: inset 3px 0 #d87365; }
+.path { font-family: ui-monospace, "SFMono-Regular", Consolas, monospace; font-size: 12px; font-weight: 600; overflow-wrap: anywhere; }
+.method { padding: 4px 7px; border-radius: 5px; font-family: ui-monospace, monospace; font-size: 10px; font-weight: 750; background: #eee9fc; color: #5632ad; }
+.method.get { background: #e7f4ee; color: #176348; }
+.method.post { background: #e8effd; color: #28539c; }
+.method.patch { background: #fff0da; color: #865419; }
+.method.delete { background: #fce8eb; color: #9d3049; }
+.latency { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.p95-num { font-weight: 750; }
+.slow .p95-num { color: var(--slow); }
+.track { position: relative; height: 12px; border-radius: 4px; background: #f0edf4; }
+.bar { position: absolute; height: 100%; left: 0; border-radius: inherit; }
+.bar.p95 { background: #cfbbf8; }
+.bar.p50 { background: #7752d1; }
+.slow .bar.p95 { background: #efb9b2; }
+.cutoff { position: absolute; top: -3px; bottom: -3px; border-left: 1px dashed #99504b; }
+.status { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; font-size: 11px; color: var(--muted); }
+.status::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: #85978c; }
+.slow .status { color: var(--slow); font-weight: 700; }
+.slow .status::before { background: #c76558; }
+.empty { text-align: center; padding: 35px 16px; color: var(--muted); }
+.empty strong { display: block; margin-bottom: 5px; color: var(--ink); }
+.footnote { padding: 12px 19px; border-top: 1px solid var(--line); font-size: 11px; color: var(--muted); line-height: 1.5; }
+@media (max-width: 750px) {
+  .masthead-inner, main { width: calc(100% - 32px); }
+  main { padding-top: 28px; }
+  .filters { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 460px) {
+  .summary { gap: 7px; }
+  .metric { padding: 12px 9px; }
+  .metric-head { font-size: 11px; min-height: 26px; }
+  .metric-icon { display: none; }
+  .metric strong { font-size: 24px; }
+  .metric small { font-size: 11px; }
+  .panel-head { align-items: flex-start; flex-direction: column; }
+}
+</style>
+</head>
+<body>
+<header class="masthead">
+  <div class="masthead-inner">
+    <div class="brand"><span class="brand-mark" aria-hidden="true"><ryugi-icon name="activity" size="19"></ryugi-icon></span> API observability</div>
+    <span class="sample">Sample data</span>
+  </div>
+</header>
+<main>
+  <section class="intro" aria-labelledby="page-title">
+    <h1 id="page-title">Latency explorer</h1>
+    <p>Compare typical (p50) and tail (p95) response times across 24 API endpoints.</p>
+  </section>
+
+  <section class="summary" aria-label="Summary for matching endpoints">
+    <div class="metric">
+      <div class="metric-head">Matching endpoints <span class="metric-icon" aria-hidden="true"><ryugi-icon name="layers" size="16"></ryugi-icon></span></div>
+      <strong id="matching-stat">24</strong>
+      <small>of 24 endpoints</small>
+    </div>
+    <div class="metric">
+      <div class="metric-head">Median endpoint p95 <span class="metric-icon" aria-hidden="true"><ryugi-icon name="timer" size="16"></ryugi-icon></span></div>
+      <strong id="median-stat">—</strong>
+      <small>Among matching endpoints</small>
+    </div>
+    <div class="metric">
+      <div class="metric-head">Slow endpoints <span class="metric-icon" aria-hidden="true"><ryugi-icon name="triangle-alert" size="16"></ryugi-icon></span></div>
+      <strong id="slow-stat">—</strong>
+      <small id="slow-description">p95 above 500 ms</small>
+    </div>
+  </section>
+
+  <section class="panel" aria-labelledby="endpoints-heading">
+    <div class="panel-head">
+      <div class="heading"><h2 id="endpoints-heading">Endpoints</h2><output class="count" id="result-count" aria-live="polite"></output></div>
+      <div class="legend" aria-label="Latency profile legend">
+        <span><i class="swatch"></i> p50</span>
+        <span><i class="swatch p95"></i> p95</span>
+        <span><i class="swatch limit"></i> Slow threshold</span>
+      </div>
+    </div>
+
+    <div class="filters">
+      <div class="field">
+        <label for="path-search">Search path</label>
+        <div class="control search">
+          <ryugi-icon name="search" size="15" aria-hidden="true"></ryugi-icon>
+          <input id="path-search" type="search" placeholder="e.g. /orders" autocomplete="off">
+        </div>
+      </div>
+      <div class="field">
+        <label for="method-filter">HTTP method</label>
+        <div class="control">
+          <select id="method-filter">
+            <option value="">All methods</option>
+            <option>GET</option><option>POST</option><option>PATCH</option><option>DELETE</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label for="p95-sort">Sort by p95</label>
+        <div class="control">
+          <select id="p95-sort">
+            <option value="desc">Highest first</option>
+            <option value="asc">Lowest first</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label for="slow-threshold">Slow threshold</label>
+        <div class="control threshold">
+          <input id="slow-threshold" type="number" value="500" min="0" step="any" aria-describedby="threshold-help">
+          <span class="unit" aria-hidden="true">ms</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table aria-labelledby="endpoints-heading">
+        <colgroup>
+          <col style="width: 11%"><col style="width: 30%"><col style="width: 10%">
+          <col style="width: 10%"><col style="width: 25%"><col style="width: 14%">
+        </colgroup>
+        <thead>
+          <tr>
+            <th scope="col">Method</th>
+            <th scope="col">Path</th>
+            <th scope="col" class="latency">p50 (ms)</th>
+            <th scope="col" class="latency" id="p95-header" aria-sort="descending">
+              <button type="button" id="p95-toggle">p95 (ms) <span id="sort-arrow" aria-hidden="true">↓</span></button>
+            </th>
+            <th scope="col">Latency profile</th>
+            <th scope="col">Status</th>
+          </tr>
+        </thead>
+        <tbody id="endpoint-rows"></tbody>
+      </table>
+    </div>
+    <p class="footnote" id="threshold-help">An endpoint is slow when its p95 exceeds the threshold in milliseconds.</p>
+  </section>
+</main>
+
+<script>
+const endpoints = [
+  ['POST', '/v1/reports/export', 365, 1240],
+  ['GET', '/v1/analytics/overview', 214, 920],
+  ['POST', '/v1/orders', 192, 780],
+  ['GET', '/v1/search', 136, 665],
+  ['POST', '/v1/files', 174, 612],
+  ['GET', '/v1/orders/:id/events', 129, 548],
+  ['POST', '/v1/payments', 148, 472],
+  ['GET', '/v1/invoices', 113, 416],
+  ['GET', '/v1/orders', 96, 382],
+  ['GET', '/v1/products', 83, 350],
+  ['POST', '/v1/auth/login', 99, 317],
+  ['PATCH', '/v1/orders/:id', 79, 284],
+  ['GET', '/v1/customers', 71, 255],
+  ['POST', '/v1/customers', 84, 224],
+  ['GET', '/v1/orders/:id', 62, 203],
+  ['GET', '/v1/products/:id', 49, 176],
+  ['PATCH', '/v1/customers/:id', 57, 163],
+  ['GET', '/v1/customers/:id', 43, 140],
+  ['DELETE', '/v1/files/:id', 46, 125],
+  ['POST', '/v1/auth/refresh', 40, 112],
+  ['PATCH', '/v1/users/me', 38, 101],
+  ['GET', '/v1/users/me', 27, 78],
+  ['DELETE', '/v1/sessions/:id', 23, 62],
+  ['GET', '/v1/health', 9, 24],
+];
+
+const byId = (id) => document.getElementById(id);
+const search = byId('path-search');
+const method = byId('method-filter');
+const sort = byId('p95-sort');
+const threshold = byId('slow-threshold');
+const format = new Intl.NumberFormat('en', { maximumFractionDigits: 2 });
+const maxP95 = Math.max(...endpoints.map((endpoint) => endpoint[3]));
+const defaultThreshold = Number(threshold.defaultValue);
+
+function render() {
+  const query = search.value.trim().toLowerCase();
+  const enteredThreshold = threshold.valueAsNumber;
+  const limit = Math.max(0, Number.isFinite(enteredThreshold) ? enteredThreshold : defaultThreshold);
+  const descending = sort.value === 'desc';
+  const visible = endpoints
+    .filter(([verb, path]) => (!method.value || verb === method.value) && path.toLowerCase().includes(query))
+    .sort((left, right) => descending ? right[3] - left[3] : left[3] - right[3]);
+  const total = visible.length;
+  const median = total ? (visible[Math.floor((total - 1) / 2)][3] + visible[Math.floor(total / 2)][3]) / 2 : null;
+  const slowCount = visible.filter((endpoint) => endpoint[3] > limit).length;
+  const scale = Math.max(maxP95, limit);
+  const percent = (value) => 100 * (value / scale);
+
+  byId('matching-stat').textContent = total;
+  byId('median-stat').textContent = median === null ? '—' : format.format(median) + ' ms';
+  byId('slow-stat').textContent = slowCount;
+  byId('slow-description').textContent = 'p95 above ' + limit.toLocaleString('en', { maximumSignificantDigits: 17 }) + ' ms';
+  byId('result-count').textContent = total + (total === 1 ? ' result' : ' results');
+  byId('p95-header').setAttribute('aria-sort', descending ? 'descending' : 'ascending');
+  byId('sort-arrow').textContent = descending ? '↓' : '↑';
+
+  // Row markup interpolates only fixed sample data and calculated numbers.
+  byId('endpoint-rows').innerHTML = total ? visible.map(([verb, path, p50, p95]) => {
+    const slow = p95 > limit;
+    return `
+      <tr class="${slow ? 'slow' : ''}">
+        <td><span class="method ${verb.toLowerCase()}">${verb}</span></td>
+        <td class="path">${path}</td>
+        <td class="latency">${format.format(p50)}</td>
+        <td class="latency p95-num">${format.format(p95)}</td>
+        <td><div class="track" aria-hidden="true">
+          <span class="bar p95" style="width:${percent(p95)}%"></span>
+          <span class="bar p50" style="width:${percent(p50)}%"></span>
+          <span class="cutoff" style="left:${percent(limit)}%"></span>
+        </div></td>
+        <td><span class="status">${slow ? 'Slow' : 'Within limit'}</span></td>
+      </tr>`;
+  }).join('') : '<tr><td class="empty" colspan="6"><strong>No matching endpoints</strong>Try a different path or HTTP method.</td></tr>';
+}
+
+for (const control of [search, method, sort, threshold]) {
+  control.addEventListener('input', render);
+  control.addEventListener('change', render);
+}
+byId('p95-toggle').addEventListener('click', () => {
+  sort.value = sort.value === 'desc' ? 'asc' : 'desc';
+  sort.dispatchEvent(new Event('change', { bubbles: true }));
+});
+render();
+</script>
+</body>
+</html>

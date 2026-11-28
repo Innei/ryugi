@@ -1,0 +1,3 @@
+"command":"/bin/zsh -lc 'cat ./skill/code-reviewer.md'"
+"command":"/bin/zsh -lc 'cat ./skill/SKILL.md'"
+"command":"/bin/zsh -lc 'rg --files --hidden ./skill/'"

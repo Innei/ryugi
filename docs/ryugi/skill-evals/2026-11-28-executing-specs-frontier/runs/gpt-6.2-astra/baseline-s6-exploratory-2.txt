@@ -1,0 +1,172 @@
+Only the reads under `./skill/` were real. The transcript below is simulated. Each shell block is one call in `/Users/p/git/notes-app`, with `SPEC=docs/ryugi/specs/2026-11-10-export-design.md` and `WS=/Users/p/git/notes-app/.artideck/sdd/2026-11-10-export-design` set in its environment. The workspace lookup and missing-ledger check are already supplied.
+
+**1. Read the spec and check the shared checkout.**
+
+```sh
+cat "$SPEC" &&
+git status --short --branch --untracked-files=all &&
+rg --files src &&
+cat package.json
+```
+
+Assume the status output is `## main`, the two task paths are new, and `package.json` defines `test` as `vitest run`. Assume the spec’s “CSV format” section calls for `exportNotesCsv(notes)` to emit `title,body` in input order, with CRLF between records, no trailing record separator, and CSV quoting for commas, quotes, CR, and LF. Empty input emits the header. These details stand in for the unseen spec.
+
+**2. Write the task, exploratory path list, and initial ledger.**
+
+```sh
+set -e
+cat > "$WS/tasks.md" <<'EOF'
+## Task 1: Export notes as CSV
+
+**Goal:** Implement the CSV format described in the spec’s “CSV format” section.
+**Files:** `src/export.ts`, `src/export.test.ts`
+**Interfaces:**
+Produces: `exportNotesCsv(notes)`
+Consumes: none
+**Failing test:** Check the exact string for empty input and for ordered notes containing plain text, empty fields, commas, quotes, CR, and LF.
+**Verify:** `pnpm test`
+**Expected:** All tests pass, including both CSV assertions.
+
+## Review Focus
+
+Check how the exported function accepts the app’s note objects. Check that
+the CSV preserves field contents when a note contains a CRLF pair or Unicode.
+EOF
+cat > "$WS/EXPLORING" <<'EOF'
+Exploratory: may be thrown away.
+src/export.ts
+src/export.test.ts
+EOF
+cat > "$WS/progress.md" <<'EOF'
+# SDD ledger — plan: docs/ryugi/specs/2026-11-10-export-design.md
+Slicing: 1 task — implement and test the CSV format together.
+EOF
+```
+
+**3. Take the task and read its generated brief.**
+
+```text
+todos.set({"items":[{"id":"1","text":"Export notes as CSV","status":"pending"}]})
+```
+
+```sh
+bash scripts/task-start "$SPEC" 1
+```
+
+Assume it prints brief path `$WS/task-1-brief.md` and BASE `7b4e219c810c2fd3a53e08416420ac3a23a1b824`.
+
+```sh
+cat "$WS/task-1-brief.md"
+```
+
+Assume the brief reproduces Task 1 above, including `pnpm test` and its expected result.
+
+```text
+todos.set({"items":[{"id":"1","text":"Export notes as CSV","status":"in_progress"}]})
+```
+
+**4. Write the test first and observe RED.**
+
+```sh
+cat > src/export.test.ts <<'EOF'
+import { expect, it } from 'vitest'
+import { exportNotesCsv } from './export'
+
+it('exports the header for an empty collection', () => {
+  expect(exportNotesCsv([])).toBe('title,body')
+})
+
+it('preserves note order and escapes CSV fields', () => {
+  const notes = [
+    { title: 'plain', body: '' },
+    { title: 'one,two', body: 'say "hi"' },
+    { title: 'a\rb', body: 'c\nd' },
+  ]
+  expect(exportNotesCsv(notes)).toBe(
+    'title,body\r\nplain,\r\n"one,two","say ""hi"""\r\n"a\rb","c\nd"',
+  )
+})
+EOF
+pnpm test src/export.test.ts
+```
+
+Assume exit 1. Vitest reports one failed suite and `Failed to resolve import "./export" from "src/export.test.ts"`. That identifies the missing module. To observe the assertions themselves fail, introduce just its interface.
+
+```sh
+cat > src/export.ts <<'EOF'
+export function exportNotesCsv(_notes: readonly { title: string; body: string }[]): string {
+  return ''
+}
+EOF
+pnpm test src/export.test.ts
+```
+
+Assume exit 1, two tests failed. Both received `""`. The first expected `title,body`, and the second expected the complete CSV string in the test.
+
+**5. Implement the format and run Verify.**
+
+```sh
+cat > src/export.ts <<'EOF'
+function csvField(value: string): string {
+  if (/[",\r\n]/.test(value)) {
+    return `"${value.replace(/"/g, '""')}"`
+  }
+  return value
+}
+
+export function exportNotesCsv(notes: readonly { title: string; body: string }[]): string {
+  const rows = notes.map(note => `${csvField(note.title)},${csvField(note.body)}`)
+  return ['title,body', ...rows].join('\r\n')
+}
+EOF
+pnpm test
+```
+
+Assume the full output lists `src/notes.test.ts (8 tests)` and `src/export.test.ts (2 tests)`, with **2 files passed, 10 tests passed**, exit 0. This matches the brief’s expected result.
+
+**6. Close Task 1 with the exploratory flag and read the evidence.**
+
+```sh
+bash scripts/task-done "$SPEC" 1 7b4e219c810c2fd3a53e08416420ac3a23a1b824 --uncommitted -- pnpm test
+```
+
+Assume the script exits 0 and identifies `$WS/task-1-test.log` as its full output file.
+
+```sh
+cat "$WS/task-1-test.log" "$WS/progress.md"
+```
+
+Assume the full log shows the same two suites, **10/10 tests passed**, and no errors. Assume the script appended this exact ledger line:
+
+```text
+Task 1: complete (uncommitted, tests: pnpm test → 10/10 passed)
+```
+
+```text
+todos.set({"items":[{"id":"1","text":"Export notes as CSV","status":"completed"}]})
+```
+
+**7. Produce and inspect the exploratory review package.**
+
+```sh
+bash scripts/review-package "$SPEC" --exploring
+```
+
+Assume exit 0 and printed path `$WS/review-package.md`.
+
+```sh
+cat "$WS/review-package.md" &&
+git status --short --branch --untracked-files=all
+```
+
+Assume the package contains the full additions for both paths in `EXPLORING`, including the new test. Assume status prints:
+
+```text
+## main
+?? src/export.test.ts
+?? src/export.ts
+```
+
+**Message to partner:** “The CSV tests failed on the empty implementation. The closing `pnpm test` run passed all 10 tests across both suites. The exploratory review package includes `src/export.ts` and `src/export.test.ts`. Both files are uncommitted on `main`.”
+
+SUMMARY: Simulated closing Task 1 and producing its review package. Fresh-context review is next for the agent. The partner’s keep-or-discard decision comes after review and verification.

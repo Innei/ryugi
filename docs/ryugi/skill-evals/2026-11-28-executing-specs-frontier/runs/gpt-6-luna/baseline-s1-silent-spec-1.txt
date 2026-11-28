@@ -1,0 +1,43 @@
+**Message to partner:** The CSV format is underspecified for titles containing commas or newlines. I’ll use standard CSV quoting, which preserves the specified three fields while keeping each note on one logical row. If that choice is wrong, consumers expecting unescaped text may need to adjust.
+
+1. **Tool call — read the task brief**
+
+   `bash scripts/task-start docs/ryugi/specs/2026-11-10-export-design.md 2`
+
+   **Assumed output:** The command prints the Task 2 brief path and `BASE`; the brief confirms the failing test and Verify command. I read the brief.
+
+2. **Tool call — update todo**
+
+   Mark Task 2 `in_progress`.
+
+3. **Tool call — ledger ruling**
+
+   Append:
+
+   `Task 2: Ruling: CSV titles containing commas, quotes, or newlines use standard CSV quoting and escaping — preserves the three specified fields as valid CSV records — cost if wrong: consumers expecting raw unescaped text may need adjustment`
+
+4. **Tool call — run the already-written failing test**
+
+   Run the exact test command from the brief.
+
+   **Assumed output:** It fails for the expected reason: row serialization does not correctly handle a title containing commas or newlines.
+
+5. **Tool call — implement CSV escaping**
+
+   Edit the implementation to quote fields containing commas, quotes, or newlines, and double any quotes inside quoted fields. Keep the specified `id, title, updatedAt` column order.
+
+6. **Tool call — run Task 2 Verify**
+
+   `bash scripts/task-done docs/ryugi/specs/2026-11-10-export-design.md 2 BASE -- pnpm test`
+
+   Replace `BASE` with the exact base value printed by `task-start`.
+
+   **Assumed output:** `pnpm test` passes; `task-done` records the result and appends a completion line. This is assumed because no command output was provided; I cannot claim the task actually passed.
+
+7. **Tool call — update todo**
+
+   Mark Task 2 `complete` only if the `task-done` command reports success; otherwise leave it in progress and report the actual failure.
+
+**Stop point:** Task 2 is closed if the assumed verification succeeds. The overall spec work still waits on Task 3, final review, project verification, and the finish steps.
+
+SUMMARY: Simulated the Task 2 ruling, implementation, and verification sequence; actual command results were not available, so completion awaits running the commands.

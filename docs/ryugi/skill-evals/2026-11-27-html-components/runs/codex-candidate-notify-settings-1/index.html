@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Notification settings · Team Chat</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --lobe-color-primary: #5146c7;
+      --ink: #1e2033;
+      --muted: #5d6177;
+      --line: #e5e6ef;
+      --accent: #5146c7;
+      font: 15px/1.5 system-ui, sans-serif;
+      color: var(--ink);
+      background: #f7f8fc;
+    }
+
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    h1, h2, p { margin: 0; }
+
+    .masthead {
+      background: #fff;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .masthead-inner, main {
+      width: min(100% - 48px, 800px);
+      margin-inline: auto;
+    }
+
+    .masthead-inner {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      min-height: 64px;
+      font-weight: 700;
+      letter-spacing: -.02em;
+    }
+
+    .brand-icon, .section-icon {
+      display: grid;
+      flex: none;
+      place-items: center;
+    }
+
+    .brand-icon {
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      background: var(--accent);
+      color: white;
+    }
+
+    main { padding-block: 42px 38px; }
+    .page-heading { margin-bottom: 24px; }
+
+    h1 {
+      margin-bottom: 5px;
+      font-size: clamp(28px, 5vw, 38px);
+      font-weight: 730;
+      line-height: 1.12;
+      letter-spacing: -.045em;
+    }
+
+    .page-heading p, .section-caption, .field-note { color: var(--muted); }
+    .settings-card { display: block; }
+
+    .settings-section {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1.17fr);
+      gap: 24px;
+      padding: 22px 24px;
+    }
+
+    .settings-section + .settings-section { border-top: 1px solid var(--line); }
+
+    .section-heading {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    .section-icon {
+      width: 35px;
+      height: 35px;
+      border-radius: 9px;
+      background: #eeecfb;
+      color: var(--accent);
+    }
+
+    h2 {
+      margin-bottom: 3px;
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: -.015em;
+    }
+
+    .section-caption, .field-note { font-size: 13px; }
+    .section-fields { min-width: 0; }
+
+    .digest-fields {
+      display: grid;
+      align-content: start;
+      gap: 12px;
+    }
+
+    .digest-toggle {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .field {
+      display: grid;
+      align-content: start;
+      gap: 5px;
+      min-width: 0;
+    }
+
+    .field-label {
+      font-size: 13px;
+      font-weight: 650;
+    }
+
+    ryugi-select { width: 100%; }
+
+    .channel-fields, .time-fields {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px 14px;
+    }
+
+    .channel-fields { padding-block: 2px; }
+    .channel-fields ryugi-checkbox { display: block; }
+
+    .time-fields input {
+      width: 100%;
+      min-width: 0;
+      min-height: 36px;
+      padding: 4px 8px;
+      border: 1px solid #cdd0df;
+      border-radius: 6px;
+      background: white;
+      color: var(--ink);
+      font: inherit;
+      font-size: 13px;
+    }
+
+    .time-fields input:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    .field-note { margin-top: 8px; }
+    .quiet-alert { margin-top: 10px; }
+
+    .actions {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    #save-status { font-size: 13px; }
+    [hidden] { display: none !important; }
+
+    @media (max-width: 580px) {
+      .masthead-inner, main { width: calc(100% - 32px); }
+      .masthead-inner { min-height: 56px; }
+      main { padding-block: 28px; }
+      .page-heading { margin-bottom: 18px; }
+      .settings-section {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 14px;
+        padding: 18px 16px;
+      }
+    }
+
+    @media (max-width: 340px) {
+      .channel-fields { grid-template-columns: minmax(0, 1fr); }
+    }
+  </style>
+</head>
+<body>
+  <header class="masthead">
+    <div class="masthead-inner">
+      <span class="brand-icon" aria-hidden="true"><ryugi-icon name="messages-square" size="18"></ryugi-icon></span>
+      <span>Team Chat</span>
+    </div>
+  </header>
+
+  <main>
+    <div class="page-heading">
+      <h1>Notification settings</h1>
+      <p>Choose what you hear about and when.</p>
+    </div>
+
+    <ryugi-card class="settings-card" variant="outlined">
+      <section class="settings-section" aria-labelledby="digest-heading">
+        <div class="section-heading">
+          <span class="section-icon" aria-hidden="true"><ryugi-icon name="mail" size="17"></ryugi-icon></span>
+          <div>
+            <h2 id="digest-heading">Email digest</h2>
+            <p class="section-caption">Get an email summary of activity you missed.</p>
+          </div>
+        </div>
+        <div class="section-fields digest-fields">
+          <div class="digest-toggle">
+            <span id="digest-enabled-label" class="field-label">Send email digest</span>
+            <ryugi-switch id="digest-enabled" aria-labelledby="digest-enabled-label" aria-label="Send email digest" checked></ryugi-switch>
+          </div>
+          <div class="field">
+            <span id="digest-frequency-label" class="field-label">Digest frequency</span>
+            <ryugi-select id="digest-frequency" aria-labelledby="digest-frequency-label" aria-label="Digest frequency" value="weekly">
+              <ryugi-option value="daily">Daily</ryugi-option>
+              <ryugi-option value="weekly">Weekly</ryugi-option>
+              <ryugi-option value="monthly">Monthly</ryugi-option>
+            </ryugi-select>
+          </div>
+        </div>
+      </section>
+
+      <section class="settings-section" aria-labelledby="mute-heading">
+        <div class="section-heading">
+          <span class="section-icon" aria-hidden="true"><ryugi-icon name="bell-off" size="17"></ryugi-icon></span>
+          <div>
+            <h2 id="mute-heading">Muted channels</h2>
+            <p class="section-caption">Select every channel you want to mute.</p>
+          </div>
+        </div>
+        <div class="section-fields channel-fields" role="group" aria-labelledby="mute-heading">
+          <ryugi-checkbox id="mute-general"># general</ryugi-checkbox>
+          <ryugi-checkbox id="mute-announcements"># announcements</ryugi-checkbox>
+          <ryugi-checkbox id="mute-projects"># projects</ryugi-checkbox>
+          <ryugi-checkbox id="mute-random" checked># random</ryugi-checkbox>
+        </div>
+      </section>
+
+      <section class="settings-section" aria-labelledby="quiet-heading">
+        <div class="section-heading">
+          <span class="section-icon" aria-hidden="true"><ryugi-icon name="moon" size="17"></ryugi-icon></span>
+          <div>
+            <h2 id="quiet-heading">Quiet hours</h2>
+            <p class="section-caption">Pause notifications during this window each day.</p>
+          </div>
+        </div>
+        <div class="section-fields">
+          <div class="time-fields" role="group" aria-labelledby="quiet-heading">
+            <div class="field">
+              <label class="field-label" for="quiet-start">Start time</label>
+              <input id="quiet-start" type="time" value="22:00" aria-describedby="quiet-note" required>
+            </div>
+            <div class="field">
+              <label class="field-label" for="quiet-end">End time</label>
+              <input id="quiet-end" type="time" value="08:00" aria-describedby="quiet-note" required>
+            </div>
+          </div>
+          <p class="field-note" id="quiet-note">Uses your local time. Ends the next day.</p>
+          <ryugi-alert id="quiet-error" class="quiet-alert" type="error" variant="soft" title="Choose different start and end times." showIcon hidden></ryugi-alert>
+        </div>
+      </section>
+    </ryugi-card>
+
+    <div class="actions">
+      <span id="save-status" role="status" aria-atomic="true"></span>
+      <ryugi-button id="save-settings" variant="filled">Save settings</ryugi-button>
+    </div>
+  </main>
+
+  <script>
+    document.addEventListener('ryugi-ui:ready', () => {
+      const byId = (id) => document.getElementById(id);
+      const digest = byId('digest-enabled');
+      const frequency = byId('digest-frequency');
+      const channelControls = [...document.querySelectorAll('.channel-fields ryugi-checkbox')];
+      const start = byId('quiet-start');
+      const end = byId('quiet-end');
+      const quietNote = byId('quiet-note');
+      const quietError = byId('quiet-error');
+      const saveStatus = byId('save-status');
+
+      const readSettings = () => ({
+        digestEnabled: digest.checked,
+        digestFrequency: frequency.value,
+        mutedChannels: channelControls
+          .filter((control) => control.checked)
+          .map((control) => control.id.slice('mute-'.length)),
+        quietStart: start.value,
+        quietEnd: end.value,
+      });
+
+      let savedSettings = JSON.stringify(readSettings());
+      let hasSaved = false;
+
+      const render = () => {
+        frequency.toggleAttribute('disabled', !digest.checked);
+
+        const endsTomorrow = start.value && end.value && end.value < start.value;
+        quietNote.textContent = endsTomorrow
+          ? 'Uses your local time. Ends the next day.'
+          : 'Uses your local time.';
+
+        const isSaved = JSON.stringify(readSettings()) === savedSettings;
+        saveStatus.textContent = hasSaved && isSaved ? 'Settings saved' : '';
+      };
+
+      const onTimeChange = () => {
+        quietError.hidden = true;
+        end.removeAttribute('aria-invalid');
+        end.setAttribute('aria-describedby', 'quiet-note');
+        render();
+      };
+
+      document.addEventListener('ryugi-change', render);
+      for (const control of [start, end]) {
+        control.addEventListener('input', onTimeChange);
+        control.addEventListener('change', onTimeChange);
+      }
+
+      byId('save-settings').addEventListener('click', () => {
+        if (!start.reportValidity() || !end.reportValidity()) return;
+        if (start.value === end.value) {
+          quietError.hidden = false;
+          end.setAttribute('aria-invalid', 'true');
+          end.setAttribute('aria-describedby', 'quiet-note quiet-error');
+          end.focus();
+          return;
+        }
+
+        savedSettings = JSON.stringify(readSettings());
+        hasSaved = true;
+        render();
+        window.ryugiToast.success({ id: 'notification-settings-saved', title: 'Settings saved' });
+      });
+
+      render();
+    }, { once: true });
+  </script>
+</body>
+</html>

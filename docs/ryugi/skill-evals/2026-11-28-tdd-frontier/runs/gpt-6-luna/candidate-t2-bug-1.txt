@@ -1,0 +1,68 @@
+The repository work below is **simulated**, as requested. I actually read `./skill/writing-good-tests.md`; I did not run repository commands or change files. The command outputs and repository details below are plausible assumptions, not observed results.
+
+1. **Inspect the working tree and relevant files.** I would run:
+
+   ```sh
+   cd /Users/p/git/notes-app
+   git status --short
+   sed -n '1,160p' src/paginate.ts
+   rg --files src | rg 'paginate|test|spec'
+   cat package.json
+   ```
+
+   **Assumed output:** the working tree is clean; `src/paginate.ts` contains `items.slice(start, end - 1)`; there is no existing pagination test; `package.json` has a Vitest script.
+
+   **Message to partner:** “I’m adding a focused regression test first, then I’ll make the one-line fix and run that test.”
+
+2. **Add a regression test** in `src/paginate.test.ts`:
+
+   ```typescript
+   import { describe, expect, it } from 'vitest';
+   import { paginate } from './paginate';
+
+   describe('paginate', () => {
+     it('includes the final item on the last page', () => {
+       expect(paginate(['a', 'b', 'c', 'd', 'e'], 2, 2)).toEqual(['e']);
+     });
+   });
+   ```
+
+   I would run:
+
+   ```sh
+   pnpm test src/paginate.test.ts
+   ```
+
+   **Assumed output:** the test fails because the last page returns `[]` instead of `['e']`. That reproduces the reported bug.
+
+3. **Fix the slice boundary** in `src/paginate.ts`, changing:
+
+   ```typescript
+   return items.slice(start, end - 1);
+   ```
+
+   to:
+
+   ```typescript
+   return items.slice(start, end);
+   ```
+
+   Then I would run:
+
+   ```sh
+   pnpm test src/paginate.test.ts
+   ```
+
+   **Assumed output:** the focused test passes.
+
+4. **Review the resulting diff** with:
+
+   ```sh
+   git diff -- src/paginate.ts src/paginate.test.ts
+   ```
+
+   **Assumed output:** the diff shows the one-line boundary correction and the regression test.
+
+**Message to partner:** “The regression test failed before the change and passes after it. The simulated diff contains the boundary fix and its test; I can’t claim an actual run or repository change because this session was simulation-only.”
+
+SUMMARY: Read the required test-writing guidance, then simulated inspection, a failing regression test, the one-line fix, and focused verification; all repository outputs and results are assumed, not run.

@@ -1,0 +1,302 @@
+I read `./skill/writing-good-tests.md` with the shell. It calls for literal expected values, tests at the public boundary, and a specific production mistake each test can catch. Everything below is simulated. The repository contents and command results are assumptions.
+
+### 1. Inspect the checkout and trace the merge
+
+Simulated shell call with working directory `/Users/p/git/notes-app`, also used for every subsequent call:
+
+```sh
+git status --short --untracked-files=all
+rg --files --hidden -g '!node_modules' -g '!.git' -g 'AGENTS.md' -g 'package.json' -g 'tsconfig*.json' -g '*vitest*' -g '*vite.config*' -g '*merge*' -g '*sync*'
+cat package.json tsconfig.json
+cat src/sync/merge.ts
+rg -n 'mergeNoteText|applyRemoteNote' src
+```
+
+Assumed output:
+
+- `src/sync/merge.ts` is the only working-tree change and is untracked. There are no applicable `AGENTS.md` files or custom Vitest settings.
+- `pnpm test` invokes `vitest run`, and `pnpm typecheck` invokes `tsc --noEmit`.
+- `mergeNoteText(base, local, remote)` returns `{ status: 'merged', text }` or `{ status: 'conflict', local, remote }`. It preserves line breaks, combines disjoint edits, and returns both originals on conflict.
+- `src/sync/applyRemoteNote.ts` calls the public export through the normal sync path. `src/sync/applyRemoteNote.test.ts` exercises that path. No other callers or end-to-end tests reference this path.
+
+Simulated shell call:
+
+```sh
+cat src/sync/applyRemoteNote.ts src/sync/applyRemoteNote.test.ts
+```
+
+Assumed output: The caller uses the merged text and takes a separate conflict path. Its five existing tests cover the normal sync entry point, including how the caller handles merged text and a conflict.
+
+Simulated message to the partner:
+
+> The merge is wired into note sync. I’ll add tests for its public result, then run each test against a temporary mutation because the implementation was already written.
+
+### 2. Write the merge tests and run them against the existing implementation
+
+Each fixture has a literal expected result. The cases target loss of an unchanged or agreed value, choosing the wrong side, dropping one side’s edits, dropping insertions or deletions, stripping a trailing newline, and concealing a conflict.
+
+Simulated shell call. The here-document is the entire new file:
+
+```sh
+set -o noclobber
+cat > src/sync/merge.test.ts <<'EOF'
+import { describe, expect, it } from 'vitest'
+import { mergeNoteText } from './merge'
+
+describe('mergeNoteText', () => {
+  it.each([
+    {
+      name: 'keeps the original when neither side changed',
+      base: 'Alpha',
+      local: 'Alpha',
+      remote: 'Alpha',
+      want: { status: 'merged', text: 'Alpha' },
+    },
+    {
+      name: 'keeps the remote edit when local is unchanged',
+      base: 'Alpha',
+      local: 'Alpha',
+      remote: 'Remote alpha',
+      want: { status: 'merged', text: 'Remote alpha' },
+    },
+    {
+      name: 'keeps the local edit when remote is unchanged',
+      base: 'Alpha',
+      local: 'Local alpha',
+      remote: 'Alpha',
+      want: { status: 'merged', text: 'Local alpha' },
+    },
+    {
+      name: 'applies an identical edit once',
+      base: 'Alpha',
+      local: 'Alpha\nNew line',
+      remote: 'Alpha\nNew line',
+      want: { status: 'merged', text: 'Alpha\nNew line' },
+    },
+    {
+      name: 'combines disjoint replacements',
+      base: 'Alpha\nBeta\nGamma',
+      local: 'Local alpha\nBeta\nGamma',
+      remote: 'Alpha\nBeta\nRemote gamma',
+      want: { status: 'merged', text: 'Local alpha\nBeta\nRemote gamma' },
+    },
+    {
+      name: 'keeps an insertion alongside a disjoint edit',
+      base: 'Alpha\nBeta\nGamma',
+      local: 'Alpha\nInserted\nBeta\nGamma',
+      remote: 'Alpha\nBeta\nRemote gamma',
+      want: { status: 'merged', text: 'Alpha\nInserted\nBeta\nRemote gamma' },
+    },
+    {
+      name: 'keeps a deletion alongside a disjoint edit',
+      base: 'Alpha\nBeta\nGamma',
+      local: 'Alpha\nGamma',
+      remote: 'Alpha\nBeta\nRemote gamma',
+      want: { status: 'merged', text: 'Alpha\nRemote gamma' },
+    },
+    {
+      name: 'preserves the final newline when combining edits',
+      base: 'Alpha\nBeta\nGamma\n',
+      local: 'Local alpha\nBeta\nGamma\n',
+      remote: 'Alpha\nBeta\nRemote gamma\n',
+      want: { status: 'merged', text: 'Local alpha\nBeta\nRemote gamma\n' },
+    },
+    {
+      name: 'returns both originals for conflicting replacements',
+      base: 'Alpha\nBeta',
+      local: 'Local alpha\nBeta',
+      remote: 'Remote alpha\nBeta',
+      want: {
+        status: 'conflict',
+        local: 'Local alpha\nBeta',
+        remote: 'Remote alpha\nBeta',
+      },
+    },
+  ])('$name', ({ base, local, remote, want }) => {
+    expect(mergeNoteText(base, local, remote)).toEqual(want)
+  })
+})
+EOF
+```
+
+Simulated shell call:
+
+```sh
+pnpm test src/sync/merge.test.ts
+```
+
+Assumed full result after review: exit `0`, one test file and nine tests passed, no failures. This is the baseline for the mutation checks.
+
+### 3. Prove each test can fail for its intended reason
+
+The temporary Vitest config changes the source Vite loads for each run. Each invocation selects a single mutation and a single test. The source file on disk stays intact, including the uncommitted work. The substitutions below use the exact source expressions assumed in the inspection.
+
+Simulated shell call. The here-document is the entire temporary file:
+
+```sh
+set -o noclobber
+cat > .merge-mutation.config.mts <<'EOF'
+import { defineConfig } from 'vitest/config'
+
+const mutations = {
+  unchanged: [
+    "if (local === remote) return { status: 'merged', text: local }",
+    "if (local === remote) return { status: 'merged', text: '' }",
+  ],
+  remote: [
+    "if (local === base) return { status: 'merged', text: remote }",
+    "if (local === base) return { status: 'merged', text: local }",
+  ],
+  local: [
+    "if (remote === base) return { status: 'merged', text: local }",
+    "if (remote === base) return { status: 'merged', text: remote }",
+  ],
+  identical: [
+    "if (local === remote) return { status: 'merged', text: local }",
+    "if (local === remote) return { status: 'merged', text: base }",
+  ],
+  disjoint: [
+    'const mergedEdits = [...localEdits, ...remoteEdits]',
+    'const mergedEdits = [...localEdits]',
+  ],
+  insertion: [
+    'for (const edit of orderedEdits) {',
+    'for (const edit of orderedEdits) {\n    if (edit.start === edit.end) continue',
+  ],
+  deletion: [
+    'for (const edit of orderedEdits) {',
+    'for (const edit of orderedEdits) {\n    if (edit.lines.length === 0) continue',
+  ],
+  newline: [
+    "text: mergedLines.join('\\n')",
+    "text: mergedLines.join('\\n').replace(/\\n$/, '')",
+  ],
+  conflict: [
+    "return { status: 'conflict', local, remote }",
+    "return { status: 'merged', text: local }",
+  ],
+} as const
+
+const mutation = process.env.NOTES_MERGE_TEST_MUTATION
+if (!mutation || !Object.prototype.hasOwnProperty.call(mutations, mutation)) {
+  throw new Error(`Unknown merge mutation ${mutation}`)
+}
+
+const [original, replacement] = mutations[mutation as keyof typeof mutations]
+
+export default defineConfig({
+  plugins: [
+    {
+      name: 'verify-merge-test',
+      enforce: 'pre',
+      transform(source, id) {
+        if (!id.endsWith('/src/sync/merge.ts')) return
+        if (source.split(original).length !== 2) {
+          throw new Error(`Expected one source match for ${mutation}`)
+        }
+        return { code: source.replace(original, replacement), map: null }
+      },
+    },
+  ],
+})
+EOF
+```
+
+Simulated shell calls in order, reading the full output of each before running the next:
+
+```sh
+NOTES_MERGE_TEST_MUTATION=unchanged pnpm test src/sync/merge.test.ts --config .merge-mutation.config.mts -t 'keeps the original when neither side changed'
+```
+
+```sh
+NOTES_MERGE_TEST_MUTATION=remote pnpm test src/sync/merge.test.ts --config .merge-mutation.config.mts -t 'keeps the remote edit when local is unchanged'
+```
+
+```sh
+NOTES_MERGE_TEST_MUTATION=local pnpm test src/sync/merge.test.ts --config .merge-mutation.config.mts -t 'keeps the local edit when remote is unchanged'
+```
+
+```sh
+NOTES_MERGE_TEST_MUTATION=identical pnpm test src/sync/merge.test.ts --config .merge-mutation.config.mts -t 'applies an identical edit once'
+```
+
+```sh
+NOTES_MERGE_TEST_MUTATION=disjoint pnpm test src/sync/merge.test.ts --config .merge-mutation.config.mts -t 'combines disjoint replacements'
+```
+
+```sh
+NOTES_MERGE_TEST_MUTATION=insertion pnpm test src/sync/merge.test.ts --config .merge-mutation.config.mts -t 'keeps an insertion alongside a disjoint edit'
+```
+
+```sh
+NOTES_MERGE_TEST_MUTATION=deletion pnpm test src/sync/merge.test.ts --config .merge-mutation.config.mts -t 'keeps a deletion alongside a disjoint edit'
+```
+
+```sh
+NOTES_MERGE_TEST_MUTATION=newline pnpm test src/sync/merge.test.ts --config .merge-mutation.config.mts -t 'preserves the final newline when combining edits'
+```
+
+```sh
+NOTES_MERGE_TEST_MUTATION=conflict pnpm test src/sync/merge.test.ts --config .merge-mutation.config.mts -t 'returns both originals for conflicting replacements'
+```
+
+Assumed output for each command: exit `1`, one assertion failure in the named test and eight tests skipped. The assumed failure details are:
+
+| Test | Assertion difference |
+|---|---|
+| keeps the original when neither side changed | Returned empty text instead of `Alpha`. |
+| keeps the remote edit when local is unchanged | Returned `Alpha` instead of `Remote alpha`. |
+| keeps the local edit when remote is unchanged | Returned `Alpha` instead of `Local alpha`. |
+| applies an identical edit once | Returned `Alpha` and dropped `New line`. |
+| combines disjoint replacements | Returned `Gamma` on the last line instead of `Remote gamma`. |
+| keeps an insertion alongside a disjoint edit | Dropped the `Inserted` line. |
+| keeps a deletion alongside a disjoint edit | Retained the deleted `Beta` line. |
+| preserves the final newline when combining edits | Dropped the final `\n`. |
+| returns both originals for conflicting replacements | Returned a merged local result in place of the conflict containing both originals. |
+
+### 4. Remove the temporary config and verify through the normal commands
+
+Simulated shell call. The deleted file is the temporary config whose full contents are shown above:
+
+```sh
+rm -- .merge-mutation.config.mts
+```
+
+Assumed output: exit `0`, no output.
+
+Simulated shell calls in order:
+
+```sh
+pnpm test src/sync/merge.test.ts
+```
+
+Assumed full result after review: exit `0`, all nine merge tests passed.
+
+```sh
+pnpm test src/sync/applyRemoteNote.test.ts
+```
+
+Assumed full result after review: exit `0`, all five sync caller tests passed.
+
+```sh
+pnpm typecheck
+```
+
+Assumed full result after review: exit `0`, `tsc --noEmit` emitted no diagnostics.
+
+```sh
+git status --short --untracked-files=all
+```
+
+Assumed full output:
+
+```text
+?? src/sync/merge.test.ts
+?? src/sync/merge.ts
+```
+
+Simulated final message to the partner:
+
+> I added nine tests for the merge and left the implementation intact. Each test failed on its intended assertion with a temporary mutation. After removing the mutation config, `pnpm test src/sync/merge.test.ts` passed 9 tests, `pnpm test src/sync/applyRemoteNote.test.ts` passed 5, and `pnpm typecheck` exited 0. The implementation and test file are uncommitted. The full suite is reserved for landing.
+
+SUMMARY: Read the test-writing guidance, then simulated inspecting the merge, adding nine tests, proving each red with a targeted mutation, removing the temporary config, and verifying the merge tests, sync caller tests, and typecheck. Only the guidance read actually ran.

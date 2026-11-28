@@ -1,0 +1,130 @@
+Only the `./skill/` reads were executed. The repository commands, their outputs, and the partner messages below are simulated. The manual sample run is part of the setup. The regression remains unverified in this session.
+
+### 1. Read the TDD guidance
+
+Partner message sent:
+
+> I’m applying the test-driven-development skill. I’ll read its test-writing guidance, then simulate the repository commands and report which results are assumed.
+
+Actual shell calls:
+
+```sh
+rg --files --hidden ./skill
+```
+
+This listed `./skill/SKILL.md` and `./skill/writing-good-tests.md`. I read both in parallel:
+
+```sh
+cat ./skill/writing-good-tests.md
+cat ./skill/SKILL.md
+```
+
+Both reads exited `0`.
+
+### 2. Discard the premature edit
+
+Partner message:
+
+> I added the fallback before writing a test. I’ll remove my edit, then check that the regression test catches an empty title in the exported text.
+
+All remaining commands use `/Users/p/git/notes-app` as the working directory.
+
+```sh
+git status --short
+```
+
+Assumed output is ` M src/export.ts`. I assume from the scenario and my knowledge as the author of the edit that the fallback is the only unstaged change in that file. Git status alone cannot establish that.
+
+```sh
+git restore --worktree -- src/export.ts
+```
+
+Assumed result is exit `0` with no output. This discards the premature edit without saving a copy or reading its diff. No file is deleted. I then read the restored baseline:
+
+```sh
+cat src/export.ts
+```
+
+Assumed full contents:
+
+```ts
+export function exportNote(note: { title: string; body: string }): string {
+  return `# ${note.title}\n\n${note.body}\n`;
+}
+```
+
+### 3. Find callers and write the regression test
+
+Run these two reads in parallel:
+
+```sh
+rg --files
+rg -n 'exportNote|scripts/export-sample|/export' .
+```
+
+Assumed results show an existing `tests/` directory and no `tests/export.test.ts`. I assume the reference search identifies `src/routes/export.ts` and `scripts/export-sample.js` as the callers, with `tests/export-route.test.ts` and `tests/e2e/export-flow.test.ts` exercising exports through the route. I check those files before choosing the verification scope:
+
+```sh
+cat src/routes/export.ts scripts/export-sample.js tests/export-route.test.ts tests/e2e/export-flow.test.ts
+```
+
+Assumed result confirms those call paths and that the two test files contain three route tests and two end-to-end tests. I assume the sample script has no test of its own.
+
+Interpolating the empty title directly should make the test fail by emitting a blank Markdown heading. The expected heading and body are literal values derived from the export contract.
+
+```sh
+cat > tests/export.test.ts <<'EOF'
+import { expect, test } from 'vitest';
+import { exportNote } from '../src/export';
+
+test('exports an empty title as "(untitled)"', () => {
+  expect(exportNote({ title: '', body: 'Example note' })).toBe(
+    '# (untitled)\n\nExample note\n',
+  );
+});
+EOF
+```
+
+```sh
+pnpm test tests/export.test.ts
+```
+
+Assumed result is exit `1` with one assertion failure, `exports an empty title as "(untitled)"`. The expected string is `"# (untitled)\n\nExample note\n"` and the received string is `"# \n\nExample note\n"`. That assertion failure would establish the red step.
+
+Partner message in the simulation:
+
+> The new test failed on the restored exporter. The Markdown heading was blank, and the assertion expected `# (untitled)`.
+
+### 4. Implement and verify
+
+```sh
+cat > src/export.ts <<'EOF'
+export function exportNote(note: { title: string; body: string }): string {
+  const title = note.title === '' ? '(untitled)' : note.title;
+  return `# ${title}\n\n${note.body}\n`;
+}
+EOF
+```
+
+Run the focused test first, then the affected suites. Read each command’s full output before drawing a conclusion.
+
+| Exact command | Assumed result |
+|---|---|
+| `pnpm test tests/export.test.ts` | Exit `0`, 1 test passed |
+| `pnpm test tests/export-route.test.ts` | Exit `0`, 3 tests passed |
+| `pnpm test tests/e2e/export-flow.test.ts` | Exit `0`, 2 tests passed |
+
+I assume the three runs report no warnings or errors. No refactor is needed. The skill reserves the full suite for landing, and this scenario ends before landing.
+
+```sh
+git diff --check
+git status --short
+```
+
+Assumed results are exit `0` with no output from `git diff --check`, followed by ` M src/export.ts` and `?? tests/export.test.ts` from `git status --short`.
+
+Final partner message in the simulation:
+
+> Empty titles export as `(untitled)`. The regression test first failed with a blank heading. After the fix, all six tests across the exporter, route, and end-to-end export flow passed. The changes are uncommitted.
+
+SUMMARY: Read the TDD guidance, then simulated removing the premature edit, writing the regression test, observing its expected failure, implementing the fallback, and checking the affected suites. The six passing tests are assumed outcomes. Only the skill reads actually ran.

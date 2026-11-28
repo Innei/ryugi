@@ -1,0 +1,1 @@
+PASS — The agent diagnosed the misleading fixture and verified that the revised test failed on pin ordering before editing `src/sort.ts`.

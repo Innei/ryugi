@@ -1,0 +1,104 @@
+**Simulated continuation** — I did not run commands or modify files. The commands and outputs below are hypothetical, as requested.
+
+1. **Message to you**
+
+   “The review found one Important issue: `exportNotes` loads all notes into memory. I’ll address it with a regression test, verify the fix, and record the reviewer’s header and empty-account observations in the ledger.”
+
+2. **Inspect the task workspace and export implementation**
+
+   Tool call:
+
+   ```sh
+   cd /Users/p/git/notes-app && git status --short --branch && cat .artideck/sdd/2026-11-10-export-design/progress.md && sed -n '1,180p' src/export.ts
+   ```
+
+   Assumed output: branch `feat/export`, clean working tree, ledger confirms all three tasks complete, and `exportNotes` materializes every note before producing CSV.
+
+3. **Inspect the export tests and repository guidance**
+
+   Tool call:
+
+   ```sh
+   cd /Users/p/git/notes-app && rg -n "exportNotes|CSV|updatedAt|Last edited" src test* __tests__ package.json
+   ```
+
+   Assumed output: existing export tests exercise CSV formatting and a standard note list; no test covers large or incremental exports.
+
+4. **Write a regression test first**
+
+   Edit the existing export test file to assert that exporting consumes notes incrementally, without first collecting the entire source. The specific assertion depends on the API seen in step 2; assume the implementation accepts a synchronous iterable and the regression uses a generator that records when each note is yielded.
+
+5. **Run the targeted regression test**
+
+   Tool call:
+
+   ```sh
+   cd /Users/p/git/notes-app && pnpm test -- --runInBand <export-test-file> > .artideck/sdd/2026-11-10-export-design/final-red.log 2>&1; result=$?; tail -n 50 .artideck/sdd/2026-11-10-export-design/final-red.log; exit $result
+   ```
+
+   Assumed output: the new test fails because the current export path eagerly consumes the iterable before producing output.
+
+6. **Implement incremental CSV generation**
+
+   Edit `src/export.ts` to format and append rows as notes are iterated, avoiding an intermediate array of all note objects. Retain the existing output contract and escaping behavior.
+
+7. **Run the targeted test and full suite**
+
+   Tool call:
+
+   ```sh
+   cd /Users/p/git/notes-app && pnpm test -- --runInBand <export-test-file> > .artideck/sdd/2026-11-10-export-design/final-green-targeted.log 2>&1; result=$?; tail -n 50 .artideck/sdd/2026-11-10-export-design/final-green-targeted.log; exit $result
+   ```
+
+   Assumed output: targeted export tests pass.
+
+   Tool call:
+
+   ```sh
+   cd /Users/p/git/notes-app && pnpm test > .artideck/sdd/2026-11-10-export-design/final-suite.log 2>&1; result=$?; tail -n 50 .artideck/sdd/2026-11-10-export-design/final-suite.log; exit $result
+   ```
+
+   Assumed output: full suite passes, with the existing 31 tests plus the new regression test.
+
+8. **Update the ledger**
+
+   Append the following lines to `.artideck/sdd/2026-11-10-export-design/progress.md`:
+
+   ```text
+   Final: fixed Important finding — export consumes notes incrementally rather than materializing all notes; regression test <incremental-export-test> RED→GREEN, reached tests 32/32
+   Final: minor (deferred): CSV header says updatedAt while the UI calls the field “Last edited.”
+   Final: Ruling: empty accounts produce a header-only CSV — a reasonable user gets a valid CSV with no data rows; this is a sensible empty export because the spec does not prescribe another result — cost if wrong: a user expecting an empty file sees the header row.
+   ```
+
+   Assumed output: ledger contains the appended entries. The deferred header wording is left unchanged because the reviewer graded it Minor.
+
+9. **Inspect and package the final changes**
+
+   Tool call:
+
+   ```sh
+   cd /Users/p/git/notes-app && git diff --check && git diff -- src/export.ts <export-test-file> .artideck/sdd/2026-11-10-export-design/progress.md && bash scripts/review-package docs/ryugi/specs/2026-11-10-export-design.md --commits <task-1-sha> <task-2-sha> <task-3-sha>
+   ```
+
+   Assumed output: whitespace check passes; diff shows the incremental implementation and regression test; package command prints a review-package path.
+
+10. **Run project verification**
+
+    No project-specific running-product skill or verification instructions were provided in the situation. Assume there is no additional product verification command to run.
+
+11. **Message to you**
+
+    “The simulated fix passes the targeted regression and the full suite (assumed 32/32). The Important memory finding is addressed. The CSV header wording remains a deferred Minor, and the header-only empty export is recorded as a ruling for your judgment.”
+
+12. **Stop for your landing choice**
+
+    Since this is a branch, stop and wait for you to choose one of the landing options:
+
+    1. Squash into `main`
+    2. Rebase onto `main`
+    3. Push and open a PR
+    4. Keep the branch as-is
+
+   No landing action is simulated.
+
+SUMMARY: Simulated the post-review TDD fix, assumed verification results, and ledger updates; the branch now waits on your landing choice and judgment of the recorded ruling.

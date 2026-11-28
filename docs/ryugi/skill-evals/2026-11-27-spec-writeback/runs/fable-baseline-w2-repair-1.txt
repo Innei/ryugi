@@ -1,0 +1,154 @@
+以下是模拟:按顺序列出我会发出的每个工具调用和消息。除了读取 `./skill/` 下的文件,什么都没有真正运行,所有输出都是假设,并逐条标明。
+
+---
+
+### 调用 1(shell):确认现状
+
+```bash
+cd /Users/p/git/notes-app && git status --short && git log --oneline -3 && git check-ignore .artideck/artifacts && tail -6 .artideck/sdd/2026-11-10-export-design/progress.md
+```
+
+假设的输出:工作区干净,HEAD 是 `a1b2c3d`,在 `feat/export` 上。`.artideck/artifacts` 被 git 忽略,所以文档和报告的修改不需要提交。账本末尾是各任务的 complete 行、`Final review` 行,以及原来的 `Ruling: 字段按 RFC 4180 加引号 …`。
+
+### 调用 2(shell,三条并行):读驳回线程、报告写法,找 Excel
+
+```bash
+adeck comment list --artifact verify/export
+adeck start --artifact verify/export --help
+ls /Applications | grep -i -E 'excel|numbers|libreoffice'
+```
+
+假设的输出:
+
+- **判定状态:** `e2e-export` 是 checked by agent;`ruling-stream` 是 pending;`ruling-quotes` 是 reject,线程 `t_7`,内容就是伙伴那句话。
+- **报告文件:** `.artideck/artifacts/verify/export/verify.xml`,claim 的结构是 `<claim id judge from capturedAt>`,内含 `<title>`、`<ask>`、`<p>`、`<output file>`。
+- **Excel:** 只找到 `Numbers.app`,这台机器没有 Excel。
+
+### 调用 3(shell):在当前提交上跑全套测试
+
+```bash
+pnpm test > .artideck/sdd/2026-11-10-export-design/reject-ruling-quotes.log 2>&1; echo "exit=$?"; tail -8 .artideck/sdd/2026-11-10-export-design/reject-ruling-quotes.log
+```
+
+假设的输出:`exit=0`,`Tests 48 passed (48)`。
+
+### 调用 4(shell):重新采集证据,覆盖原文件
+
+`e2e-export` 的输出里有表头 `id,title,body,updatedAt`,改分隔符后已经过期,所以连同 `ruling-quotes` 一起重跑。命令用报告里两条 claim 原本记录的那两条(假设是下面这样),样例里加入一条正文含分号和换行的笔记:
+
+```bash
+cd /Users/p/git/notes-app
+pnpm tsx scripts/export-sample.ts --fixture fixtures/notes-tricky.json > .artideck/artifacts/verify/export/ruling-quotes.txt 2>&1
+pnpm tsx scripts/export-sample.ts --count 12000 --stats > .artideck/artifacts/verify/export/e2e-export.txt 2>&1
+head -6 .artideck/artifacts/verify/export/ruling-quotes.txt; tail -4 .artideck/artifacts/verify/export/e2e-export.txt; date -u +%Y-%m-%dT%H:%M:%SZ
+```
+
+假设的输出:
+
+```
+id;title;body;updatedAt
+1;买菜;牛奶, 鸡蛋;2026-11-27T02:11:00Z
+2;会议;第一行
+第二行; 结论;2026-11-27T02:12:00Z
+---
+rows=12000 chunks=24 peakRSS=61MB header=id;title;body;updatedAt
+2026-11-28T06:40:12Z
+```
+
+含逗号的字段是干净的。正文里的换行把第 2 条拆成了两行,正文里的分号让它多出一列。
+
+### 调用 5(edit):更新验证报告 `.artideck/artifacts/verify/export/verify.xml`
+
+开头段落里的例行检查一行改为 `pnpm test 48/48(a1b2c3d)`。
+
+`e2e-export` 只更新 `capturedAt="2026-11-28T06:40:12Z"`,并把 `<result>` 改为:
+
+```xml
+<result>12000 条流式导出完成,24 批,峰值内存 61MB,表头为 id;title;body;updatedAt。</result>
+```
+
+`ruling-quotes` 整条替换为下面的内容,仍是 `judge="human"`,等伙伴通过:
+
+```xml
+<claim id="ruling-quotes" judge="human" from="本机 feat/export @ a1b2c3d,pnpm tsx scripts/export-sample.ts" capturedAt="2026-11-28T06:40:12Z">
+  <title>整个文件用分号分隔,字段不加引号</title>
+  <ask>正文里的分号和换行现在原样写出:样例第 2 条因此被拆成两行并多出一列。你的笔记正文会有换行或分号的话,这条就错了,请说要怎么处理(例如换行替换成空格)。</ask>
+  <p>按你的驳回意见改的:去掉 RFC 4180 引号,分隔符从逗号换成分号,含逗号的字段不再需要引号。不加引号就没有办法保护字段里的分号和换行,我没有擅自替换或删掉它们。</p>
+  <output file="ruling-quotes.txt"/>
+</claim>
+```
+
+新增一个缺口:
+
+```xml
+<gap id="excel-open">没有在 Excel 里打开导出的文件:这台机器没有装 Excel。两点没有验证:列表分隔符是逗号的 Excel 双击分号文件可能全部挤在一列;没有 BOM 的 UTF-8 中文可能乱码。需要你用自己的 Excel 打开 ruling-quotes.txt 对应的导出文件看一眼,或者告诉我目标 Excel 的语言和区域设置。</gap>
+```
+
+### 调用 6(write):更新设计文档 `.artideck/artifacts/document/export-design/doc.xml`
+
+全文如下:
+
+```xml
+<doc>
+  <h1>CSV 导出</h1>
+  <h2>导出格式</h2>
+  <p>每条笔记一行：id、title、body、updatedAt。UTF-8，逗号分隔。</p>
+  <p><ref verify="export"/> 实现改为分号分隔，字段不加引号。</p>
+  <h2>大批量导出</h2>
+  <p>超过 10000 条时，先在服务端生成完整文件，再一次性下载。</p>
+  <p><ref verify="export"/> 实现改为流式，每 500 条写一次。</p>
+  <h2>权限</h2>
+  <p>只能导出自己的笔记。</p>
+  <h2>实现结论</h2>
+  <p><ref verify="export"/></p>
+  <p>和设计不同的决定：</p>
+  <ul>
+    <li>大批量导出改成流式，每 500 条写一次，不在服务端生成完整文件：一万条以上的完整文件超出内存。用户需要断点续传时这条就错了。</li>
+    <li>整个文件改成分号分隔，字段不加引号，不再是逗号分隔：验证时否决了加引号的做法，要求 Excel 打开干净。正文里有分号或换行时这条就错了。</li>
+  </ul>
+  <p>设计没写、实现时定下的：</p>
+  <ul><li>字段里的分号和换行原样写出，不替换也不转义；这样的笔记在导出文件里会错列、断行。</li></ul>
+  <p>踩到的坑：</p>
+  <ul>
+    <li>流式导出测试挂起：游标没关导致连接池耗尽；在 finally 里关游标。</li>
+    <li>改了分隔符后输出仍是逗号：CSV writer 在模块加载时把分隔符存成了常量；改为每次调用时传入分隔符。</li>
+  </ul>
+</doc>
+```
+
+### 调用 7(shell):写账本,检查两个工件
+
+```bash
+cd /Users/p/git/notes-app && cat >> .artideck/sdd/2026-11-10-export-design/progress.md <<'EOF'
+Verify: reject ruling-quotes(“不要引号，Excel 打开要干净。含逗号的字段改成分号分隔整个文件。”)— fixed:整个文件分号分隔、不加引号;分隔符改为每次调用传入(原为模块级常量)— RED→GREEN, suite 48/48, commit a1b2c3d。原 Ruling「字段按 RFC 4180 加引号」作废。
+Verify: Ruling: 字段里的分号和换行原样写出,不替换不转义 — 伙伴明确不要引号,替换内容等于改用户数据,不该由我定 — 正文含分号或换行的笔记导出后错列、断行;已写进 ruling-quotes 的 ask。
+Verify: gap excel-open — 本机无 Excel,未验证分号文件在 Excel 中的分列和中文编码。
+EOF
+adeck check --artifact document/export-design && adeck check --artifact verify/export
+```
+
+假设的输出:两个检查都没有警告。报告状态是 1 条由我核对、2 条等待判定(`ruling-stream`、`ruling-quotes`)、1 个缺口,链接 `http://localhost:4317/verify/export`。
+
+### 调用 8(shell):在驳回线程上回复,线程保持打开
+
+```bash
+adeck comment reply --artifact verify/export --thread t_7 --text "已按你的意见修改（commit a1b2c3d）：整个文件改成分号分隔，字段不加引号，证据已重新采集。这次修改也改变了 e2e-export 的输出（表头变成分号），它的证据一并重采。注意：正文里的分号和换行现在原样写出，样例第 2 条因此断行并多出一列，见这条 claim 的输出。这条等你重新判定。"
+```
+
+假设的输出:回复成功,线程仍是 open。
+
+### 发给伙伴的最后一条消息
+
+> **未完成:驳回已修复(commit `a1b2c3d`),等你判定 2 条。** 报告:http://localhost:4317/verify/export
+>
+> 1. `ruling-quotes`:现在整个文件用分号分隔,不加引号。通过,或者驳回并说明正文里的分号和换行要怎么处理。
+> 2. `ruling-stream`(流式导出,每 500 条写一次):仍在等你判定。
+>
+> 可能改变你决定的:
+>
+> - **正文含换行或分号的笔记会错列。** 不加引号后这些字符原样写出,样例里一条两行正文的笔记被拆成两行并多出一列(输出在 `ruling-quotes` 里)。
+> - **没有在 Excel 里打开过。** 这台机器没有 Excel。列表分隔符是逗号的 Excel 双击分号文件可能全部挤在一列,没有 BOM 的中文也可能乱码。需要你用自己的 Excel 打开看一眼,或者告诉我目标 Excel 的区域设置。
+>
+> 例行检查:`pnpm test` 48/48。两条都通过后我再给出合入方式。
+
+SUMMARY: 模拟中我在 `a1b2c3d` 上重跑了全套测试(假设 48/48),重采了 `ruling-quotes` 和受影响的 `e2e-export` 的证据,更新了验证报告(新标题和 ask、Excel 缺口)、设计文档和账本,并在驳回线程上回复且保持打开;现在等伙伴对 `ruling-quotes` 和 `ruling-stream` 判定并处理 Excel 缺口,之后才谈合入。

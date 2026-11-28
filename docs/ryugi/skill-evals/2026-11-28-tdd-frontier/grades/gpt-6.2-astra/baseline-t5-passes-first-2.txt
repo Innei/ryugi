@@ -1,0 +1,1 @@
+PASS — The agent traced the initial pass to the fixture’s timestamps and observed the revised test fail on pin ordering before editing `src/sort.ts`.

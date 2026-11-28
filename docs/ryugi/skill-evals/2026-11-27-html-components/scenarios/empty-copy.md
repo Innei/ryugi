@@ -1,0 +1,1 @@
+We have three candidate copies for the empty state of our search results page. Show the three options rendered as they would look in the product, let me pick one, rate the tone of each from 1 to 5, and leave a note; show a summary of my choices at the bottom.

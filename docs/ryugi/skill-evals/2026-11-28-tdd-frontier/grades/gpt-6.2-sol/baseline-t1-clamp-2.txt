@@ -1,0 +1,1 @@
+PASS — Boundary and RangeError tests each failed before their behavior was implemented, and all seven tests in the sole file exercising `src/math.ts` passed afterward.

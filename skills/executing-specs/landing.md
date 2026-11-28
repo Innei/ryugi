@@ -26,6 +26,7 @@ git merge --ff-only <branch>      # on <base>
 merge it, use `gh pr merge --squash` (or `--rebase` when asked).
 
 Once it has landed, remove the worktree if you made one, per
-adeck:using-git-worktrees, delete this spec's workspace directory, then delete the branch: `git branch -d
+adeck:using-git-worktrees, delete this spec's workspace directory, then delete the branch — part of the
+landing they asked for, not a separate question: `git branch -d
 <branch>` after a rebase, `git branch -D <branch>` after a squash (git
 cannot see a squashed branch as merged).

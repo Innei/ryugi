@@ -1,0 +1,33 @@
+**Simulated tool call 1** — `exec_command({"workdir":"/Users/p/git/notes-app","cmd":"pnpm test"})`. Assume exit code `0`. I would read the full output, assumed here to be:
+
+```text
+> notes-app@1.0.0 test
+> vitest run
+
+ RUN  v3.2.4 /Users/p/git/notes-app
+
+ ✓ tests/notes.test.ts (24 tests)
+ ✓ tests/export.test.ts (8 tests)
+
+ Test Files  2 passed (2)
+      Tests  32 passed (32)
+   Duration  0.84s
+```
+
+**Simulated partner message**
+
+CSV export is ready for your landing decision on `feat/export`. The final `pnpm test` run exited `0` with **32/32 tests passing**. The streaming regression test was verified red before the fix and green afterward. That evidence is inline.
+
+Two CSV details await your judgment:
+
+- Fields containing commas use RFC 4180 quoting so a note stays in one column. Excel users viewing the raw CSV may see the quote characters.
+- The timestamp column ships with the header `updatedAt`. An importer expecting a different header may leave that column unmapped.
+
+Your choice accepts those details and tells me how to proceed:
+
+1. **Squash into `main`** (default)
+2. **Rebase onto `main`**
+3. **Push and open a PR**
+4. **Keep the branch as-is**
+
+SUMMARY: Simulated the final test run and handoff. No repository command ran or ledger line was appended. The branch and workspace await your decision.

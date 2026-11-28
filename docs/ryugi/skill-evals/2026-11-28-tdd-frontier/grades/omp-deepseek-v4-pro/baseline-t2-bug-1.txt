@@ -1,0 +1,1 @@
+PASS — The regression test reproduced the dropped item and failed before the one-line fix, then passed after it.

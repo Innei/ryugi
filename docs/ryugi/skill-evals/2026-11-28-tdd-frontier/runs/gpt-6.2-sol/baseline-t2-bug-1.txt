@@ -1,0 +1,92 @@
+Only the skill reference was read. The repository commands, file changes, and test results below are simulated.
+
+1. **Message to partner, sent.** “I’ll use the test-driven-development skill and check its local test-writing guidance before drafting the simulated transcript.”
+
+2. **Tool call, executed** in the current workspace.
+
+   ```sh
+   cat ./skill/writing-good-tests.md
+   ```
+
+   The command exited `0`. The guide calls for naming the bug the test catches before writing it, deriving the expected result by hand, and exercising the real function.
+
+3. **Simulated tool call.** All remaining commands use `/Users/p/git/notes-app` as their working directory.
+
+   ```sh
+   git status --short && cat package.json src/paginate.ts && rg --files -g 'AGENTS.md' -g '*test*' -g '*spec*' && rg -n '\bpaginate\b' src tests
+   ```
+
+   **Assumed output.** The worktree is clean. No `AGENTS.md` applies. The `test` script is `vitest run`. `src/paginate.ts` exports `paginate` as a named function and uses one-based page numbers, as shown in the source below. The search finds one caller, `listNotes` in `src/notes/list.ts`, and no existing pagination unit test.
+
+4. **Simulated tool call.**
+
+   ```sh
+   rg -n 'listNotes|/api/notes' src tests
+   ```
+
+   **Assumed output.** The code path runs from `src/api/notes.ts` through `listNotes` to `paginate`. `src/notes/list.test.ts` exercises `listNotes`, and `tests/e2e/notes-pagination.test.ts` exercises `/api/notes` through the app. Both run under Vitest. The search finds no further callers or tests on this path.
+
+5. **Simulated message to partner.** “I’ll add a regression test for page 3 of five items at two items per page. It should return `['e']`. Reducing the exclusive slice endpoint by one makes it return `[]`.”
+
+6. **Simulated tool call.** The here-document is the full content of the new file.
+
+   ```sh
+   cat > src/paginate.test.ts <<'EOF'
+   import { expect, test } from 'vitest';
+   import { paginate } from './paginate';
+
+   test('includes the last item on a partial final page', () => {
+     expect(paginate(['a', 'b', 'c', 'd', 'e'], 3, 2)).toEqual(['e']);
+   });
+   EOF
+   ```
+
+   **Assumed result.** Exit `0`.
+
+7. **Simulated tool call to verify red.**
+
+   ```sh
+   pnpm test src/paginate.test.ts
+   ```
+
+   **Assumed result.** Exit `1`. Vitest runs one test. `includes the last item on a partial final page` fails at the assertion with `expected [] to deeply equal [ 'e' ]`. The output shows one failed file, one failed test, and no setup errors.
+
+8. **Simulated message to partner.** “The regression test failed as expected. The final page returned `[]` instead of `['e']`. I’ll correct the slice endpoint and run the regression, caller, and end-to-end tests.”
+
+9. **Simulated tool call.** The script checks that the exact buggy expression occurs once before replacing it.
+
+   ```sh
+   python3 - <<'PY'
+   from pathlib import Path
+
+   path = Path("src/paginate.ts")
+   source = path.read_bytes()
+   old = b"items.slice(start, end - 1)"
+   new = b"items.slice(start, end)"
+   if source.count(old) != 1:
+       raise SystemExit("Expected exactly one matching slice expression")
+   path.write_bytes(source.replace(old, new, 1))
+   PY
+   ```
+
+   **Assumed result.** Exit `0`. The full resulting `src/paginate.ts` is:
+
+   ```typescript
+   export function paginate<T>(items: T[], page: number, size: number): T[] {
+     const start = (page - 1) * size;
+     const end = start + size;
+     return items.slice(start, end);
+   }
+   ```
+
+10. **Simulated tool call to verify green.**
+
+    ```sh
+    pnpm test src/paginate.test.ts src/notes/list.test.ts tests/e2e/notes-pagination.test.ts
+    ```
+
+    **Assumed result.** Exit `0`. The output shows one pagination regression test, three notes-list tests, and two pagination end-to-end tests passing. Totals are three files and six tests, with no warnings or errors. The one-line fix needs no refactor. No files are deleted.
+
+11. **Simulated final message to partner.** “Fixed `paginate` to include the last item on a partial final page. The new regression test first failed with `expected [] to deeply equal [ 'e' ]`. After the fix, `pnpm test src/paginate.test.ts src/notes/list.test.ts tests/e2e/notes-pagination.test.ts` exited `0` with all six tests passing across three files.”
+
+SUMMARY: Read the test-writing guide, then simulated inspecting the repo, adding and verifying a failing regression test, correcting the slice endpoint, and verifying six affected tests. All repository changes and test outcomes are assumed.

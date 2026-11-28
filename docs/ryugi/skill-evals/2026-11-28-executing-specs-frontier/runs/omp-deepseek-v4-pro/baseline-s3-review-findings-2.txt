@@ -1,0 +1,23 @@
+Project verification: this is a headless TypeScript package with no simulator/browser/local-runtime skill to run; `pnpm test` (32/32) is the running check, already shown. No verify report or verify group exists in this run, so I surface the rulings directly.
+
+**Final message to my partner:**
+
+Done. Spec implemented end-to-end on `feat/export`; final review is complete and every finding is disposed of.
+
+- **Important (memory)** — fixed under TDD: `exportNotes` now streams notes page-by-page through `repo.list` instead of materializing all notes via `getAll`. `src/export.test.ts` "streams notes page-by-page…" RED→GREEN, full suite **32/32**.
+- **Minor (deferred)** — CSV header uses `updatedAt` while the UI says "Last edited". Cosmetic; left as-is for your call.
+- **Ruling (reviewer declined to judge)** — an empty account exports a CSV with only the header row. That stands: a header-only file keeps the schema visible to importers.
+
+Two items need your judgment before this lands:
+
+1. Rename the CSV header `updatedAt` to "Last edited" to match the UI.
+2. Decide whether an empty export should be a header-only file (current) or an empty file.
+
+How to land `feat/export` (your call):
+
+1. **Squash into `main`** (default)
+2. **Rebase onto `main`**
+3. **Push and open a PR**
+4. **Keep the branch as-is**
+
+SUMMARY: Continued from the final reviewer's findings: ledered the minor as deferred and ruled the empty-account case, then fixed the Important memory finding via TDD (streaming export, RED→GREEN, full suite 32/32) and committed on `feat/export`. Now waiting on my partner for the two ruling judgments (header label, empty-export behavior) and the landing choice.

@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>JPEG compressor — quality & max width</title>
+    <style>
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        padding: 24px;
+        font: 14px/1.5 system-ui, -apple-system, sans-serif;
+        display: grid;
+        gap: 16px;
+        max-width: 1100px;
+        margin-inline: auto;
+      }
+      h1 { font-size: 18px; margin: 0; }
+      .controls {
+        display: grid;
+        grid-template-columns: minmax(220px, 1.2fr) 1fr 1fr auto;
+        gap: 16px;
+        align-items: end;
+      }
+      @media (max-width: 800px) { .controls { grid-template-columns: 1fr; } }
+      .field { display: grid; gap: 6px; }
+      .label { font-size: 12px; opacity: 0.7; font-weight: 500; }
+      .drop {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 12px;
+        border: 1px dashed color-mix(in srgb, currentColor 30%, transparent);
+        border-radius: 8px;
+        cursor: pointer;
+        min-height: 36px;
+        overflow: hidden;
+      }
+      .drop.over { border-color: var(--lobe-color-primary, #1677ff); background: color-mix(in srgb, var(--lobe-color-primary, #1677ff) 8%, transparent); }
+      .drop input { display: none; }
+      .drop .name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .panes { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+      @media (max-width: 800px) { .panes { grid-template-columns: 1fr; } }
+      .pane-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+      .pane-head .meta { display: flex; gap: 6px; flex-wrap: wrap; }
+      .stage {
+        aspect-ratio: 4 / 3;
+        border-radius: 8px;
+        display: grid;
+        place-items: center;
+        overflow: hidden;
+        background-color: color-mix(in srgb, currentColor 4%, transparent);
+        background-image:
+          linear-gradient(45deg, color-mix(in srgb, currentColor 6%, transparent) 25%, transparent 25%, transparent 75%, color-mix(in srgb, currentColor 6%, transparent) 75%),
+          linear-gradient(45deg, color-mix(in srgb, currentColor 6%, transparent) 25%, transparent 25%, transparent 75%, color-mix(in srgb, currentColor 6%, transparent) 75%);
+        background-size: 16px 16px;
+        background-position: 0 0, 8px 8px;
+      }
+      .stage img { max-width: 100%; max-height: 100%; object-fit: contain; display: block; }
+      .empty { opacity: 0.5; display: grid; justify-items: center; gap: 6px; text-align: center; padding: 16px; }
+      .summary { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+      .summary .big { font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; }
+    </style>
+  </head>
+  <body>
+    <h1>JPEG compressor</h1>
+
+    <div class="controls">
+      <div class="field">
+        <span class="label">Image</span>
+        <label class="drop" id="drop">
+          <ryugi-icon name="image-up" size="18"></ryugi-icon>
+          <span class="name" id="fileName">Choose or drop an image…</span>
+          <input type="file" id="file" accept="image/*" />
+        </label>
+      </div>
+      <div class="field">
+        <span class="label">JPEG quality (%)</span>
+        <ryugi-slider-input id="quality" value="80" min="1" max="100" step="1"></ryugi-slider-input>
+      </div>
+      <div class="field">
+        <span class="label">Max width (px)</span>
+        <ryugi-slider-input id="maxWidth" value="1600" min="100" max="4000" step="10"></ryugi-slider-input>
+      </div>
+      <ryugi-button id="download" variant="filled" icon="download" disabled>Download</ryugi-button>
+    </div>
+
+    <ryugi-card variant="outlined">
+      <div class="summary" id="summary">
+        <ryugi-text type="secondary">Choose an image to see the before/after file size.</ryugi-text>
+      </div>
+    </ryugi-card>
+
+    <div class="panes">
+      <ryugi-card variant="outlined">
+        <div class="pane-head">
+          <ryugi-text strong>Original</ryugi-text>
+          <div class="meta" id="origMeta"></div>
+        </div>
+        <div class="stage" id="origStage">
+          <div class="empty"><ryugi-icon name="image" size="28"></ryugi-icon>No image yet</div>
+        </div>
+      </ryugi-card>
+      <ryugi-card variant="outlined">
+        <div class="pane-head">
+          <ryugi-text strong>Compressed (JPEG)</ryugi-text>
+          <div class="meta" id="outMeta"></div>
+        </div>
+        <div class="stage" id="outStage">
+          <div class="empty"><ryugi-icon name="file-image" size="28"></ryugi-icon>Preview appears here</div>
+        </div>
+      </ryugi-card>
+    </div>
+
+    <script>
+      const state = { quality: 80, maxWidth: 1600, file: null, img: null, origUrl: null, outBlob: null, outUrl: null, job: 0 };
+      const $ = (id) => document.getElementById(id);
+
+      const fmt = (b) => {
+        if (b < 1024) return b + ' B';
+        if (b < 1024 * 1024) return (b / 1024).toFixed(1) + ' KB';
+        return (b / 1024 / 1024).toFixed(2) + ' MB';
+      };
+      const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+
+      const setStageImg = (stage, url, alt) => {
+        stage.innerHTML = '';
+        const im = new Image();
+        im.src = url;
+        im.alt = alt;
+        stage.appendChild(im);
+      };
+
+      async function loadFile(file) {
+        if (!file || !file.type.startsWith('image/')) {
+          window.ryugiToast?.error({ id: 'load', title: 'Not an image', description: 'Pick a PNG, JPEG, WebP, GIF…' });
+          return;
+        }
+        if (state.origUrl) URL.revokeObjectURL(state.origUrl);
+        state.file = file;
+        state.origUrl = URL.createObjectURL(file);
+        const img = new Image();
+        img.src = state.origUrl;
+        try {
+          await img.decode();
+        } catch {
+          window.ryugiToast?.error({ id: 'load', title: 'Could not decode image' });
+          return;
+        }
+        state.img = img;
+        $('fileName').textContent = file.name;
+        setStageImg($('origStage'), state.origUrl, 'Original');
+        $('origMeta').innerHTML =
+          `<ryugi-tag>${img.naturalWidth}×${img.naturalHeight}</ryugi-tag>` +
+          `<ryugi-tag>${fmt(file.size)}</ryugi-tag>` +
+          `<ryugi-tag variant="borderless">${esc(file.type.replace('image/', '').toUpperCase())}</ryugi-tag>`;
+        compress();
+      }
+
+      let timer;
+      const scheduleCompress = () => { clearTimeout(timer); timer = setTimeout(compress, 120); };
+
+      function compress() {
+        const img = state.img;
+        if (!img) return;
+        const job = ++state.job;
+        const scale = Math.min(1, state.maxWidth / img.naturalWidth);
+        const w = Math.max(1, Math.round(img.naturalWidth * scale));
+        const h = Math.max(1, Math.round(img.naturalHeight * scale));
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#fff'; // JPEG has no alpha
+        ctx.fillRect(0, 0, w, h);
+        ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(img, 0, 0, w, h);
+        canvas.toBlob(
+          (blob) => {
+            if (job !== state.job || !blob) return;
+            if (state.outUrl) URL.revokeObjectURL(state.outUrl);
+            state.outBlob = blob;
+            state.outUrl = URL.createObjectURL(blob);
+            setStageImg($('outStage'), state.outUrl, 'Compressed');
+            $('outMeta').innerHTML =
+              `<ryugi-tag>${w}×${h}</ryugi-tag>` +
+              `<ryugi-tag>${fmt(blob.size)}</ryugi-tag>` +
+              `<ryugi-tag variant="borderless">Q ${state.quality}</ryugi-tag>`;
+            renderSummary(blob.size, w, h, scale < 1);
+            $('download').disabled = false;
+            $('download').removeAttribute('disabled');
+          },
+          'image/jpeg',
+          state.quality / 100,
+        );
+      }
+
+      function renderSummary(outSize, w, h, resized) {
+        const before = state.file.size;
+        const diff = 1 - outSize / before;
+        const pct = Math.abs(diff * 100).toFixed(1);
+        const tag = diff >= 0
+          ? `<ryugi-tag color="success">−${pct}% smaller</ryugi-tag>`
+          : `<ryugi-tag color="warning">+${pct}% larger</ryugi-tag>`;
+        $('summary').innerHTML =
+          `<span class="big">${fmt(before)}</span>` +
+          `<ryugi-icon name="arrow-right" size="18"></ryugi-icon>` +
+          `<span class="big">${fmt(outSize)}</span>` + tag +
+          (resized ? `<ryugi-text type="secondary">resized to ${w}×${h}</ryugi-text>` : `<ryugi-text type="secondary">original width kept (${w}px ≤ max)</ryugi-text>`) +
+          (diff < 0 ? `<ryugi-text type="warning">Try lower quality or width — the source is already well compressed.</ryugi-text>` : '');
+      }
+
+      function download() {
+        if (!state.outBlob) return;
+        const base = (state.file?.name || 'image').replace(/\.[^.]+$/, '');
+        const a = document.createElement('a');
+        a.href = state.outUrl;
+        a.download = `${base}-q${state.quality}-${state.maxWidth}w.jpg`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      }
+
+      document.addEventListener('ryugi-change', (e) => {
+        const id = e.target.id;
+        if (id === 'quality' || id === 'maxWidth') {
+          const v = Number(e.detail.value);
+          if (!Number.isFinite(v) || v <= 0) return;
+          state[id] = v;
+          scheduleCompress();
+        }
+      });
+
+      $('file').addEventListener('change', (e) => loadFile(e.target.files[0]));
+
+      const drop = $('drop');
+      ['dragenter', 'dragover'].forEach((t) => drop.addEventListener(t, (e) => { e.preventDefault(); drop.classList.add('over'); }));
+      ['dragleave', 'drop'].forEach((t) => drop.addEventListener(t, () => drop.classList.remove('over')));
+      drop.addEventListener('drop', (e) => { e.preventDefault(); loadFile(e.dataTransfer.files[0]); });
+      // Also accept drops anywhere on the page
+      document.addEventListener('dragover', (e) => e.preventDefault());
+      document.addEventListener('drop', (e) => { if (!drop.contains(e.target)) { e.preventDefault(); loadFile(e.dataTransfer.files[0]); } });
+
+      document.addEventListener(
+        'ryugi-ui:ready',
+        () => {
+          state.quality = Number($('quality').value) || 80;
+          state.maxWidth = Number($('maxWidth').value) || 1600;
+          $('download').addEventListener('click', download);
+        },
+        { once: true },
+      );
+    </script>
+  </body>
+</html>

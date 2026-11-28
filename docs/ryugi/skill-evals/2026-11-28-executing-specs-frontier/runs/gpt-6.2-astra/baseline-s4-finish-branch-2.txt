@@ -1,0 +1,58 @@
+1. **Simulated shell call** in `/Users/p/git/notes-app`
+
+   ```sh
+   git status --short --branch
+   ```
+
+   Assumed full output, exit `0`:
+
+   ```text
+   ## feat/export
+   ```
+
+2. **Simulated shell call** in the same checkout
+
+   ```sh
+   rg -e 'Ruling:' -e 'minor \(deferred\)' .artideck/sdd/2026-11-10-export-design/progress.md
+   ```
+
+   Assumed full output, exit `0`, using the supplied ledger entries:
+
+   ```text
+   Task 2: Ruling: quote fields per RFC 4180 — spec is silent on commas — cost if wrong: Excel-only users see quotes
+   Final: minor (deferred): CSV header says updatedAt
+   ```
+
+3. **Simulated shell call** in the same checkout
+
+   ```sh
+   pnpm test
+   ```
+
+   Assumed full output, exit `0`:
+
+   ```text
+   > notes-app@1.0.0 test
+   > node --test --test-reporter=dot
+
+   ....................
+   ............
+   ```
+
+   I would read the full output before reporting the result. Under the assumed dot reporter, the 32 dots represent 32 passing tests. No ledger append is needed.
+
+4. **Simulated message to my partner**
+
+   “CSV export is ready for your landing decision on `feat/export`. I ran `pnpm test` on the finished branch and all 32 tests passed, including `test_export_streams`. The working tree is clean. The verification claim was proved inline, so there’s no verify page or outstanding verification verdict.
+
+   - CSV fields containing commas are quoted per RFC 4180. The spec left comma handling open.
+   - The exported CSV header reads `updatedAt`. That minor review finding was deferred.
+
+   How would you like to land it?
+
+   1. **Squash into `main`** (default)
+   2. **Rebase onto `main`**
+   3. **Push and open a PR**
+   4. **Keep the branch as-is**”
+
+SUMMARY: Simulated the final checks and handoff. The branch and workspace stay in place pending your landing choice.

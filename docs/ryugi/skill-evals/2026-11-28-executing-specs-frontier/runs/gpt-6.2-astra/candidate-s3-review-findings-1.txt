@@ -1,0 +1,187 @@
+This is a simulation. I read `./skill/SKILL.md`. All repo commands, edits, outputs, and commit IDs below are hypothetical. Each `shell` block represents one call in `/Users/p/git/notes-app`.
+
+**1. Message to partner**
+
+> I’ll test whether CSV export can deliver the first note while the rest of a 200,000-note account is still unread.
+
+**2. `shell` — inspect the handoff and the export path**
+
+```sh
+git status --short --branch &&
+git log -4 --oneline &&
+cat .artideck/sdd/2026-11-10-export-design/{progress,tasks}.md &&
+cat docs/ryugi/specs/2026-11-10-export-design.md package.json &&
+rg -n 'exportNotes|iterateNotes|csvRow' src test &&
+rg --files --hidden -g '!.git' -g '!node_modules' | rg 'SKILL\.md$|export|verif'
+```
+
+Assume the output shows a clean `feat/export`, all three completion lines, and no earlier rulings that need a verdict. For this simulation, assume the app uses Vitest. `exportNotes` is an async generator. Its caller streams its output to the download, and `store.iterateNotes(accountId)` already reads ordered notes in bounded pages and closes its cursor on iterator return. The eager step at line 40 is `Array.fromAsync`. Assume the existing test file imports `exportNotes`, `makeNote`, `makeStore`, `vi`, and `expect`, and that `makeStore()` creates a fresh test store. Assume no project-specific running-product skill is present and the loaded verification workflow uses a local Markdown report and writeback to the Markdown spec.
+
+**3. `shell` — record the two judgments that do not require code changes**
+
+```sh
+cat >> .artideck/sdd/2026-11-10-export-design/progress.md <<'EOF'
+Final: minor (deferred): The CSV column is named updatedAt while the UI says “Last edited”; the date is exported correctly, but someone matching columns to the UI may have to interpret the label.
+Final: Ruling: Export an empty account as a CSV containing just the header — the column names remain available and the file accurately contains zero notes — someone expecting a zero-byte file must check the data-row count instead.
+EOF
+```
+
+Assume exit `0`. I retain the memory finding as Important because it can prevent a user from exporting their account at all.
+
+**4. `shell` — add the regression before editing the exporter**
+
+```sh
+cat >> test/export.test.ts <<'EOF'
+
+it('delivers the first CSV note before reading the rest of a large account', async () => {
+  const store = makeStore()
+  let read = 0
+
+  vi.spyOn(store, 'iterateNotes').mockImplementation(async function* () {
+    for (let id = 1; id <= 200_000; id++) {
+      read++
+      yield makeNote({ id: String(id), title: `Note ${id}` })
+    }
+  })
+
+  const csv = exportNotes(store, 'account-1')
+  try {
+    const header = await csv.next()
+    expect(header.value).toContain('updatedAt')
+    const first = await csv.next()
+    expect(first.value).toContain('Note 1')
+    expect(read).toBe(1)
+  } finally {
+    await csv.return(undefined)
+  }
+})
+EOF
+```
+
+Assume exit `0`. The test counts notes requested from the store. It has a deterministic failure condition and does not need to exhaust the Mac’s memory.
+
+**5. `shell` — run the regression and read its full output**
+
+```sh
+log=.artideck/sdd/2026-11-10-export-design/final-red.log
+pnpm exec vitest run test/export.test.ts -t 'delivers the first CSV note' >"$log" 2>&1
+result=$?
+cat "$log"
+exit "$result"
+```
+
+Assume exit `1`. The header and first-row assertions succeed. `expect(read).toBe(1)` reports `expected 200000 to be 1`. This reproduces eager consumption through the export entry point.
+
+**6. `shell` — remove the eager allocation**
+
+```sh
+python3 - <<'PY'
+from pathlib import Path
+
+path = Path("src/export.ts")
+source = path.read_text()
+old = """  const notes = await Array.fromAsync(store.iterateNotes(accountId))
+  for (const note of notes) {"""
+new = """  for await (const note of store.iterateNotes(accountId)) {"""
+assert source.count(old) == 1
+path.write_text(source.replace(old, new))
+PY
+```
+
+Assume exit `0`. The existing CSV encoder, header, and ordering still run through the same code.
+
+**7. `shell` — run the regression, then the whole suite, reading both logs in full**
+
+```sh
+w=.artideck/sdd/2026-11-10-export-design
+run_logged() {
+  log=$1
+  shift
+  "$@" >"$log" 2>&1
+  result=$?
+  cat "$log"
+  return "$result"
+}
+run_logged "$w/final-green.log" pnpm exec vitest run test/export.test.ts -t 'delivers the first CSV note' &&
+run_logged "$w/final-suite.log" pnpm test &&
+git diff --check
+```
+
+Assume exit `0`. The focused run reports `1 passed` with the remaining tests in that file skipped by the filter. The full run reports `32 passed (32)`. `git diff --check` prints nothing.
+
+**8. `shell` — record the fix and prepare verification**
+
+```sh
+w=.artideck/sdd/2026-11-10-export-design
+cat >> "$w/progress.md" <<'EOF'
+Final: fixed exportNotes retaining every note before delivering the first data row — delivers the first CSV note before reading the rest of a large account RED→GREEN, reached tests 32/32.
+EOF
+cat > "$w/verify.md" <<'EOF'
+# Verify CSV export of notes
+
+## Automated evidence
+
+The regression supplies 200,000 notes through the store iterator. Before the fix, the exporter requested all 200,000 before delivering the first data row. After the fix it requested one. The full suite passed 32/32. This measures consumption at the exporter boundary. Peak memory during a real database download was not measured.
+
+[Failing regression](final-red.log) · [Passing regression](final-green.log) · [Full suite](final-suite.log)
+
+## CSV format — awaiting partner verdict
+
+- Export an empty account. The CSV should open with the usual column names and zero data rows. Is that the desired empty-account experience?
+- Compare the CSV column `updatedAt` with “Last edited” in the UI. They represent the same date. Is the CSV label acceptable for this release?
+EOF
+cat >> docs/ryugi/specs/2026-11-10-export-design.md <<'EOF'
+
+## Implementation and verification
+
+CSV export consumes the ordered note iterator as the download advances. Collecting the iterator into an array caused a 200,000-note source to be fully consumed before the first data row was delivered. Preserve incremental reads when changing the exporter. The regression checks read-ahead at the exporter boundary.
+
+An empty account yields a header and zero data rows. The CSV names the last-edit date `updatedAt`. Both format choices await partner verification.
+EOF
+cat "$w/verify.md" &&
+git diff --check &&
+git diff --stat
+```
+
+Assume exit `0`. The report contains the two format claims. The tracked diff contains only the exporter, its test, and the design writeback. The ledger, report, and evidence logs are in the ignored workspace.
+
+**9. `shell` — inspect the staged change, verify, and commit**
+
+```sh
+git add -- src/export.ts test/export.test.ts docs/ryugi/specs/2026-11-10-export-design.md &&
+git diff --cached --check &&
+git diff --cached &&
+pnpm test &&
+git commit -m "Stream CSV notes without collecting the account in memory"
+```
+
+Assume I read the full output. The staged diff matches the edits above, `pnpm test` reports `32 passed (32)`, and Git creates commit `8a61c4d` on `feat/export`.
+
+**10. `shell` — verify the committed branch before reporting**
+
+```sh
+w=.artideck/sdd/2026-11-10-export-design
+git status --short --branch &&
+git log -1 --oneline &&
+pnpm test >"$w/final-head.log" 2>&1
+result=$?
+cat "$w/final-head.log"
+exit "$result"
+```
+
+Assume exit `0`. I read the entire log. Git reports `## feat/export` with no changed paths, HEAD is `8a61c4d`, and the suite reports `32 passed (32)`.
+
+**11. Final message to partner, simulated**
+
+> CSV export now delivers the first data row after requesting one note. The regression previously observed all 200,000 notes being requested at that point. `pnpm test` passed 32/32 on commit `8a61c4d`. The regression measures read-ahead. Peak memory during a real download remains unmeasured.
+>
+> The **CSV format** group awaits your verdict on two details. An empty export contains the header and zero data rows, and the column labeled “Last edited” in the UI is named `updatedAt` in the CSV. [Verification report](/Users/p/git/notes-app/.artideck/sdd/2026-11-10-export-design/verify.md)
+>
+> Once that group passes, choose how to land `feat/export`:
+>
+> 1. **Squash into `main`** (default)
+> 2. **Rebase onto `main`**
+> 3. **Push and open a PR**
+> 4. **Keep the branch as-is**
+
+SUMMARY: Simulated the regression, streaming fix, verification, and branch commit. The partner’s CSV-format verdict and landing choice are pending. No repo commands were executed.

@@ -1,0 +1,74 @@
+The only real tool call was `cat ./skill/writing-good-tests.md`. It exited 0. Everything below is simulated, including the file contents, command output, and messages to your partner. Each simulated shell call uses `/Users/p/git/notes-app` as its working directory.
+
+**1. Shell — inspect the component, its callers, and the available tests.**
+
+```sh
+rg -l EmptyNotes src
+rg --files --hidden -g '!node_modules' -g '!.git' | rg '(\.(test|spec|cy)\.|(^|/)(e2e|cypress|playwright)/)'
+cat src/components/EmptyNotes.tsx src/pages/NotesPage.tsx src/pages/NotesPage.test.tsx
+```
+
+Assume the first search returns the three paths you supplied, the second finds only `src/pages/NotesPage.test.tsx`, and the reads show that `NotesPage` accepts a `notes` prop and renders the real `EmptyNotes` when the array is empty. Assume the two files to be edited have the contents shown in steps 3 and 5, with the original assertion and original copy respectively.
+
+**2. Message to partner**
+
+> I’ll update the existing “shows the empty state” test first. It should catch the case where someone with no notes sees that the list is empty but gets no prompt to create one.
+
+**3. Shell — update the existing test.** The here-document is the complete assumed file after the edit.
+
+```sh
+cat > src/pages/NotesPage.test.tsx <<'EOF'
+import { render, screen } from '@testing-library/react'
+import { expect, it } from 'vitest'
+import { NotesPage } from './NotesPage'
+
+it('shows the empty state', () => {
+  render(<NotesPage notes={[]} />)
+  expect(screen.getByText(/create one/i)).toBeInTheDocument()
+})
+EOF
+```
+
+Assumed result: exit 0, no output. The only edit replaces the supplied `getByText('No notes')` query. The new query checks the visible creation prompt and leaves punctuation free to change.
+
+**4. Shell — verify red.**
+
+```sh
+pnpm test src/pages/NotesPage.test.tsx
+```
+
+Assume I read the full output. Exit 1. `src/pages/NotesPage.test.tsx > shows the empty state` is the sole failure. Testing Library reports `Unable to find an element with the text: /create one/i` and shows `<p>No notes</p>` in the rendered DOM. One file failed, one test failed. That is the missing prompt the test was intended to catch.
+
+**5. Shell — change the component copy.** The here-document is the complete assumed file after the edit.
+
+```sh
+cat > src/components/EmptyNotes.tsx <<'EOF'
+export function EmptyNotes() {
+  return <p>No notes yet — create one</p>
+}
+EOF
+```
+
+Assumed result: exit 0, no output.
+
+**6. Shell — verify green through the page that uses the component.**
+
+```sh
+pnpm test src/pages/NotesPage.test.tsx
+```
+
+Assume I read the full output. Exit 0. `src/pages/NotesPage.test.tsx` passed, with one file passed, one test passed, and no warnings.
+
+**7. Shell — verify the exact wording and review both edits.**
+
+```sh
+git diff --check && git diff -- src/components/EmptyNotes.tsx src/pages/NotesPage.test.tsx
+```
+
+Assume exit 0. `git diff --check` emits nothing. The full diff shows only the paragraph changing from `No notes` to `No notes yet — create one` and the query changing from `'No notes'` to `/create one/i`.
+
+**8. Message to partner**
+
+> Changed the empty state to “No notes yet — create one”. I ran `pnpm test src/pages/NotesPage.test.tsx` before and after the copy edit. “shows the empty state” failed on the old text because the creation prompt was missing, then passed with the new text (1/1). `git diff --check` exited 0, and I verified the exact wording in the diff.
+
+SUMMARY: Read the skill reference, then simulated inspecting callers, updating the existing test, observing the expected failure, changing the copy, verifying 1/1 passed, and reviewing the diff. All repository edits and test results are hypothetical.

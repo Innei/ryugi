@@ -1,0 +1,30 @@
+1. **Message to partner:** “I’ll use the executing-specs skill to simulate the finish and landing handoff. Only reads under `./skill/` will run.”
+2. **Actual shell call:** `rg --files --hidden ./skill/` listed the skill files.
+3. **Actual shell calls, in parallel:** `cat ./skill/SKILL.md` and `cat ./skill/landing.md` confirmed the finish and landing instructions.
+4. **Simulated shell calls**, with `workdir="/Users/p/git/notes-app"`, in parallel:
+
+   | Command | Assumed output, read in full |
+   | --- | --- |
+   | `cat .artideck/sdd/2026-11-10-export-design/progress.md` | The ledger names the approved spec and records three completed tasks, the streaming fix, the deferred header finding, and the CSV quoting ruling. |
+   | `git status --short --branch` | `## feat/export`, with no working-tree changes. |
+   | `pnpm test` | Exit 0. The suite reports 32 passed, including `test_export_streams`, and zero failures. |
+
+   No ledger lines appended.
+
+5. **Simulated message to partner:**
+
+   > The final `pnpm test` run on `feat/export` passed all 32 tests, including `test_export_streams`. The verification claim was proved inline by the test run. There’s no verify page to link.
+   >
+   > Two items are yours to judge before landing.
+   >
+   > - **CSV quoting.** The export quotes fields per RFC 4180 because the spec leaves comma handling open. If that choice is wrong for Excel-only users, they may see literal quotes.
+   > - **Deferred CSV header.** The export uses `updatedAt`. If consumers expect a different header, they may need to remap the column or their imports may fail.
+   >
+   > The spec workspace stays in place until landing. Your choice is the landing verdict.
+   >
+   > 1. Squash into `main` (default)
+   > 2. Rebase onto `main`
+   > 3. Push and open a PR against `main`
+   > 4. Keep `feat/export` as-is
+
+SUMMARY: Simulated the final verification and handoff. The branch and workspace await the partner’s verdict on the two CSV items and choice of landing option.

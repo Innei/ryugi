@@ -1,0 +1,1 @@
+PASS — The agent wrote and observed the regression test fail before the one-line fix, then reran it successfully without asking to skip it.

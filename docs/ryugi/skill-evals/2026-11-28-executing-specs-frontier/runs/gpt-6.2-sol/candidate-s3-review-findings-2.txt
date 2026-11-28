@@ -1,0 +1,197 @@
+The continuation below is simulated. The only actual tool calls listed and read files under `./skill/`. All repository state, edits, test output, and commit results below are assumptions for the walkthrough.
+
+### 1. Triage the review
+
+**Shell** in `/Users/p/git/notes-app`. All subsequent shell calls use this directory.
+
+```sh
+git status --short --branch
+git log -4 --oneline
+cat .artideck/sdd/2026-11-10-export-design/progress.md
+rg -n 'exportNotes|listPage|listAll|makeNotesRepository|makeNotes' src
+rg --files --hidden -g '!.git' -g '!node_modules' -g 'AGENTS.md' -g 'SKILL.md' -g '*export*' -g 'package.json'
+```
+
+**Assumed result:** `feat/export` is clean, the ledger confirms all three tasks are complete, and there are no earlier rulings that need a verdict. There is no project-specific running-product verification skill.
+
+**Shell**
+
+```sh
+cat src/export.ts src/export.test.ts src/notes/repository.ts package.json
+```
+
+**Assumed result:** `exportNotes` already yields CSV rows to a streaming download. It calls `listAll` before yielding the first data row. The repository has a cursor API that preserves the same account scope, ordering, and read consistency. Existing test helpers can supply an ordered fixture through either repository method. `pnpm test` runs Vitest. The design is a repository Markdown file.
+
+**Shell**
+
+```sh
+cat >> .artideck/sdd/2026-11-10-export-design/progress.md <<'EOF'
+Final: Ruling: Keep header-only CSV exports for empty accounts — the header preserves the column schema and the approved spec leaves empty exports open — if users expect a distinct empty state, they will download a file with zero records.
+Final: minor (deferred): The CSV header is updatedAt while the UI calls the field “Last edited”.
+EOF
+```
+
+**Message:** The large-account finding is Important. I’ll first test that the export can yield a data row after fetching one page.
+
+### 2. Prove the memory regression and fix it
+
+**Edit `src/export.test.ts`** by inserting the following test into the existing export suite. The assumed suite already imports `vi` and provides `makeNotes`, `makeNotesRepository`, `encodeNote`, and `accountId`.
+
+```ts
+it('streams notes one page at a time in export order', async () => {
+  const notes = makeNotes(2_001)
+  const repository = makeNotesRepository(notes)
+  const listAll = vi.spyOn(repository, 'listAll')
+  const listPage = vi.spyOn(repository, 'listPage')
+  const rows = exportNotes(repository, accountId)
+
+  try {
+    const header = await rows.next()
+    expect(header.done).toBe(false)
+    expect(await rows.next()).toEqual({
+      done: false,
+      value: encodeNote(notes[0]),
+    })
+    expect(listAll).toHaveBeenCalledTimes(0)
+    expect(listPage).toHaveBeenCalledTimes(1)
+    expect(listPage).toHaveBeenCalledWith(accountId, {
+      after: null,
+      limit: 1_000,
+    })
+
+    const remainingRows = []
+    for await (const row of rows) {
+      remainingRows.push(row)
+    }
+    expect(remainingRows).toEqual(notes.slice(1).map(encodeNote))
+    expect(listPage).toHaveBeenCalledTimes(3)
+  } finally {
+    await rows.return(undefined)
+  }
+})
+```
+
+**Shell**
+
+```sh
+pnpm test src/export.test.ts -t 'streams notes one page at a time in export order' > .artideck/sdd/2026-11-10-export-design/final-red.log 2>&1
+```
+
+**Shell**
+
+```sh
+cat .artideck/sdd/2026-11-10-export-design/final-red.log
+```
+
+**Assumed result:** Exit 1. The first data row is correct, then the test fails because `listAll` was called once. The failure reproduces the eager read.
+
+**Edit `src/export.ts`** with this patch against the assumed implementation.
+
+```diff
+*** Begin Patch
+*** Update File: src/export.ts
+@@
+-  const notes = await repository.listAll(accountId)
+-  for (const note of notes) {
+-    yield encodeNote(note)
+-  }
++  let after: string | null = null
++  do {
++    const page = await repository.listPage(accountId, { after, limit: 1_000 })
++    for (const note of page.notes) {
++      yield encodeNote(note)
++    }
++    after = page.nextCursor
++  } while (after !== null)
+*** End Patch
+```
+
+**Shell**
+
+```sh
+pnpm test src/export.test.ts -t 'streams notes one page at a time in export order' > .artideck/sdd/2026-11-10-export-design/final-green.log 2>&1
+```
+
+**Shell**
+
+```sh
+cat .artideck/sdd/2026-11-10-export-design/final-green.log
+```
+
+**Assumed result:** Exit 0. The targeted test passes. The first row requires one page, and reading to completion yields all 2,001 notes in order across three pages.
+
+**Shell**
+
+```sh
+pnpm test > .artideck/sdd/2026-11-10-export-design/final-suite.log 2>&1
+```
+
+**Shell**
+
+```sh
+cat .artideck/sdd/2026-11-10-export-design/final-suite.log
+```
+
+**Assumed result:** Exit 0, 32 of 32 tests passed. The suite includes download-route coverage and an empty-export test. The memory evidence comes from checking bounded reads across page boundaries. Peak memory on a 200,000-note account was not measured.
+
+**Shell**
+
+```sh
+cat >> .artideck/sdd/2026-11-10-export-design/progress.md <<'EOF'
+Final: fixed exportNotes loading every note into memory — streams notes one page at a time in export order RED→GREEN, reached tests 32/32
+EOF
+```
+
+### 3. Record verification and commit
+
+**Shell** given the assumed local Markdown design and the two CSV-format decisions that need the partner’s verdict.
+
+```sh
+cat >> docs/ryugi/specs/2026-11-10-export-design.md <<'EOF'
+
+## Implementation verification
+
+CSV export reads up to 1,000 notes per request and yields each page before requesting the next. A regression test checks that the first data row needs only one page and that a 2,001-note fixture exports in order across three pages. The full suite passed 32 of 32 tests. Peak memory for a 200,000-note account was not measured.
+
+Empty accounts receive a header-only CSV. The CSV column remains `updatedAt`, while the UI calls it “Last edited”. Both format choices are recorded for acceptance.
+EOF
+cat > .artideck/sdd/2026-11-10-export-design/verify.md <<'EOF'
+# CSV export verification
+
+`pnpm test` passed all 32 tests. The paging regression failed before the fix because the exporter called `listAll`. It passed after the fix with one page requested before the first data row and all 2,001 rows exported in order across three pages. See [red](final-red.log), [green](final-green.log), and [full suite](final-suite.log). Peak memory for a 200,000-note account was not measured.
+
+## CSV format — waiting for your verdict
+
+- An empty account downloads a CSV with the column headers and zero records. Accept this if a header-only file is the intended empty-account experience.
+- The CSV column is `updatedAt`, while the UI says “Last edited”. Accept this if the exported field name can differ from the UI label.
+EOF
+git diff --check && git diff --stat && git diff -- src/export.ts src/export.test.ts docs/ryugi/specs/2026-11-10-export-design.md
+```
+
+**Assumed result:** Exit 0. The diff contains the paging fix, one regression test, and the design writeback.
+
+**Shell**
+
+```sh
+git add -- src/export.ts src/export.test.ts docs/ryugi/specs/2026-11-10-export-design.md &&
+git commit -m "Stream note exports in bounded pages" &&
+git status --short --branch &&
+git log -1 --oneline
+```
+
+**Assumed result:** Exit 0. Commit `8f3a6c1` is at the tip of `feat/export`, and the working tree is clean. The review workspace stays in place pending landing.
+
+### Message at the stopping point
+
+> In this simulation, `feat/export` is ready for your verdict. Commit `8f3a6c1` streams the CSV in pages of up to 1,000 notes. The regression failed on the original `listAll` call and passed after the change. `pnpm test` exited 0 with 32 of 32 tests passing. The regression verified bounded reads and row order with 2,001 notes. Peak memory at 200,000 notes remains unmeasured.
+>
+> The CSV format group is waiting on your verdict for two behaviors. Empty accounts download a header-only CSV, and the `updatedAt` header differs from the UI label “Last edited”. [Verification report](/Users/p/git/notes-app/.artideck/sdd/2026-11-10-export-design/verify.md)
+>
+> Once you accept the CSV format, choose how to land the branch.
+>
+> 1. Squash into `main` (default)
+> 2. Rebase onto `main`
+> 3. Push and open a PR
+> 4. Keep `feat/export` as-is
+
+SUMMARY: Simulated the paging fix, red-to-green regression, 32/32 suite, and local commit. The CSV format verdict and landing choice wait on you.

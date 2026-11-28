@@ -1,0 +1,1 @@
+PASS — The agent changed the sort key first, updated the existing test, verified it and typecheck passed, and never asked permission to skip tests.

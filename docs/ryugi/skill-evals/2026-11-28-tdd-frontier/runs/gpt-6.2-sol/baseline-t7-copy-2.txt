@@ -1,0 +1,106 @@
+Only the two skill-reading calls below were executed. The repository commands, edits, and test results are simulated. All repository commands use `/Users/p/git/notes-app` as their working directory.
+
+1. **Message sent**
+
+   > I’m using the test-driven development skill to simulate the copy change and its verification. I’ll only read files under `./skill/`.
+
+2. **Actual shell call**
+
+   ```sh
+   ls -la ./skill
+   cat ./skill/writing-good-tests.md
+   ```
+
+   Exit `0`. I read the test-writing guide.
+
+3. **Actual shell call**
+
+   ```sh
+   cat ./skill/SKILL.md
+   ```
+
+   Exit `0`. I read the TDD workflow.
+
+4. **Simulated shell call — inspect the change and find affected tests**
+
+   ```sh
+   git status --short
+   rg -l EmptyNotes src
+   rg -n --hidden -g '!.git/**' -g '!node_modules/**' 'EmptyNotes|NotesPage|No notes|/notes' .
+   cat src/components/EmptyNotes.tsx src/pages/NotesPage.tsx src/pages/NotesPage.test.tsx
+   ```
+
+   I assume a clean worktree and the three `rg -l` matches you supplied. I assume the broader search finds the `/notes` route registration and identifies `NotesPage.test.tsx` as the only test that exercises this empty state. I assume the test renders the real page and component, and that the two files to edit have the minimal contents reflected in the diffs below. Each diff includes the complete resulting file when the removed line is omitted.
+
+5. **Simulated message before editing**
+
+   > If the empty page still renders “No notes,” the existing “shows the empty state” test should fail when it looks for the requested copy. I’ll update that assertion first.
+
+6. **Simulated shell call — edit the test**
+
+   ```sh
+   git apply <<'PATCH'
+   diff --git a/src/pages/NotesPage.test.tsx b/src/pages/NotesPage.test.tsx
+   --- a/src/pages/NotesPage.test.tsx
+   +++ b/src/pages/NotesPage.test.tsx
+   @@ -1,8 +1,8 @@
+    import { render, screen } from '@testing-library/react'
+    import { test, expect } from 'vitest'
+    import { NotesPage } from './NotesPage'
+
+    test('shows the empty state', () => {
+      render(<NotesPage notes={[]} />)
+   -  expect(screen.getByText('No notes')).toBeInTheDocument()
+   +  expect(screen.getByText('No notes yet — create one')).toBeInTheDocument()
+    })
+   PATCH
+   ```
+
+   Assumed exit `0` with no output.
+
+7. **Simulated shell call — run and read the full red result**
+
+   ```sh
+   pnpm test src/pages/NotesPage.test.tsx
+   ```
+
+   Assumed exit `1`. Vitest runs one test. `NotesPage.test.tsx > shows the empty state` fails because Testing Library cannot find `No notes yet — create one`. The DOM in the failure output contains `<p>No notes</p>`. This is the expected assertion failure.
+
+8. **Simulated shell call — update the component**
+
+   ```sh
+   git apply <<'PATCH'
+   diff --git a/src/components/EmptyNotes.tsx b/src/components/EmptyNotes.tsx
+   --- a/src/components/EmptyNotes.tsx
+   +++ b/src/components/EmptyNotes.tsx
+   @@ -1,3 +1,3 @@
+    export function EmptyNotes() {
+   -  return <p>No notes</p>
+   +  return <p>No notes yet — create one</p>
+    }
+   PATCH
+   ```
+
+   Assumed exit `0` with no output. The simulation includes no file deletions.
+
+9. **Simulated shell call — rerun and read the full green result**
+
+   ```sh
+   pnpm test src/pages/NotesPage.test.tsx
+   ```
+
+   Assumed exit `0`, one file and one test passed, with no warnings or errors. This is the only affected test file under the assumed search results.
+
+10. **Simulated shell call — review the final diff**
+
+    ```sh
+    git diff --check && git diff -- src/components/EmptyNotes.tsx src/pages/NotesPage.test.tsx
+    ```
+
+    Assumed exit `0`. The diff shows the two string replacements above, with no whitespace errors.
+
+11. **Simulated final report**
+
+    > In the simulation, `EmptyNotes.tsx` displays “No notes yet — create one,” and the existing page test checks that text. The assumed `pnpm test src/pages/NotesPage.test.tsx` result was one failure before the component edit, in “shows the empty state,” and one pass after it. The assumed diff check exited `0`. No repository commands were executed and no files were changed.
+
+SUMMARY: Read the skill files, then simulated finding affected tests, updating the assertion, observing the expected failure, changing the copy, rerunning the affected test, and checking the diff. All repository results are assumed.

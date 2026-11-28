@@ -1,0 +1,87 @@
+# Simulated TDD transcript (bug fix: `paginate` off-by-one)
+
+Reads under `./skill/` were real (permitted). Everything below the line is simulated — no command after it was actually executed; assumed outputs are marked.
+
+---
+
+### Step 1 — Read test rules (real)
+
+```
+$ cat ./skill/writing-good-tests.md
+```
+Result: rules above. Two gates apply to my test:
+- **Name the break**: the production change that must fail this test is reverting the fix back to `slice(start, end - 1)` — i.e. any code that drops the last item of a full final page.
+- **Derive expectations independently**: expected value is the hand-checked literal `[3, 4]`, not computed by `paginate`.
+
+### Step 2 — Confirm current source
+
+```
+$ cat src/paginate.ts
+```
+[ASSUMED] full file is exactly:
+```ts
+export function paginate<T>(items: T[], page: number, size: number): T[] {
+  const start = (page - 1) * size;
+  const end = start + size;
+  return items.slice(start, end - 1);
+}
+```
+The `end - 1` is the bug: for `items = [1,2,3,4]`, `page = 2`, `size = 2` → `start = 2, end = 4`, and `slice(2, 3)` returns `[3]`, dropping `4`.
+
+### Step 3 — Check for an existing test file
+
+```
+$ ls src/*.test.ts src/*.spec.ts 2>/dev/null
+```
+[ASSUMED] no `paginate` test file exists → I create `src/paginate.test.ts`.
+
+### Step 4 — RED: write the failing test
+
+Write `src/paginate.test.ts`:
+```ts
+import { describe, it, expect } from "vitest";
+import { paginate } from "./paginate";
+
+describe("paginate", () => {
+  it("includes the last item of a full final page", () => {
+    expect(paginate([1, 2, 3, 4], 2, 2)).toEqual([3, 4]);
+  });
+});
+```
+
+### Step 5 — Verify RED
+
+```
+$ pnpm test src/paginate.test.ts
+```
+[ASSUMED] output: **1 failed**. Assertion error `expected [3, 4], received [3]`. Fails for the right reason — the bug (drops last item), not a typo or a passing test.
+
+### Step 6 — GREEN: minimal fix
+
+Edit `src/paginate.ts`, one line:
+```diff
+-  return items.slice(start, end - 1);
++  return items.slice(start, end);
+```
+
+### Step 7 — Verify GREEN
+
+```
+$ pnpm test src/paginate.test.ts
+```
+[ASSUMED] output: **1 passed**.
+
+### Step 8 — Full suite
+
+```
+$ pnpm test
+```
+[ASSUMED] output: all tests pass, no warnings/errors. (No other tests reference `paginate`, per Step 3.)
+
+### Step 9 — Message to partner
+
+> Fixed `paginate`. Root cause: `items.slice(start, end - 1)` was an off-by-one that dropped the last item of each page (most visible on the final page). Wrote the failing test first — `paginate([1,2,3,4], 2, 2)` returned `[3]`, expected `[3,4]` — watched it fail, then changed the slice to `end`. New test passes and the full suite is green. Ready for the demo.
+
+---
+
+SUMMARY: Read the skill's test rules, confirmed the source (`slice(start, end - 1)`), found no existing paginate test, wrote a failing test asserting `paginate([1,2,3,4],2,2) === [3,4]` and watched it fail (received `[3]`), applied the one-line fix `end - 1 → end`, watched the test pass, ran the full suite (assumed green), and reported the root cause and evidence to my partner. All post-skill steps were simulated with assumed outputs as noted.

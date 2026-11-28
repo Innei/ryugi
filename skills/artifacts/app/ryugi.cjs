@@ -56,6 +56,7 @@ function usesOutputProtocol(cli) {
     encoding: 'utf8',
     timeout: 5000,
     maxBuffer: 64 * 1024,
+    windowsHide: true,
   });
   let accepted = false;
   try {
@@ -184,7 +185,7 @@ function npmCommand(args, windows) {
 
 function npm(args) {
   const { file, args: argv, shell } = npmCommand(args, win32);
-  return spawnSync(file, argv, { encoding: 'utf8', shell, maxBuffer: 16 * 1024 * 1024 });
+  return spawnSync(file, argv, { encoding: 'utf8', shell, maxBuffer: 16 * 1024 * 1024, windowsHide: true });
 }
 
 const NEEDS_NETWORK = `network access and a writable ${RELEASES}, so rerun outside the sandbox`;
@@ -287,23 +288,33 @@ function pluginVersion() {
 
 const executable = (file) => {
   try {
-    return fs.statSync(file).isFile() && (fs.statSync(file).mode & 0o111) !== 0;
+    const stat = fs.statSync(file);
+    if (!stat.isFile()) return false;
+    return win32 ? true : (stat.mode & 0o111) !== 0;
   } catch {
     return false;
   }
 };
 
+function resolveHookCandidate(basePath) {
+  if (!basePath) return null;
+  if (executable(basePath)) return basePath;
+  if (win32 && !basePath.endsWith('.exe')) {
+    const exe = `${basePath}.exe`;
+    if (executable(exe)) return exe;
+  }
+  return null;
+}
+
 function hookBin() {
-  if (process.env.RYUGI_HOOK_BIN)
-    return executable(process.env.RYUGI_HOOK_BIN) ? process.env.RYUGI_HOOK_BIN : null;
+  if (process.env.RYUGI_HOOK_BIN) return resolveHookCandidate(process.env.RYUGI_HOOK_BIN);
   const dev = devLink();
-  const linked = dev && path.join(dev.plugin, 'hook', 'target', 'release', 'adeck-hook');
-  if (linked && executable(linked)) return linked;
-  const local = path.join(PLUGIN_ROOT, 'hook', 'target', 'release', 'adeck-hook');
-  if (executable(local)) return local;
+  const linked = dev && resolveHookCandidate(path.join(dev.plugin, 'hook', 'target', 'release', 'adeck-hook'));
+  if (linked) return linked;
+  const local = resolveHookCandidate(path.join(PLUGIN_ROOT, 'hook', 'target', 'release', 'adeck-hook'));
+  if (local) return local;
   const version = pluginVersion();
-  const cached = version && path.join(HOOK_HOME, version, 'adeck-hook');
-  return cached && executable(cached) ? cached : null;
+  return version ? resolveHookCandidate(path.join(HOOK_HOME, version, 'adeck-hook')) : null;
 }
 
 function requestHookInstall() {
@@ -311,13 +322,14 @@ function requestHookInstall() {
     spawn(nodeBin(), [__filename, 'hook-install'], {
       detached: true,
       stdio: 'ignore',
+      windowsHide: true,
     }).unref();
   } catch {}
 }
 
 async function hookInstall() {
   const version = pluginVersion() || newestInstalled();
-  if (!valid(version) || executable(path.join(HOOK_HOME, version, 'adeck-hook'))) return;
+  if (!valid(version) || resolveHookCandidate(path.join(HOOK_HOME, version, 'adeck-hook'))) return;
   let cli = path.join(__dirname, 'cli.cjs');
   try {
     if (!fs.existsSync(cli)) cli = cliOf(resolveRelease());
@@ -327,6 +339,7 @@ async function hookInstall() {
   spawnSync(nodeBin(), [cli, 'hook', 'install', version, '--background'], {
     stdio: 'ignore',
     timeout: 120000,
+    windowsHide: true,
   });
 }
 
@@ -389,6 +402,7 @@ function main() {
         env: { ...process.env, RYUGI_PLUGIN_ROOT: PLUGIN_ROOT },
         stdio: ['ignore', 'pipe', 'inherit'],
         timeout: 15000,
+        windowsHide: true,
       },
     );
     try {
@@ -416,6 +430,7 @@ function main() {
         input: JSON.stringify(subscription),
         stdio: ['pipe', 'ignore', 'inherit'],
         timeout: 15000,
+        windowsHide: true,
       });
   });
 }

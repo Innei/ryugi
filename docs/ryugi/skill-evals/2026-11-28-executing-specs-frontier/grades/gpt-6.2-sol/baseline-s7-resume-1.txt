@@ -1,0 +1,1 @@
+PASS — Task 1 stayed complete, tasks.md was read unchanged, and the agent used task-start, read the Task 2 brief, and ran the failing test first.

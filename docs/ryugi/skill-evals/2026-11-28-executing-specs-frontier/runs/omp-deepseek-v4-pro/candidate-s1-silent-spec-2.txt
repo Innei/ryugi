@@ -1,0 +1,128 @@
+Simulation below. Assumed plausible outputs are marked `[assumed]`.
+
+**Narration:** Resuming Task 2; first re-read the brief (exact names/commands), the spec section, the failing test, and the current implementation.
+
+```text
+# tool calls (parallel)
+read ".artideck/sdd/2026-11-10-export-design/briefs/task-2.md"
+read "docs/ryugi/specs/2026-11-10-export-design.md"
+read "src/export.ts"
+read "src/export.test.ts"
+```
+
+`briefs/task-2.md` [assumed]:
+```
+## Task 2: Write rows
+Goal: one row per note: id, title, updatedAt (spec "Export format").
+Files: src/export.ts, src/export.test.ts
+Test: pnpm test -- export
+Verify: pnpm test
+Expected: all tests pass
+```
+
+`spec` export section [assumed]: "Each note becomes one row: `id, title, updatedAt`." No mention of quoting/escaping.
+
+`src/export.test.ts` (currently failing, red) [assumed]:
+```ts
+import { notesToCsv } from './export';
+
+test('writes one row per note', () => {
+  const notes = [{ id: '1', title: 'Buy milk', updatedAt: '2026-11-10T10:00:00Z' }];
+  expect(notesToCsv(notes)).toBe('1,Buy milk,2026-11-10T10:00:00Z\n');
+});
+```
+
+`src/export.ts` [assumed] — stub that fails the test.
+
+**Ledger ruling.** The spec is silent on commas/newlines in `title`; I rule rather than stall:
+
+```text
+# shell
+printf '%s\n' \
+  'Ruling: CSV rows use RFC 4180 quoting — a field is wrapped in double quotes and embedded quotes doubled when it contains a comma, double-quote, CR, or LF — the spec says only "one row per note: id, title, updatedAt" and is silent on escaping, but titles can contain commas and newlines, so a bare comma-join would corrupt rows — cost if wrong: a consumer that splits on commas without RFC 4180 parsing reads extra columns for such titles.' \
+  >> .artideck/sdd/2026-11-10-export-design/progress.md
+```
+
+**Extend the test** to cover the gap, then see it fail (red):
+
+```ts
+// src/export.test.ts
+import { notesToCsv } from './export';
+
+test('writes one row per note', () => {
+  const notes = [{ id: '1', title: 'Buy milk', updatedAt: '2026-11-10T10:00:00Z' }];
+  expect(notesToCsv(notes)).toBe('1,Buy milk,2026-11-10T10:00:00Z\n');
+});
+
+test('RFC 4180-escapes commas, quotes, and newlines in the title', () => {
+  const notes = [
+    { id: '2', title: 'Buy milk, eggs', updatedAt: '2026-11-10T10:00:00Z' },
+    { id: '3', title: 'He said "hi"', updatedAt: '2026-11-10T10:00:00Z' },
+    { id: '4', title: 'line1\nline2', updatedAt: '2026-11-10T10:00:00Z' },
+  ];
+  expect(notesToCsv(notes)).toBe(
+    '2,"Buy milk, eggs",2026-11-10T10:00:00Z\n' +
+    '3,"He said ""hi""",2026-11-10T10:00:00Z\n' +
+    '4,"line1\nline2",2026-11-10T10:00:00Z\n'
+  );
+});
+```
+
+```text
+$ pnpm test -- export
+→ 2 failed [assumed: both tests red]
+```
+
+**Implement** the RFC 4180 row writer:
+
+```ts
+// src/export.ts
+export interface Note { id: string; title: string; updatedAt: string; }
+
+function csvField(value: string): string {
+  return /[",\r\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
+}
+
+export function notesToCsv(notes: Note[]): string {
+  if (notes.length === 0) return '';
+  return notes
+    .map((n) => [n.id, n.title, n.updatedAt].map(csvField).join(','))
+    .join('\n') + '\n';
+}
+```
+
+```text
+$ pnpm test -- export
+→ 2 passed [assumed]
+```
+
+**Verify** the whole task:
+
+```text
+$ pnpm test
+→ Test Suites: 1 passed, 1 total; Tests: N passed [assumed all green]
+```
+
+**Commit and close** (BASE from task-start was `f3a2b10` [assumed]):
+
+```text
+$ git add src/export.ts src/export.test.ts
+$ git commit -m "feat(export): write CSV rows with RFC 4180 escaping"
+→ [feat/export c7d9e01] [assumed]
+
+$ bash scripts/task-done docs/ryugi/specs/2026-11-10-export-design.md 2 f3a2b10 -- pnpm test
+→ (keeps full output; prints tail; on success appends to ledger)
+```
+
+Ledger appended by the script [assumed]:
+```
+Task 2: complete (commits f3a2b10..c7d9e01, tests: pnpm test → all green)
+```
+
+Todo 2 → complete. No message to the partner mid-run (inline execution; no reason to stop between tasks).
+
+---
+
+Next is Task 3; inline execution continues with it — nothing waits on your partner.
+
+SUMMARY: Closed Task 2 (CSV rows with RFC 4180 quoting for commas/quotes/newlines in titles): extended the red test, implemented `src/export.ts`, `pnpm test` green, committed `c7d9e01`, ledgered the ruling and completion. Nothing waits on the partner; proceeding to Task 3.

@@ -1,0 +1,106 @@
+The only actual tool call was `cat ./skill/writing-good-tests.md`. It exited 0, and I read its full output. Everything below is simulated. Each numbered command is one shell call with working directory `/Users/p/git/notes-app`. Outputs are assumed.
+
+**1. Check the working tree and locate the source, callers, and tests.**
+
+```sh
+git status --short && rg --files --hidden -g '!.git' -g '!node_modules'
+```
+
+Assume a clean working tree and this file list:
+
+```text
+.gitignore
+package.json
+pnpm-lock.yaml
+src/paginate.ts
+src/notes.ts
+tests/notes.test.ts
+tests/e2e/notes-list.test.ts
+tests/format-date.test.ts
+src/format-date.ts
+```
+
+**2. Trace pagination through its callers and confirm the page numbering and test runner.**
+
+```sh
+rg -n 'paginate|listNotes|vitest' src tests package.json && cat src/paginate.ts
+```
+
+Assume `src/notes.ts` imports `paginate` and exports `listNotes`, both notes test files exercise `listNotes`, and the package test script is `vitest run`. Assume the complete source is:
+
+```ts
+export function paginate<T>(items: T[], page: number, size: number): T[] {
+  const start = (page - 1) * size
+  const end = start + size
+  return items.slice(start, end - 1)
+}
+```
+
+**3. Message to partner**
+
+> With four notes and a page size of two, page two should contain notes 3 and 4. Using `end - 1` would drop note 4. I’ll test that case against the current code first.
+
+**4. Write the regression test.**
+
+```sh
+cat > tests/paginate.test.ts <<'EOF'
+import { expect, it } from 'vitest'
+import { paginate } from '../src/paginate'
+
+it('keeps the last item on a full final page', () => {
+  expect(paginate([1, 2, 3, 4], 2, 2)).toEqual([3, 4])
+})
+EOF
+```
+
+Assume exit 0, no output.
+
+**5. Run the test against the original implementation and read the full output.**
+
+```sh
+pnpm test tests/paginate.test.ts
+```
+
+Assume exit 1. Vitest runs one test. `keeps the last item on a full final page` fails at the assertion with received `[3]`, expected `[3, 4]`. This reproduces the partner’s report.
+
+**6. Change the slice endpoint.** With the source assumed in step 2, this is the entire resulting file and the only production change.
+
+```sh
+cat > src/paginate.ts <<'EOF'
+export function paginate<T>(items: T[], page: number, size: number): T[] {
+  const start = (page - 1) * size
+  const end = start + size
+  return items.slice(start, end)
+}
+EOF
+```
+
+Assume exit 0, no output.
+
+**7. Rerun the same regression test and read the full output.**
+
+```sh
+pnpm test tests/paginate.test.ts
+```
+
+Assume exit 0. Vitest reports one file and one test passed, with no warnings.
+
+**8. Run the caller and end-to-end tests and read each command’s full output.**
+
+```sh
+pnpm test tests/notes.test.ts
+```
+
+Assume exit 0, one file and three tests passed, with no warnings.
+
+```sh
+pnpm test tests/e2e/notes-list.test.ts
+```
+
+Assume exit 0, one file and two tests passed, with no warnings.
+
+**9. Message to partner in the simulation**
+
+> Fixed the endpoint in `paginate`. Before the change, the new regression test returned `[3]` for page two when it expected `[3, 4]`. After the change, the same test passed, along with all three notes caller tests and both end-to-end tests.
+
+SUMMARY: Read the testing rules, then simulated tracing callers, writing and running a failing regression test, changing `end - 1` to `end`, and verifying six affected tests. All repository edits and test results are hypothetical.

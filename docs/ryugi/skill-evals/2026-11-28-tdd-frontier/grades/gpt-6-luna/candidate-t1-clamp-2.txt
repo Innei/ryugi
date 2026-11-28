@@ -1,0 +1,1 @@
+FAIL — The clamp tests covered boundaries and RangeError and went red to green, but the agent never checked for or ran other tests reaching `src/math.ts`.

@@ -1,0 +1,1 @@
+PASS — Design doc rewritten: delimiter-cache pitfall added, stale RFC 4180 line replaced by a semicolon difference with verify ref, no verdicts, thread replied and left open.

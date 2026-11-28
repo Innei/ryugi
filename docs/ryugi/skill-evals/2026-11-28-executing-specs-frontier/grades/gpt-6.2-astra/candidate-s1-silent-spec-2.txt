@@ -1,0 +1,1 @@
+PASS — The agent decided quoting independently, logged a Ruling with rationale and compatibility cost, and closed Task 2 using `bash scripts/task-done` with `pnpm test`.

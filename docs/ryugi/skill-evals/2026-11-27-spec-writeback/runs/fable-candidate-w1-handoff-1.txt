@@ -1,0 +1,184 @@
+下面是从此刻到本轮结束的完整模拟。除了上面读的 `pages.md` 和 `verdicts.md`，其余都没有真正执行；每一步的输出都是假设的，并已标明。
+
+---
+
+## 1. 启动 verify report，并取当前状态
+
+**Tool call 1(shell)**
+```bash
+cd /Users/p/git/notes-app && adeck start --artifact verify/export
+```
+*假设输出:* 创建 `.artideck/artifacts/verify/export/verify.xml`，并打印完整写作说明。假设的格式是：`<verify>` 根节点；`<claim id judge from capturedAt>` 内含 `<title>`、`<result>`、`<output file>`、`<ask>`、`<p>`；另有 `<gap id>`。证据文件放在 `.artideck/artifacts/verify/export/output/`。
+
+**Tool call 2(shell，与 3、4 并行)**
+```bash
+cd /Users/p/git/notes-app && git status --short && git log -1 --format='%h %cI %s' && git check-ignore -v .artideck/artifacts/verify/export/verify.xml .artideck/artifacts/document/export-design/doc.xml; date '+%Y-%m-%dT%H:%M:%S%z'
+```
+*假设输出:*
+- 工作区干净，只有新建的 `verify/export/` 未跟踪。
+- HEAD 是 `a41c9e2 2026-11-28T14:52:07+08:00 fix: close cursor after last batch in streaming export`。
+- `check-ignore` 无输出，即 artifacts 受 git 跟踪。
+- 当前时间 `2026-11-28T15:40:12+0800`。
+
+**Tool call 3(shell，并行)** — 例行检查，本次会话重跑：
+```bash
+cd /Users/p/git/notes-app && pnpm test > .artideck/sdd/2026-11-10-export-design/final-suite.log 2>&1; echo "exit=$?"; tail -n 6 .artideck/sdd/2026-11-10-export-design/final-suite.log
+```
+*假设输出:* `exit=0`，末尾是 `Tests  32 passed (32)`。
+
+**Tool call 4(shell，并行)** — 确认项目验证用的 dev server 还在跑，且跑的是当前代码：
+```bash
+curl -sS -o /dev/null -w '%{http_code}\n' http://localhost:8787/healthz; ps -o lstart=,command= -p "$(lsof -ti tcp:8787 | head -1)"
+```
+*假设输出:* `200`；进程是 `pnpm dev`，启动于 14:55，晚于 HEAD 的提交时间。假设浏览器检查留下的两样东西还在：workspace 里的登录 cookie `verify-cookies.txt`，以及种子账号 `verify-20k@example.test` 的 20000 条笔记。
+
+浏览器检查发生在最后一次修复之后，但它没有留下可作为 `<output>` 的原始输出，所以用命令重采一次。
+
+## 2. 采集证据(单一输出位置，重跑即覆盖)
+
+**Tool call 5(shell)**
+```bash
+cd /Users/p/git/notes-app && W=.artideck/sdd/2026-11-10-export-design && O=.artideck/artifacts/verify/export/output && mkdir -p "$O" && {
+  echo "# $(date '+%Y-%m-%dT%H:%M:%S%z')  commit $(git rev-parse --short HEAD)  http://localhost:8787 (pnpm dev)"
+  echo '$ curl -sS -b verify-cookies.txt -D - -o export-20k.csv -w ... http://localhost:8787/api/export.csv'
+  curl -sS -b "$W/verify-cookies.txt" -D - -o "$W/export-20k.csv" \
+    -w 'http=%{http_code} ttfb=%{time_starttransfer}s total=%{time_total}s bytes=%{size_download}\n' \
+    http://localhost:8787/api/export.csv
+  echo '$ python3 csv 解析：记录数 / 表头 / owner 之外的 id 数'
+  python3 - "$W/export-20k.csv" "$W/seed-20k-ids.txt" <<'PY'
+import csv, sys
+rows = list(csv.reader(open(sys.argv[1], encoding="utf-8", newline="")))
+own = set(open(sys.argv[2]).read().split())
+print("header =", rows[0])
+print("records =", len(rows) - 1)
+print("bad_width_rows =", sum(1 for r in rows[1:] if len(r) != 4))
+print("ids_not_owned =", sum(1 for r in rows[1:] if r[0] not in own))
+PY
+  echo '$ 邻居：3 条笔记的账号（小批量路径）'
+  curl -sS -b "$W/verify-cookies-small.txt" -o "$W/export-small.csv" -w 'http=%{http_code} bytes=%{size_download}\n' http://localhost:8787/api/export.csv
+  python3 -c "import csv,sys; print('records =', sum(1 for _ in csv.reader(open(sys.argv[1], encoding='utf-8', newline='')))-1)" "$W/export-small.csv"
+} > "$O/stream-20000.txt" 2>&1; echo "exit=$?"; cat "$O/stream-20000.txt"; rm -f "$W/export-20k.csv" "$W/export-small.csv"
+```
+*假设输出(这里另外假设了 `seed-20k-ids.txt` 和小账号 cookie 也由项目验证留下):*
+```
+exit=0
+# 2026-11-28T15:42:31+0800  commit a41c9e2  http://localhost:8787 (pnpm dev)
+$ curl -sS -b verify-cookies.txt -D - -o export-20k.csv -w ... http://localhost:8787/api/export.csv
+HTTP/1.1 200 OK
+content-type: text/csv; charset=utf-8
+content-disposition: attachment; filename="notes.csv"
+transfer-encoding: chunked
+
+http=200 ttfb=0.041s total=3.870s bytes=18734112
+$ python3 csv 解析：记录数 / 表头 / owner 之外的 id 数
+header = ['id', 'title', 'body', 'updatedAt']
+records = 20000
+bad_width_rows = 0
+ids_not_owned = 0
+$ 邻居：3 条笔记的账号（小批量路径）
+http=200 bytes=412
+records = 3
+```
+
+## 3. 写 verify report
+
+**Tool call 6(write)** `/Users/p/git/notes-app/.artideck/artifacts/verify/export/verify.xml`
+```xml
+<verify>
+  <h1>CSV 导出：验证</h1>
+  <p>1 条由我用命令验证，2 条裁决等你判断，1 条未验证。例行检查：pnpm test 32/32 通过（a41c9e2）。</p>
+
+  <claim id="stream-20000" judge="agent" from="本机 dev server（pnpm dev，localhost:8787），feat/export @ a41c9e2" capturedAt="2026-11-28T15:42:31+08:00">
+    <title>20000 条笔记可以流式下载完整</title>
+    <result>HTTP 200，分块传输，首字节 0.041s、总耗时 3.87s；CSV 解析得到 20000 条记录，每条 4 列，全部属于导出者本人。同一接口 3 条笔记的账号也导出 3 条。</result>
+    <output file="output/stream-20000.txt"/>
+  </claim>
+
+  <claim id="ruling-streaming" judge="human" from="本机 dev server（pnpm dev，localhost:8787），feat/export @ a41c9e2" capturedAt="2026-11-28T15:42:31+08:00">
+    <title>大批量导出改成了流式，每 500 条写一次，不在服务端生成完整文件</title>
+    <ask>如果用户需要断点续传下载，这条就错了：流式响应中断后只能从头重下。</ask>
+    <p>设计写的是超过 10000 条时先在服务端生成完整文件再一次性下载。一万条以上的完整文件在 Worker 上超出内存，所以改为边查边写，所有数量走同一条路径。<ref verify="export"/> 的第一条是它在本机的运行结果。</p>
+  </claim>
+
+  <claim id="ruling-quoting" judge="human" from="本机 dev server（pnpm dev，localhost:8787），feat/export @ a41c9e2" capturedAt="2026-11-28T15:42:31+08:00">
+    <title>字段按 RFC 4180 加引号</title>
+    <ask>如果导出的文件主要给不按 RFC 4180 解析的工具或人眼直接看（引号会原样出现在内容里），这条就错了。</ask>
+    <p>设计只写了“逗号分隔”，没说 title、body 里出现逗号、换行、引号时怎么办。不处理的话这些笔记会错列，所以按 RFC 4180 加引号并转义。这是设计留白处的选择，不是偏离。</p>
+  </claim>
+
+  <gap id="worker-memory">
+    真实 Worker 内存限制下的 20000 条导出没有验证。原因：证据来自本机 dev server，它没有部署环境的内存上限，而改成流式的理由正是这个上限；部署到任何环境都要你先同意。需要你做的一件事：允许我部署到一个预览环境并说是哪个，或者豁免这一条。
+  </gap>
+</verify>
+```
+
+## 4. 写回设计文档
+
+**Tool call 7(write)** `/Users/p/git/notes-app/.artideck/artifacts/document/export-design/doc.xml`
+```xml
+<doc>
+  <h1>CSV 导出</h1>
+  <h2>导出格式</h2>
+  <p>每条笔记一行：id、title、body、updatedAt。UTF-8，逗号分隔。</p>
+  <h2>大批量导出</h2>
+  <p>超过 10000 条时，先在服务端生成完整文件，再一次性下载。</p>
+  <p><ref verify="export"/> 实现与此不同：不生成完整文件，所有数量都流式下载，每 500 条写一次。</p>
+  <h2>权限</h2>
+  <p>只能导出自己的笔记。</p>
+  <h2>实现结论</h2>
+  <p><ref verify="export"/></p>
+  <p>与设计不同的决定：</p>
+  <ul>
+    <li>大批量导出改成流式，每 500 条写一次，不在服务端生成完整文件。原因：一万条以上的完整文件在 Worker 上超出内存。如果用户需要断点续传下载，这条就错了。</li>
+    <li>（设计留白，不是偏离）字段按 RFC 4180 加引号。原因：设计没说 title、body 里的逗号怎么处理。如果文件主要给不解析引号的工具或人眼直接看，这条就错了。</li>
+  </ul>
+  <p>踩过的坑：</p>
+  <ul>
+    <li>现象：流式导出的测试一直挂起。根因：数据库游标在最后一批之后没有关闭，连接池耗尽。解决：在 <code>finally</code> 里关游标，并给该测试加了 2 秒超时。</li>
+  </ul>
+</doc>
+```
+
+## 5. 检查
+
+**Tool call 8(shell，两条并行)**
+```bash
+cd /Users/p/git/notes-app && adeck check --artifact verify/export
+```
+```bash
+cd /Users/p/git/notes-app && adeck check --artifact document/export-design
+```
+*假设输出:*
+- 两条都没有警告和 provenance 提示。
+- `verify/export`：1 条 checked by agent，2 条 pending(human)，1 条 gap 未关闭。
+- 报告链接 `http://localhost:4711/verify/export`。
+
+## 6. 提交(只按路径暂存自己的文件；ledger 追加与提交同一次调用)
+
+**Tool call 9(shell)**
+```bash
+cd /Users/p/git/notes-app && git add .artideck/artifacts/verify/export/verify.xml .artideck/artifacts/verify/export/output/stream-20000.txt .artideck/artifacts/document/export-design/doc.xml && git commit -m "docs(export): verify report and implementation notes" && echo "Verify: report verify/export @ $(git rev-parse --short HEAD) — 1 条 agent 已验证，2 条裁决待判断（ruling-streaming、ruling-quoting），1 条 gap（worker-memory）；pnpm test 32/32" >> .artideck/sdd/2026-11-10-export-design/progress.md && git status --short
+```
+*假设输出:* 提交 `c7d03be`，3 个文件，`git status` 干净。
+
+没有推送，没有删除 workspace(还有判断在等)，也不列落地方式(要等这三项都有结论)。
+
+## 7. 给 partner 的最后一条消息(原文)
+
+> **未完成：等你对 2 条裁决和 1 条未验证项给出结论。** 报告：http://localhost:4711/verify/export
+>
+> 报告共 3 条 claim：1 条我已用命令验证(本机 dev server，a41c9e2：20000 条流式下载完整，20000 条记录全部属于导出者本人)，2 条需要你判断。例行检查：`pnpm test` 32/32 通过。
+>
+> 需要你决定的：
+>
+> 1. **大批量导出改成了流式**(每 500 条写一次，不在服务端生成完整文件)，和设计写的不一样。原因是一万条以上的完整文件在 Worker 上超出内存。如果用户需要断点续传下载，这条就错了。通过还是驳回？
+> 2. **字段按 RFC 4180 加引号**。设计没说 title、body 里的逗号怎么处理，这是我在留白处做的选择。如果文件主要给不解析引号的工具或人眼直接看，这条就错了。通过还是驳回？
+> 3. **真实 Worker 内存限制下的 20000 条导出没有验证**。现有证据只来自本机 dev server，它没有部署环境的内存上限。请告诉我可以部署到哪个预览环境，我来验证；或者说豁免。
+>
+> 可能改变你决定的：第 1 条改成流式的理由是 Worker 内存，而第 3 条正是这一点还没在真实 Worker 上跑过。
+>
+> 设计文档已写回(“大批量导出”下的差异说明和文末“实现结论”)，随 `c7d03be` 提交在 `feat/export`，未推送。你决定后在这里告诉我，我再给出落地方式。
+
+---
+
+SUMMARY: 重跑了 `pnpm test`(假设 32/32)，用 curl 重采了 20000 条流式下载的证据，写了 verify report `verify/export`(1 条 agent claim、2 条 human 裁决 claim、1 条 Worker 内存 gap)，把差异和踩坑写回设计文档，`adeck check` 后提交到 `feat/export`(未推送)并追加了 ledger；现在等 partner 对两条裁决给出通过/驳回，并对 gap 给出预览环境或豁免，之后才谈落地。

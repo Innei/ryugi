@@ -1,0 +1,101 @@
+I read `./skill/writing-good-tests.md`. Everything below is simulated. The repository contents and command results are assumptions.
+
+1. **Shell** in `/Users/p/git/notes-app` for this and every subsequent command.
+
+   ```sh
+   git status --short
+   git diff -- src/export.ts
+   rg -n 'exportNote|export-sample|"(test|typecheck|build)"' --glob '!pnpm-lock.yaml' .
+   ```
+
+   Assumed output shows `src/export.ts` as the only modified file. The diff changes the exported title from `note.title` to `note.title || '(untitled)'`. The search finds `src/export.test.ts`, `src/cli.ts`, `src/cli.test.ts`, and `scripts/export-sample.js`. `package.json` defines `test` as `vitest run` and `typecheck` as `tsc --noEmit`.
+
+2. **Shell**
+
+   ```sh
+   cat src/export.ts src/export.test.ts src/cli.ts src/cli.test.ts scripts/export-sample.js package.json
+   ```
+
+   Assume the files confirm that `exportNote` returns a Markdown string, the existing export test covers a nonempty title, the CLI tests exercise the export command, and the sample script runs the exporter with an empty title. There is no separate build script.
+
+3. **Message to partner**
+
+   > The sample showed the fallback in the exported Markdown. I’ll add a regression test and check that it fails when the exporter leaves the heading blank.
+
+4. **Shell** to write the complete contents of `src/export.test.ts`.
+
+   ```sh
+   cat > src/export.test.ts <<'EOF'
+   import { describe, expect, it } from 'vitest';
+   import { exportNote } from './export';
+
+   describe('exportNote', () => {
+     it('exports the title and body as Markdown', () => {
+       expect(exportNote({ title: 'Groceries', body: 'Buy milk.' })).toBe(
+         '# Groceries\n\nBuy milk.\n',
+       );
+     });
+
+     it('uses an untitled heading when the note title is empty', () => {
+       expect(exportNote({ title: '', body: 'Buy milk.' })).toBe(
+         '# (untitled)\n\nBuy milk.\n',
+       );
+     });
+   });
+   EOF
+   ```
+
+5. **Shell** to temporarily restore the old behavior. This is the complete temporary content of `src/export.ts`.
+
+   ```sh
+   cat > src/export.ts <<'EOF'
+   interface Note {
+     title: string;
+     body: string;
+   }
+
+   export function exportNote(note: Note): string {
+     return `# ${note.title}\n\n${note.body}\n`;
+   }
+   EOF
+   ```
+
+6. **Shell**
+
+   ```sh
+   pnpm test src/export.test.ts
+   ```
+
+   Assume I read the full output. The command exits `1`. The named test `uses an untitled heading when the note title is empty` fails with expected `# (untitled)\n\nBuy milk.\n` and received `# \n\nBuy milk.\n`. The nonempty-title test passes. This shows the new test catches the missing fallback.
+
+7. **Shell** to restore the original working change. This is the complete final content of `src/export.ts`.
+
+   ```sh
+   cat > src/export.ts <<'EOF'
+   interface Note {
+     title: string;
+     body: string;
+   }
+
+   export function exportNote(note: Note): string {
+     return `# ${note.title || '(untitled)'}\n\n${note.body}\n`;
+   }
+   EOF
+   ```
+
+8. **Shell** calls in order, reading the full output of each before reporting.
+
+   | Exact command | Assumed result |
+   |---|---|
+   | `pnpm test src/export.test.ts` | Exit `0`. Both tests pass. |
+   | `pnpm test src/cli.test.ts` | Exit `0`. All 3 CLI tests pass. |
+   | `pnpm typecheck` | Exit `0`. No diagnostics. |
+   | `node scripts/export-sample.js` | Exit `0`. Prints `# (untitled)`, a blank line, and `Buy milk.` |
+   | `git diff --check` | Exit `0` with no output. |
+   | `git status --short` | Lists only `src/export.ts` and `src/export.test.ts` as modified. |
+
+9. **Simulated final message to partner**
+
+   > Empty titles now export with a `# (untitled)` heading. The new regression test failed with a blank heading when I temporarily removed the fallback, then passed after I restored it. Both export tests and all three CLI tests passed. Typecheck and `git diff --check` exited successfully, and a fresh sample export printed the expected heading. The changes are uncommitted.
+
+SUMMARY: I read the test-writing guidance, then simulated inspecting the change, adding a regression test, observing its expected failure, restoring the fallback, and verifying the export, CLI, typecheck, and sample. Only the skill file was actually read.

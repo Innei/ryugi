@@ -1,0 +1,24 @@
+**Simulated continuation:** No commands below were actually run. Since the task list and Task 2 brief weren’t provided, I’m assuming Task 2 adds CSV export behavior and its brief specifies a focused test command. I’ll use placeholders where the exact brief content is unknown.
+
+1. **Message to you:** “Task 1 is recorded complete. I’m moving on to Task 2 and will first read its brief, then run the specified test before implementation.”
+
+2. **Tool call I would make:**
+   ```sh
+   bash scripts/task-start docs/ryugi/specs/2026-11-10-export-design.md 2
+   ```
+   **Assumed output:** Task 2 brief path and BASE SHA are printed.
+
+3. **Tool call I would make:**
+   ```sh
+   cat <printed-Task-2-brief-path>
+   ```
+   **Assumed output:** The brief says to add a focused CSV export test, gives its exact command, and describes the expected behavior. I would use that command verbatim; I can’t supply it here because the brief wasn’t included.
+
+4. **Tool call I would make:** Run the brief’s focused test command, unchanged.  
+   **Assumed output:** The new test fails because the CSV export behavior is not implemented. I would read the full output and report the failing assertion.
+
+5. **Message to you:** “Task 2’s focused test fails as expected. I’m stopping here at the requested point, before implementation.”
+
+No ledger line would be appended: Task 2 has not been completed. I also would not commit or run Task 2’s full verification.
+
+SUMMARY: Simulated Task 2 startup and its failing-test run; implementation waits on the next step, with exact commands dependent on the unavailable Task 2 brief.

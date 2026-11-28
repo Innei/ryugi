@@ -1,0 +1,97 @@
+Simulated transcript. All shell calls use `/Users/p/git/notes-app` as the working directory. Only the Task 1 output was supplied. The Task 2 brief, file contents, and test output below are assumptions.
+
+1. **Todo call** `todos.update({"task": 1, "status": "complete"})`  
+   Evidence is the supplied `task-done` output. That command already appended `Task 1: complete (commits a1b2c3d..d4e5f6a, tests: pnpm test export → 4/4 pass)`.
+
+2. **Message to partner** — “Task 1 took longer than expected. `pnpm test export` passed 4/4 in the task check. I’m starting Task 2.”
+
+3. **Shell call**
+   ```sh
+   bash scripts/task-start docs/ryugi/specs/2026-11-10-export-design.md 2
+   ```
+   Assumed output:
+   ```text
+   Brief: .artideck/sdd/2026-11-10-export-design/briefs/task-2.md
+   BASE: d4e5f6a
+   ```
+
+4. **Shell call**
+   ```sh
+   cat .artideck/sdd/2026-11-10-export-design/briefs/task-2.md
+   ```
+   Assumed brief:
+   ```markdown
+   ## Task 2: Escape note fields in CSV export
+   Goal: Preserve titles and bodies containing commas, quotes, or newlines.
+   Files: src/export.ts, tests/export.test.ts
+   Test: Add a case named “preserves punctuation and newlines in note fields”
+   to tests/export.test.ts. Run pnpm test export.
+   Verify: pnpm test export
+   Expected: 5/5 pass.
+   ```
+
+5. **Todo call** `todos.update({"task": 2, "status": "in_progress"})`
+
+6. **Shell call**
+   ```sh
+   cat tests/export.test.ts src/export.ts
+   ```
+   Assumed result: The test file imports Vitest’s `it` and `expect` and the synchronous `exportNotesCsv` function. The four existing cases establish the header `title,body`, LF row separators, and no trailing newline. The implementation joins raw field values with commas.
+
+7. **Shell call**
+   ```sh
+   cat >> tests/export.test.ts <<'EOF'
+
+   it('preserves punctuation and newlines in note fields', () => {
+     const csv = exportNotesCsv([
+       { title: 'Trip, day 1', body: 'She said "hi".\nThen left.' },
+     ])
+
+     expect(csv).toBe('title,body\n"Trip, day 1","She said ""hi"".\nThen left."')
+   })
+   EOF
+   ```
+   Assumed result: exit 0, no output.
+
+8. **Shell call**
+   ```sh
+   pnpm test export
+   ```
+   Assumed full output, exit 1:
+   ```text
+   > notes-app@1.0.0 test
+   > vitest run export
+
+    RUN  v3.2.4 /Users/p/git/notes-app
+
+    ❯ tests/export.test.ts (5 tests | 1 failed) 8ms
+      ✓ exports a header for an empty list 1ms
+      ✓ exports one note 0ms
+      ✓ preserves note order 0ms
+      ✓ exports empty fields 0ms
+      × preserves punctuation and newlines in note fields 6ms
+
+    FAIL  tests/export.test.ts > preserves punctuation and newlines in note fields
+   AssertionError: expected strings to be equal
+
+   - Expected
+   + Received
+
+     title,body
+   - "Trip, day 1","She said ""hi"".
+   - Then left."
+   + Trip, day 1,She said "hi".
+   + Then left.
+
+    ❯ tests/export.test.ts:34:15
+
+    Test Files  1 failed (1)
+         Tests  1 failed | 4 passed (5)
+      Duration  212ms
+
+    ELIFECYCLE  Test failed. See above for more details.
+   ```
+
+9. **Message to partner** — “`pnpm test export` exited 1. The four existing tests passed. The new case failed because the exporter emitted the title’s comma and the body’s quotes and newline without CSV escaping.”
+
+SUMMARY: The simulation stops at Task 2’s first verified failure, before any implementation change, commit, or Task 2 completion entry. No partner decision is pending.

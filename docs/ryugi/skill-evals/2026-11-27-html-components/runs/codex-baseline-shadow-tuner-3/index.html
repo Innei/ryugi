@@ -1,0 +1,420 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Shadow Studio — Pricing Card Shadow Tuner</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: #1c211c;
+      background: #f5f6f0;
+      --muted: #62695d;
+      --line: #dce0d5;
+      --accent: #d9fa85;
+      --mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    button, input { font: inherit; }
+    button { cursor: pointer; }
+    button:focus-visible, input:focus-visible, pre:focus-visible {
+      outline: 2px solid #527622;
+      outline-offset: 4px;
+    }
+    .shell { width: min(1120px, calc(100% - 64px)); margin: 0 auto; }
+    .masthead { border-bottom: 1px solid var(--line); }
+    .masthead .shell { display: flex; align-items: center; gap: 10px; min-height: 64px; }
+    .mark {
+      display: grid;
+      place-items: center;
+      width: 28px;
+      height: 28px;
+      border-radius: 7px;
+      background: var(--accent);
+      font-size: 13px;
+      font-weight: 800;
+    }
+    .brand { font-size: 14px; font-weight: 750; letter-spacing: -.02em; }
+    main.shell { padding: 42px 0 45px; }
+    h1, h2, p { margin: 0; }
+    h1 { font-size: clamp(36px, 5vw, 55px); font-weight: 760; letter-spacing: -.065em; line-height: 1.06; }
+    .intro { margin-top: 12px; color: var(--muted); font-size: 15px; line-height: 1.5; }
+    .workspace {
+      display: grid;
+      grid-template-columns: minmax(0, 1.65fr) minmax(320px, 1fr);
+      gap: 18px;
+      margin-top: 30px;
+    }
+    .preview {
+      position: relative;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      min-width: 0;
+      min-height: 464px;
+      overflow: hidden;
+      border: 1px solid #cdd3c3;
+      border-radius: 16px;
+      background-color: #e5e9de;
+      background-image: radial-gradient(#b8c2ae 1px, transparent 1px);
+      background-size: 17px 17px;
+      background-position: center;
+    }
+    .preview-header { position: relative; z-index: 1; padding: 17px 18px 0; }
+    .preview-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 7px 10px;
+      border: 1px solid #d1d7ca;
+      border-radius: 6px;
+      background: #f5f6f0;
+      font: 600 10px/1 var(--mono);
+      letter-spacing: .07em;
+      text-transform: uppercase;
+    }
+    .preview-label::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: #537a32; }
+    .preview-stage { display: grid; place-items: center; padding: 22px 24px 43px; }
+    .pricing-card {
+      width: min(284px, 100%);
+      padding: 25px;
+      border: 1px solid #e5e8df;
+      background: #fff;
+      box-shadow: 0 14px 32px -8px rgb(35 47 28 / 28%);
+      border-radius: 20px;
+    }
+    .plan-label { color: #52653c; font: 700 10px/1.3 var(--mono); letter-spacing: .12em; text-transform: uppercase; }
+    .pricing-card h2 { margin-top: 6px; font-size: 25px; letter-spacing: -.055em; line-height: 1.15; }
+    .plan-description { margin-top: 6px; font-size: 13px; color: var(--muted); line-height: 1.4; }
+    .price { margin-top: 18px; font-size: 39px; font-weight: 780; line-height: 1; letter-spacing: -.07em; }
+    .price span { margin-left: 5px; font-size: 12px; font-weight: 500; color: var(--muted); letter-spacing: 0; }
+    .plan-cta {
+      display: block;
+      margin-top: 17px;
+      padding: 10px;
+      border-radius: 7px;
+      color: #263216;
+      background: var(--accent);
+      text-align: center;
+      font-size: 13px;
+      font-weight: 750;
+    }
+    .features { display: grid; gap: 8px; margin: 16px 0 0; padding: 14px 0 0; border-top: 1px solid #e9ece4; list-style: none; }
+    .features li { display: flex; align-items: center; gap: 9px; font-size: 12px; }
+    .features li::before { content: "✓"; color: #4c7034; font-size: 13px; font-weight: 800; }
+    .settings {
+      display: flex;
+      flex-direction: column;
+      padding: 22px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: #fff;
+    }
+    .section-header { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+    .section-header h2 { font-size: 17px; font-weight: 750; letter-spacing: -.035em; }
+    .reset {
+      padding: 6px 9px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      color: #495244;
+      background: #fff;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .reset:hover { background: #f2f4ed; }
+    .sliders { display: grid; gap: 15px; margin-top: 20px; }
+    .field { display: grid; gap: 6px; }
+    .field-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    label { font-size: 13px; font-weight: 650; }
+    .value {
+      min-width: 51px;
+      padding: 3px 6px;
+      border-radius: 5px;
+      background: #eff2eb;
+      color: #414d3b;
+      font: 11px/1.35 var(--mono);
+      text-align: center;
+      white-space: nowrap;
+    }
+    input[type="range"] {
+      --fill: 0%;
+      appearance: none;
+      width: 100%;
+      height: 18px;
+      margin: 0;
+      border-radius: 10px;
+      background: linear-gradient(to right, #729651 var(--fill), #e5e9e1 var(--fill)) center / 100% 4px no-repeat;
+      cursor: pointer;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      appearance: none;
+      width: 15px;
+      height: 15px;
+      border: 2px solid #fff;
+      border-radius: 50%;
+      background: #53733a;
+      box-shadow: 0 0 0 1px #53733a;
+    }
+    input[type="range"]::-moz-range-thumb {
+      width: 11px;
+      height: 11px;
+      border: 2px solid #fff;
+      border-radius: 50%;
+      background: #53733a;
+      box-shadow: 0 0 0 1px #53733a;
+    }
+    .color-controls { margin-top: 17px; padding-top: 14px; border-top: 1px solid #edf0e9; }
+    .color-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 13px; }
+    .color-picker { display: flex; align-items: center; gap: 8px; }
+    input[type="color"] {
+      width: 31px;
+      height: 27px;
+      padding: 3px;
+      border: 1px solid var(--line);
+      border-radius: 5px;
+      background: white;
+      cursor: pointer;
+    }
+    input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+    input[type="color"]::-webkit-color-swatch { border: 0; border-radius: 2px; }
+    input[type="color"]::-moz-color-swatch { border: 0; border-radius: 2px; }
+    .export {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 12px 24px;
+      align-items: start;
+      margin-top: 18px;
+      padding: 18px 22px;
+      border-radius: 14px;
+      color: #f2f5ed;
+      background: #232a20;
+    }
+    .export h2 { font-size: 15px; letter-spacing: -.02em; }
+    .code { grid-column: 1; grid-row: 2; min-width: 0; overflow: auto; margin: 0; font: 12px/1.6 var(--mono); }
+    .property { color: #bcccaf; }
+    .css-value { color: #d9fa85; }
+    .copy {
+      grid-column: 2;
+      grid-row: 1 / span 2;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      min-width: 119px;
+      padding: 9px 12px;
+      border: 1px solid #667161;
+      border-radius: 7px;
+      background: #303a2d;
+      color: #f2f5ed;
+      font-size: 12px;
+      font-weight: 650;
+    }
+    .copy:hover { background: #414f3c; }
+    .copy:focus-visible { outline-color: var(--accent); }
+    .visually-hidden {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+    @media (max-width: 780px) {
+      .workspace { grid-template-columns: minmax(0, 1fr) minmax(270px, 1fr); }
+      .shell { width: calc(100% - 40px); }
+    }
+    @media (max-width: 600px) {
+      .shell { width: calc(100% - 28px); }
+      main.shell { padding-top: 30px; }
+      .workspace { grid-template-columns: minmax(0, 1fr); margin-top: 22px; }
+      .preview { min-height: 405px; }
+      .preview-stage { padding: 18px 20px 28px; }
+      .settings { padding: 18px; }
+      .export { padding: 16px; gap: 12px; align-items: center; }
+      .copy { grid-row: 1; }
+      .code { grid-column: 1 / -1; }
+    }
+  </style>
+</head>
+<body>
+  <header class="masthead">
+    <div class="shell">
+      <span class="mark" aria-hidden="true"><ryugi-icon name="layers" size="16"></ryugi-icon></span>
+      <span class="brand">Shadow Studio</span>
+    </div>
+  </header>
+  <main class="shell">
+    <h1>Pricing card shadow</h1>
+    <p class="intro">Tune the shadow and corner radius on a sample pricing card, then copy the CSS.</p>
+
+    <div class="workspace">
+      <section class="preview" aria-labelledby="preview-title">
+        <div class="preview-header">
+          <h2 class="preview-label" id="preview-title">Live preview</h2>
+        </div>
+        <div class="preview-stage">
+          <article class="pricing-card" id="pricing-card">
+            <p class="plan-label">Monthly plan</p>
+            <h2>Pro</h2>
+            <p class="plan-description">For small teams building together.</p>
+            <p class="price">$24<span> / month</span></p>
+            <span class="plan-cta">Choose Pro</span>
+            <ul class="features">
+              <li>Unlimited projects</li>
+              <li>Up to 10 team members</li>
+              <li>Priority support</li>
+            </ul>
+          </article>
+        </div>
+      </section>
+
+      <form class="settings" id="shadow-settings" aria-labelledby="settings-title">
+        <div class="section-header">
+          <h2 id="settings-title">Shadow settings</h2>
+          <button class="reset" id="reset-settings" type="reset">Reset</button>
+        </div>
+
+        <div class="sliders">
+          <div class="field">
+            <div class="field-header">
+              <label for="elevation">Elevation</label>
+              <output class="value" id="elevation-value" for="elevation">14 px</output>
+            </div>
+            <input id="elevation" type="range" min="-40" max="64" value="14" aria-describedby="elevation-description">
+            <span class="visually-hidden" id="elevation-description">Vertical shadow offset in pixels.</span>
+          </div>
+          <div class="field">
+            <div class="field-header">
+              <label for="blur">Blur</label>
+              <output class="value" id="blur-value" for="blur">32 px</output>
+            </div>
+            <input id="blur" type="range" min="0" max="100" value="32">
+          </div>
+          <div class="field">
+            <div class="field-header">
+              <label for="spread">Spread</label>
+              <output class="value" id="spread-value" for="spread">−8 px</output>
+            </div>
+            <input id="spread" type="range" min="-32" max="48" value="-8">
+          </div>
+          <div class="field">
+            <div class="field-header">
+              <label for="radius">Corner radius</label>
+              <output class="value" id="radius-value" for="radius">20 px</output>
+            </div>
+            <input id="radius" type="range" min="0" max="64" value="20">
+          </div>
+        </div>
+
+        <div class="color-controls">
+          <div class="color-row">
+            <label for="shadow-color">Shadow colour</label>
+            <div class="color-picker">
+              <input id="shadow-color" type="color" value="#232f1c">
+              <output class="value" id="color-value" for="shadow-color">#232F1C</output>
+            </div>
+          </div>
+          <div class="field">
+            <div class="field-header">
+              <label for="opacity">Shadow opacity</label>
+              <output class="value" id="opacity-value" for="opacity">28%</output>
+            </div>
+            <input id="opacity" type="range" min="0" max="100" value="28">
+          </div>
+        </div>
+      </form>
+    </div>
+
+    <section class="export" aria-labelledby="css-title">
+      <h2 id="css-title">Generated CSS</h2>
+      <pre class="code" id="generated-css" tabindex="0"><code><span class="property">box-shadow:</span> <span class="css-value" id="shadow-css">0 14px 32px -8px rgb(35 47 28 / 28%)</span>;
+<span class="property">border-radius:</span> <span class="css-value" id="radius-css">20px</span>;</code></pre>
+      <button class="copy" id="copy-css" type="button">
+        <ryugi-icon name="copy" size="14" aria-hidden="true"></ryugi-icon>
+        <span id="copy-label">Copy CSS</span>
+      </button>
+      <span class="visually-hidden" id="copy-status" role="status"></span>
+    </section>
+  </main>
+
+  <script>
+    const settings = document.getElementById('shadow-settings');
+    const card = document.getElementById('pricing-card');
+    const color = document.getElementById('shadow-color');
+    const colorValue = document.getElementById('color-value');
+    const sliders = [...settings.querySelectorAll('input[type="range"]')].map((input) => ({
+      input,
+      output: document.getElementById(input.id + '-value'),
+      unit: input.id === 'opacity' ? '%' : ' px',
+    }));
+    const [elevation, blur, spread, radius, opacity] = sliders.map(({ input }) => input);
+    const shadowCSS = document.getElementById('shadow-css');
+    const radiusCSS = document.getElementById('radius-css');
+    const generatedCSS = document.getElementById('generated-css');
+    const copyButton = document.getElementById('copy-css');
+    const copyLabel = document.getElementById('copy-label');
+    const copyStatus = document.getElementById('copy-status');
+    let copyAttempt = 0;
+
+    function render() {
+      for (const { input, output, unit } of sliders) {
+        output.value = input.value.replace('-', '−') + unit;
+        input.setAttribute('aria-valuetext', output.value);
+        const fill = (input.valueAsNumber - Number(input.min)) / (Number(input.max) - Number(input.min));
+        input.style.setProperty('--fill', (fill * 100) + '%');
+      }
+
+      colorValue.value = color.value.toUpperCase();
+      const channels = [1, 3, 5].map((start) => parseInt(color.value.slice(start, start + 2), 16));
+      const shadow = `0 ${elevation.value}px ${blur.value}px ${spread.value}px rgb(${channels.join(' ')} / ${opacity.value}%)`;
+      const corners = radius.value + 'px';
+      card.style.boxShadow = shadow;
+      card.style.borderRadius = corners;
+      shadowCSS.textContent = shadow;
+      radiusCSS.textContent = corners;
+      copyAttempt += 1;
+      copyLabel.textContent = 'Copy CSS';
+      copyStatus.textContent = '';
+    }
+
+    function selectCSS() {
+      generatedCSS.focus();
+      const range = document.createRange();
+      range.selectNodeContents(generatedCSS);
+      const selection = window.getSelection();
+      selection.removeAllRanges();
+      selection.addRange(range);
+    }
+
+    copyButton.addEventListener('click', async () => {
+      const attempt = ++copyAttempt;
+      const css = generatedCSS.textContent;
+      copyStatus.textContent = '';
+      try {
+        await navigator.clipboard.writeText(css);
+      } catch {
+        if (attempt !== copyAttempt) return;
+        selectCSS();
+        if (!document.execCommand('copy')) {
+          copyStatus.textContent = 'CSS selected. Use your keyboard shortcut to copy.';
+          copyLabel.textContent = 'CSS selected';
+          return;
+        }
+        window.getSelection().removeAllRanges();
+        copyButton.focus();
+      }
+      if (attempt !== copyAttempt) return;
+      copyLabel.textContent = 'Copied!';
+      copyStatus.textContent = 'CSS copied to clipboard.';
+    });
+
+    settings.addEventListener('input', render);
+    settings.addEventListener('change', render);
+    settings.addEventListener('reset', () => requestAnimationFrame(render));
+    render();
+  </script>
+</body>
+</html>

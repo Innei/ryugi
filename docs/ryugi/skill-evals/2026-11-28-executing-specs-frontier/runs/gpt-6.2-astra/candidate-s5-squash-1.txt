@@ -1,0 +1,59 @@
+Simulated transcript. Only `cat ./skill/landing.md` actually ran. Every shell call below uses `workdir="/Users/p/git/notes-app"`. Outputs and commit IDs are assumed. No ledger lines are appended.
+
+1. **To partner:** “I’ll squash `feat/export` into local `main` and run `pnpm test` before and after the commit.”
+
+2. **Shell**
+   ```sh
+   git status --short --branch && git log -4 --format='%s' main
+   ```
+   Assume the full output shows `## feat/export` with no changed paths, followed by four commit subjects using Conventional Commits.
+
+3. **Shell**
+   ```sh
+   git switch main && git pull --ff-only
+   ```
+   Assume exit 0. Git switches to `main` and reports `Already up to date.`
+
+4. **Shell**
+   ```sh
+   git merge --squash feat/export
+   ```
+   Assume exit 0. Git stages the CSV export changes without conflicts.
+
+5. **Shell**
+   ```sh
+   git diff --cached --check && pnpm test
+   ```
+   Assume exit 0. The staged diff check is silent. I read the full test output, which reports 8 test files passed and 42 tests passed.
+
+6. **To partner:** “The staged squash passed `git diff --cached --check` and all 42 tests across 8 files. I’ll commit it and rerun the suite on `main`.”
+
+7. **Shell**
+   ```sh
+   git commit -m "feat: add CSV export for notes"
+   ```
+   Assume exit 0. Git creates commit `8f3c2ab` on `main`.
+
+8. **Shell**
+   ```sh
+   pnpm test && git log -1 --format='%h %p %s'
+   ```
+   Assume exit 0. I read the full output. All 42 tests across 8 files pass again. Git prints `8f3c2ab 41a92dc feat: add CSV export for notes`, showing one parent.
+
+9. **Shell**
+   ```sh
+   rm -rf -- .artideck/sdd/2026-11-10-export-design/ && git branch -D feat/export
+   ```
+   Assume exit 0. Git confirms deletion of `feat/export`.
+
+10. **Shell**
+    ```sh
+    test ! -e .artideck/sdd/2026-11-10-export-design/ &&
+      git branch --list feat/export &&
+      git status --short --branch
+    ```
+    Assume exit 0. The branch listing is empty, and the only output is `## main...origin/main [ahead 1]`, confirming a clean checkout.
+
+11. **To partner:** “Squashed the CSV export into local `main` as `8f3c2ab`. All 42 tests passed before and after the commit. I removed `feat/export` and its spec workspace. The checkout is clean, one commit ahead of `origin/main`.”
+
+SUMMARY: Simulated the verified local squash and cleanup. Pushing is the partner’s call.

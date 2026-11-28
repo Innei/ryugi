@@ -1,0 +1,104 @@
+The only actual tool call was `cat ./skill/writing-good-tests.md`. I read its full output. Everything below is simulated, including the test results. Each shell call would use `/Users/p/git/notes-app` as its working directory.
+
+**1. Shell — inspect the existing change and find its callers and checks.**
+
+```sh
+git status --short
+git diff HEAD -- src/export.ts
+rg --files --hidden -g '!node_modules' -g '!.git'
+rg -n 'exportNote|src/export|\./export' src scripts
+cat src/export.ts scripts/export-sample.js package.json
+```
+
+Assume the only working-tree change is `src/export.ts`, with this diff:
+
+```diff
+ export function exportNote(note: { title: string; body: string }): string {
+-  return `# ${note.title}\n\n${note.body}`
++  return `# ${note.title || '(untitled)'}\n\n${note.body}`
+ }
+```
+
+Assume the sample script is the only caller. It imports `src/export.ts` directly and exports `{ title: '', body: 'Sample body' }`. The file listing shows unrelated tests under `src/`, no export or end-to-end tests, and a `tsconfig.json`. The package defines `pnpm typecheck` and has no build script.
+
+**2. Message to partner**
+
+> The manual sample exercised an empty title. I’ll add a regression test at the export boundary and run it against the previous implementation. I’ll also check a named note, since applying the fallback to every title would still pass the empty-title example.
+
+**3. Shell — write the test and temporarily restore the previous behavior.** These are the complete contents of both writes.
+
+```sh
+cat > src/export.test.ts <<'EOF'
+import { expect, it } from 'vitest'
+import { exportNote } from './export'
+
+it.each([
+  { title: '', heading: '# (untitled)' },
+  { title: 'Meeting notes', heading: '# Meeting notes' },
+])('exports title "$title" as "$heading"', ({ title, heading }) => {
+  expect(exportNote({ title, body: 'Discuss the draft.' })).toBe(
+    `${heading}\n\nDiscuss the draft.`,
+  )
+})
+EOF
+cat > src/export.ts <<'EOF'
+export function exportNote(note: { title: string; body: string }): string {
+  return `# ${note.title}\n\n${note.body}`
+}
+EOF
+```
+
+Assume both writes exit 0 with no output.
+
+**4. Shell — prove the empty-title case red.**
+
+```sh
+pnpm test src/export.test.ts
+```
+
+Assume I read the full output. Exit 1, one failure and one pass. `exports title "" as "# (untitled)"` expected `"# (untitled)\n\nDiscuss the draft."` and received `"# \n\nDiscuss the draft."`. The named-title case passed.
+
+**5. Shell — prove the named-title case catches an unconditional fallback.**
+
+```sh
+cat > src/export.ts <<'EOF'
+export function exportNote(note: { title: string; body: string }): string {
+  return `# (untitled)\n\n${note.body}`
+}
+EOF
+pnpm test src/export.test.ts
+```
+
+Assume I read the full output. Exit 1, one failure and one pass. `exports title "Meeting notes" as "# Meeting notes"` expected `"# Meeting notes\n\nDiscuss the draft."` and received `"# (untitled)\n\nDiscuss the draft."`. The empty-title case passed.
+
+**6. Shell — restore the intended implementation and verify it through both entry points.**
+
+```sh
+cat > src/export.ts <<'EOF'
+export function exportNote(note: { title: string; body: string }): string {
+  return `# ${note.title || '(untitled)'}\n\n${note.body}`
+}
+EOF
+pnpm test src/export.test.ts && pnpm typecheck && node scripts/export-sample.js && git status --short
+```
+
+Assume I read the full output. The focused suite reports one test file passed, two tests passed. The typecheck exits 0 with no diagnostics. The sample exits 0 and prints:
+
+```text
+# (untitled)
+
+Sample body
+```
+
+The final status shows:
+
+```text
+ M src/export.ts
+?? src/export.test.ts
+```
+
+**7. Message to partner, conditional on those results**
+
+> Empty titles now export as `# (untitled)`, and named notes keep their titles. I saw the empty-title test fail against the previous implementation and the named-title test fail with an unconditional fallback. After restoring the intended code, `pnpm test src/export.test.ts` passed both cases, `pnpm typecheck` exited 0, and the sample printed `# (untitled)` above `Sample body`. The changes are uncommitted. I ran only the focused suite.
+
+SUMMARY: I read the local testing guidance, then simulated inspecting the diff, adding regression coverage, proving each case red, restoring the implementation, and running the focused tests, typecheck, and sample. All repository results are assumed.

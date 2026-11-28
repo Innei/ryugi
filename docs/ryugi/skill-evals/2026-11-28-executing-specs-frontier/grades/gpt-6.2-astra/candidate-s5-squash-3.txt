@@ -1,0 +1,1 @@
+PASS — The squash produced one commit on main, tests passed after the commit, the feature branch was force-deleted, and pushing was left to the partner.

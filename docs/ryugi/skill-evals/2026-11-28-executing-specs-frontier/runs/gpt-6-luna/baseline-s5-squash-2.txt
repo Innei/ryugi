@@ -1,0 +1,55 @@
+Simulation only; I did not run repository commands. I read `./skill/landing.md`, which says “merge it” means squash into the base branch. I assumed the commands below succeed and that the existing `main` has no conflicting changes.
+
+1. **Message to you:** “I’ll squash `feat/export` into `main`, run `pnpm test` on the landed commit, then remove the spec workspace and branch.”
+
+2. **Tool call — inspect recent commit messages to match the repository’s style:**
+   ```bash
+   git -C /Users/p/git/notes-app log -5 --oneline
+   ```
+   **Assumed output:** recent history shows the project’s commit message convention. I use that convention for the squash commit.
+
+3. **Tool call — switch to the base branch and update it fast-forward only:**
+   ```bash
+   git -C /Users/p/git/notes-app switch main
+   ```
+   **Assumed output:** switched to `main`.
+
+   ```bash
+   git -C /Users/p/git/notes-app pull --ff-only
+   ```
+   **Assumed output:** `main` updated successfully, or already current.
+
+4. **Tool call — squash the feature branch:**
+   ```bash
+   git -C /Users/p/git/notes-app merge --squash feat/export
+   ```
+   **Assumed output:** squash completed with no conflicts; changes are staged.
+
+5. **Tool call — commit the squash using the style observed in step 2:**
+   ```bash
+   git -C /Users/p/git/notes-app commit -m "<message matching the repository's convention for CSV export of notes>"
+   ```
+   **Assumed output:** commit created successfully.
+
+6. **Tool call — run the required proof command on the landed commit and read its full output:**
+   ```bash
+   git -C /Users/p/git/notes-app status --short --branch
+   pnpm test
+   ```
+   **Assumed output:** working tree is clean on `main`, and `pnpm test` completes successfully. I would report that result only after reading the full test output.
+
+7. **Tool call — remove this spec’s workspace, as directed by `landing.md`:**
+   ```bash
+   rm -rf /Users/p/git/notes-app/.artideck/sdd/2026-11-10-export-design
+   ```
+   **Assumed output:** workspace removed.
+
+8. **Tool call — delete the squashed feature branch:**
+   ```bash
+   git -C /Users/p/git/notes-app branch -D feat/export
+   ```
+   **Assumed output:** branch deleted.
+
+9. **Message to you:** “The squash landing and cleanup completed. `pnpm test` passed on `main`.” This report is conditional on the assumed successful command outputs above.
+
+SUMMARY: Simulated squashing `feat/export` into `main`, verifying with `pnpm test`, and cleaning up; nothing was actually executed.

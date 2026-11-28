@@ -1,0 +1,47 @@
+I read `skill/writing-good-tests.md`. Its guidance says to test behavior that could look correct while still being wrong, use literal expected values, and prove the test fails before changing production code. The requested sort change fits that case.
+
+I did not run repo commands or edit files, as instructed. Here is the simulated sequence I would follow. Since no repo file contents or command output were provided, the file excerpts and results below are assumptions, not observed evidence.
+
+1. Inspect the relevant implementation and tests:
+
+   ```sh
+   cd /Users/p/git/notes-app
+   rg -n "sortBy|NotesList|renders the page|createdAt" src/components/NotesList.tsx src/pages/NotesPage.tsx src/pages/NotesPage.test.tsx src/sort.ts src/sort.test.ts
+   cat src/components/NotesList.tsx
+   cat src/pages/NotesPage.test.tsx
+   ```
+
+   Assumed output: `NotesList.tsx` contains `const sorted = sortBy(notes, 'createdAt')`; the page test renders two notes but does not currently assert title ordering.
+
+2. Add a behavior assertion to `src/pages/NotesPage.test.tsx`. Assumed fixture titles are `Zebra` and `Apple`, with creation dates ordered so the current list displays `Zebra` first. I would assert that the rendered titles appear as `Apple`, then `Zebra`, using the test’s existing rendering and query style. This catches passing the wrong sort key because the list order would remain creation-date order.
+
+3. Run the focused test before changing production code:
+
+   ```sh
+   pnpm test src/pages/NotesPage.test.tsx
+   ```
+
+   Assumed result: the new ordering assertion fails because the rendered list is still ordered by `createdAt`. If it passes, I would stop and investigate the fixture or current behavior before editing production code.
+
+4. Change the sort key in `src/components/NotesList.tsx`:
+
+   ```diff
+   - const sorted = sortBy(notes, 'createdAt')
+   + const sorted = sortBy(notes, 'title')
+   ```
+
+   The exact punctuation and surrounding code would follow the file as read.
+
+5. Run the focused tests and typecheck:
+
+   ```sh
+   pnpm test src/pages/NotesPage.test.tsx
+   pnpm test src/sort.test.ts
+   pnpm typecheck
+   ```
+
+   Assumed result: both focused test commands pass and typecheck succeeds. These are assumptions; they are not verification evidence.
+
+I would report the actual outputs from those commands before saying the change is done. No test or typecheck result has been observed in this session.
+
+SUMMARY: Read the test-writing guidance, then simulated inspecting the notes list and page test, adding a title-order behavior assertion, confirming it fails before the implementation change, changing the sort key, and running focused tests plus typecheck; no repo commands or edits were performed.

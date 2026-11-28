@@ -1,0 +1,1 @@
+FAIL — The handoff states the ruling but omits its cost if wrong: Excel-only users may see quotes.

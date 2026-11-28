@@ -1,0 +1,82 @@
+1. **Partner message** — “I’ll use the test-driven-development skill and read its local testing guidance. I’ll simulate the repository commands and label their assumed results.”
+
+2. **Actual shell call** — `cat ./skill/writing-good-tests.md`  
+   Exit 0. I read the full output. It calls for naming the regression before writing the test and checking the order users see against a hand-derived expectation.
+
+3. **Simulated shell call** — `cd /Users/p/git/notes-app`  
+   Assume success. All subsequent commands use this working directory. Every repository result below is assumed.
+
+4. **Simulated shell call** — `git status --short`  
+   Assume empty output.
+
+5. **Simulated shell call** — `rg -l NotesList src`  
+   As given, the results are `src/components/NotesList.tsx` and `src/pages/NotesPage.tsx`.
+
+6. **Simulated shell call** — `rg --files --hidden -g '!.git' -g '!node_modules'`  
+   Assume the inventory shows `src/pages/NotesPage.test.tsx` and `src/sort.test.ts` as the relevant tests, with no end-to-end specs. Assume there are no additional page callers with their own tests.
+
+7. **Simulated shell call** — `cat src/components/NotesList.tsx src/pages/NotesPage.tsx src/pages/NotesPage.test.tsx src/sort.ts src/sort.test.ts`  
+   Assume the list accepts a `notes` prop, renders each title as the sole text of an `<li>`, and uses ascending `sortBy` by default. The page passes its notes to the real list. Assume the page test already has the imports, two-note fixture, and first test shown below, with automatic cleanup between tests.
+
+8. **Partner message** — “I’ll test the order on the rendered page. The older note is ‘Zebra’ and the newer one is ‘Alpha’, so switching the list back to creation-date order would put ‘Zebra’ first and fail the test.”
+
+9. **Simulated shell call** — write the page test file with the existing test preserved and the order test added. Exact command and complete file content:
+
+   ```sh
+   cat > src/pages/NotesPage.test.tsx <<'EOF'
+   import { render, screen } from '@testing-library/react'
+   import { expect, it } from 'vitest'
+   import { NotesPage } from './NotesPage'
+
+   const notes = [
+     { id: '1', title: 'Zebra', createdAt: '2025-01-01' },
+     { id: '2', title: 'Alpha', createdAt: '2025-01-02' },
+   ]
+
+   it('shows both notes', () => {
+     render(<NotesPage notes={notes} />)
+     expect(screen.getByText('Zebra')).toBeTruthy()
+     expect(screen.getByText('Alpha')).toBeTruthy()
+   })
+
+   it('lists notes in ascending title order', () => {
+     render(<NotesPage notes={notes} />)
+     const titles = screen.getAllByRole('listitem').map(item => item.textContent)
+     expect(titles).toEqual(['Alpha', 'Zebra'])
+   })
+   EOF
+   ```
+
+10. **Simulated shell call** — `pnpm test src/pages/NotesPage.test.tsx`  
+    Assume exit 1. The existing `shows both notes` test passes. `lists notes in ascending title order` fails its equality assertion: expected `['Alpha', 'Zebra']`, received `['Zebra', 'Alpha']`. This is the expected ordering failure.
+
+11. **Simulated shell call** — change the sort key. Exact command and complete file content under the assumed source layout:
+
+    ```sh
+    cat > src/components/NotesList.tsx <<'EOF'
+    import type { Note } from '../types'
+    import { sortBy } from '../sort'
+
+    export function NotesList({ notes }: { notes: Note[] }) {
+      const sorted = sortBy(notes, 'title')
+      return (
+        <ul>
+          {sorted.map(note => <li key={note.id}>{note.title}</li>)}
+        </ul>
+      )
+    }
+    EOF
+    ```
+
+12. **Simulated shell call** — `pnpm test src/pages/NotesPage.test.tsx`  
+    Assume exit 0, both tests pass, and the output contains no warnings. This run exercises the changed list through its page caller.
+
+13. **Simulated shell call** — `pnpm test src/sort.test.ts`  
+    Assume exit 0, all four sort tests pass, and the output contains no warnings.
+
+14. **Simulated shell call** — `pnpm typecheck`  
+    Assume exit 0 with no TypeScript diagnostics.
+
+15. **Partner message** — “In the simulation, the notes page lists ‘Alpha’ before ‘Zebra’ even when ‘Zebra’ was created first. The new page test failed on the old order and passed after the one-line sort-key change. The assumed verification results are 2/2 page tests, 4/4 sort tests, and a clean typecheck. Only the skill-file read was executed.”
+
+SUMMARY: Read the testing guidance, simulated locating the affected tests, added a rendered-order regression test, observed its assumed failure, changed `createdAt` to `title`, and reported the assumed passing checks. The actual repository was neither edited nor tested.
