@@ -1,0 +1,38 @@
+The work stopped after reading `skill/writing-good-tests.md`. From this point, I’m simulating the remaining steps; I did not inspect or modify the repository, and I did not run tests.
+
+1. **Inspect the two relevant files** with:
+
+   ```sh
+   sed -n '1,160p' src/components/EmptyNotes.tsx
+   sed -n '1,200p' src/pages/NotesPage.test.tsx
+   ```
+
+   **Assumed output:** `EmptyNotes.tsx` renders the text `No notes`, and the test contains the empty-state expectation described in the prompt.
+
+2. **Update the existing test expectation** in `src/pages/NotesPage.test.tsx`:
+
+   ```diff
+   - expect(screen.getByText('No notes')).toBeInTheDocument()
+   + expect(screen.getByText('No notes yet — create one')).toBeInTheDocument()
+   ```
+
+   This is an existing wording expectation, so I would update it rather than add a separate test.
+
+3. **Update the component text** in `src/components/EmptyNotes.tsx`:
+
+   ```diff
+   - No notes
+   + No notes yet — create one
+   ```
+
+   The surrounding JSX is unknown; I would change only that text, preserving its existing structure.
+
+4. **Run the focused test** with:
+
+   ```sh
+   pnpm test src/pages/NotesPage.test.tsx
+   ```
+
+   **Assumed result, not observed:** the test passes. The test was not run in this session, so I cannot report that it actually passes.
+
+SUMMARY: Read the test-writing guidance, then described the intended test-expectation and component-text edits and focused test command; repository changes and test results are simulated, not performed or verified.

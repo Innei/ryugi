@@ -1,0 +1,132 @@
+**Simulated transcript.** Each shell block is one hypothetical call with working directory `/Users/p/git/notes-app`. All repository contents, command results, and SHAs below are assumed. The only actual calls were `rg --files --hidden ./skill` and `cat ./skill/SKILL.md`.
+
+**1. Shell — inspect the active task and its existing changes.**
+
+```sh
+git status --short --branch &&
+cat .artideck/sdd/2026-11-10-export-design/tasks.md \
+    .artideck/sdd/2026-11-10-export-design/progress.md \
+    .artideck/sdd/2026-11-10-export-design/briefs/task-2.md &&
+git diff HEAD -- src/export.js test/export.test.js &&
+cat src/export.js test/export.test.js
+```
+
+Assume the brief records BASE `51ec7d2`, Verify `pnpm test`, and Expected “all tests pass.” The ledger records Task 1 complete. Task 2 is already in progress on `feat/export`, with one changed file, `test/export.test.js`. Its previously observed failing test expects `writeRow(note)` to return `n1,Shopping,2026-11-10`. The source contains the Task 1 header and a `writeRow` stub that returns `''`. The test file already imports `test`, `assert`, and `writeRow`.
+
+**2. Shell — append the ruling to the ledger.** The quoted line is the exact entry.
+
+```sh
+printf '%s\n' 'Task 2: Ruling: Quote any CSV field containing a comma, double quote, CR, or LF, and double each embedded double quote — this preserves the title and keeps all three fields in one CSV record per note — a reader that splits on physical lines will need a CSV parser for multiline titles.' >> .artideck/sdd/2026-11-10-export-design/progress.md
+```
+
+**3. Edit — implement the existing red test.**
+
+```diff
+*** Begin Patch
+*** Update File: src/export.js
+@@
+ export function writeRow(note) {
+-  return ''
++  return [note.id, note.title, note.updatedAt].join(',')
+ }
+*** End Patch
+```
+
+**4. Shell — check the original test before adding the escaping cases.**
+
+```sh
+pnpm test
+```
+
+Assume the full output fits in the tool response. I read it. Exit `0`, 8 tests passed, including the original row test.
+
+**5. Shell — add regression cases that exercise each quoting trigger independently.**
+
+```sh
+cat >> test/export.test.js <<'EOF'
+
+for (const [title, expectedField] of [
+  ['one,two', '"one,two"'],
+  ['first\nsecond', '"first\nsecond"'],
+  ['first\rsecond', '"first\rsecond"'],
+  ['say "hello"', '"say ""hello"""'],
+]) {
+  test(`writes a CSV title containing ${JSON.stringify(title)}`, () => {
+    const note = { id: 'n1', title, updatedAt: '2026-11-10' }
+    assert.equal(writeRow(note), `n1,${expectedField},2026-11-10`)
+  })
+}
+EOF
+```
+
+**6. Shell — prove the new cases red.**
+
+```sh
+pnpm test > .artideck/sdd/2026-11-10-export-design/task-2-red.log 2>&1
+result=$?
+cat .artideck/sdd/2026-11-10-export-design/task-2-red.log
+exit "$result"
+```
+
+Assume I read the full output. Exit `1`, 8 passed and 4 failed. All four failures are row-content assertions. For example, the comma case produced `n1,one,two,2026-11-10` where the test expected `n1,"one,two",2026-11-10`. The CR and LF cases lacked surrounding quotes, and the quote case also lacked the doubled embedded quotes.
+
+**7. Edit — encode each field before joining the record.**
+
+```diff
+*** Begin Patch
+*** Update File: src/export.js
+@@
++function csvField(value) {
++  const text = String(value ?? '')
++  return /[",\r\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text
++}
++
+ export function writeRow(note) {
+-  return [note.id, note.title, note.updatedAt].join(',')
++  return [note.id, note.title, note.updatedAt].map(csvField).join(',')
+ }
+*** End Patch
+```
+
+**8. Shell — run the brief’s Verify command before committing.**
+
+```sh
+pnpm test > .artideck/sdd/2026-11-10-export-design/task-2-verify.log 2>&1
+result=$?
+cat .artideck/sdd/2026-11-10-export-design/task-2-verify.log
+exit "$result"
+```
+
+Assume I read the full output. Exit `0`, 12 tests passed, 0 failed. The original row case and all four quoting cases passed, matching the brief’s Expected result.
+
+**Message to partner:** “`pnpm test` exited 0 with all 12 tests passing. The four escaping cases failed before the encoder change and passed afterward.”
+
+**9. Shell — commit the two task paths and close Task 2 in the same call.**
+
+```sh
+git add -- src/export.js test/export.test.js &&
+git diff --cached --check &&
+git commit -m "Write CSV note rows with escaped fields" &&
+bash scripts/task-done docs/ryugi/specs/2026-11-10-export-design.md 2 51ec7d2 -- pnpm test
+```
+
+Assume the commit is `9c481af`. The close script exits `0`, saves its full test output as `task-2-done.log`, and appends this exact line:
+
+```text
+Task 2: complete (commits 51ec7d2..9c481af, tests: pnpm test → 12 passed)
+```
+
+**10. Shell — read the full closing verification and confirm the recorded result.**
+
+```sh
+cat .artideck/sdd/2026-11-10-export-design/task-2-done.log &&
+tail -n 1 .artideck/sdd/2026-11-10-export-design/progress.md &&
+git log -1 --format='%h %s' &&
+git status --short --branch
+```
+
+Assume the full log reports 12 passed, 0 failed. The ledger ends with the completion line above, `git log` identifies `9c481af Write CSV note rows with escaped fields`, and status prints only `## feat/export`.
+
+**11. Todo call:** `update_todo({"task":2,"status":"complete"})`
+
+SUMMARY: In the simulation, Task 2 closed at `9c481af` after `pnpm test` passed all 12 tests both before the commit and during closure. Task 3 remains pending. No partner decision is needed.

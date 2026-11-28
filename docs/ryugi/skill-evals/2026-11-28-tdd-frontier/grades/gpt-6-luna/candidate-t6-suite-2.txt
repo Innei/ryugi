@@ -1,0 +1,1 @@
+FAIL — The agent reported supplied results without writing a full-suite command or another test command that exercises slugify beyond the named file.

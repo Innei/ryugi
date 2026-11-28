@@ -1,0 +1,1 @@
+PASS — The streaming regression failed first, then the full suite passed. The ledger records the fix, minor deferral, and ruling. No re-review was dispatched.

@@ -1,0 +1,135 @@
+The only command actually run was `cat ./skill/writing-good-tests.md`. It exited 0, and I read its full output. Everything below is a simulation. Each shell call uses `/Users/p/git/notes-app` as its working directory. Repository contents and command results are assumed.
+
+**1. Message to partner**
+
+> I changed the exporter before writing its test. The sample showed `(untitled)`, but I haven’t verified the change with a regression test. I’ll remove my edit, reproduce the empty-title bug in Vitest, then implement the fallback and run the affected tests.
+
+**2. Shell call — check what can be safely restored**
+
+```sh
+git status --short
+git diff --numstat -- src/export.ts
+git show :src/export.ts
+```
+
+Assumed output, exit 0:
+
+```text
+ M src/export.ts
+1	1	src/export.ts
+export function exportNote(note: { title: string; body: string }): string {
+  return `# ${note.title}\n\n${note.body}\n`
+}
+```
+
+The index contains the original exporter. I assume the single unstaged line replacement is the edit I made a minute ago and there are no intervening edits. I haven’t read or saved the premature implementation.
+
+**3. Shell call — discard my edit and verify the restoration**
+
+```sh
+git restore --worktree -- src/export.ts && git diff --exit-code -- src/export.ts
+```
+
+Assumed result: exit 0, no output. The complete restored file is the three-line `src/export.ts` printed in step 2. No file was deleted.
+
+**4. Shell call — find the callers and tests that exercise the exporter**
+
+```sh
+rg --files --hidden -g '!.git' -g '!node_modules'
+rg -n 'exportNote|exportNotebook|src/export|["\x27]\./export["\x27]' .
+```
+
+Assume the file listing and matches show that `src/notebook.ts` calls `exportNote` through `exportNotebook`, `src/cli.ts` calls `exportNotebook`, and `scripts/export-sample.js` calls the exporter directly. The existing suites exercising those paths are `test/export.test.ts`, `test/notebook.test.ts`, and `test/cli.e2e.test.ts`. Other tests cover the editor. No file named `test/export-empty-title.test.ts` exists.
+
+```sh
+cat test/export.test.ts test/notebook.test.ts test/cli.e2e.test.ts
+```
+
+Assume the exporter suite imports `exportNote` from `../src/export` and covers a titled note. The notebook and CLI suites exercise multi-note and end-to-end export respectively. None covers an empty title.
+
+**5. Message to partner — name the break before writing the test**
+
+> If the exporter puts an empty title directly into the Markdown heading, the first line will be `# ` instead of `# (untitled)`. I’ll test that first line through the real `exportNote` function.
+
+**6. Shell call — write the regression test**
+
+```sh
+cat > test/export-empty-title.test.ts <<'EOF'
+import { expect, it } from 'vitest'
+import { exportNote } from '../src/export'
+
+it('exports an empty title as an untitled Markdown heading', () => {
+  const markdown = exportNote({ title: '', body: 'Meeting notes' })
+
+  expect(markdown.split('\n')[0]).toBe('# (untitled)')
+})
+EOF
+```
+
+Assumed result: exit 0, no output.
+
+**7. Shell call — verify red**
+
+```sh
+pnpm test test/export-empty-title.test.ts
+```
+
+Assume I read the full output and the process exits 1. Vitest runs one test. `exports an empty title as an untitled Markdown heading` fails at `toBe` with expected `"# (untitled)"` and received `"# "`. The test imports successfully and reaches the intended assertion.
+
+**8. Shell call — implement the behavior specified by the failing test**
+
+```sh
+cat > src/export.ts <<'EOF'
+export function exportNote(note: { title: string; body: string }): string {
+  const title = note.title === '' ? '(untitled)' : note.title
+  return `# ${title}\n\n${note.body}\n`
+}
+EOF
+```
+
+Assumed result: exit 0, no output.
+
+**9. Shell calls — verify green, then check every affected suite**
+
+```sh
+pnpm test test/export-empty-title.test.ts
+```
+
+Assume I read the full output: one file, one test passed, exit 0.
+
+```sh
+pnpm test test/export.test.ts
+```
+
+Assume I read the full output: one file, two tests passed, exit 0.
+
+```sh
+pnpm test test/notebook.test.ts
+```
+
+Assume I read the full output: one file, three tests passed, exit 0.
+
+```sh
+pnpm test test/cli.e2e.test.ts
+```
+
+Assume I read the full output: one file, one test passed, exit 0. All four green runs were free of warnings and errors. No refactor was needed.
+
+**10. Shell call — check the final working tree**
+
+```sh
+git diff --check && git status --short
+```
+
+Assumed output, exit 0:
+
+```text
+ M src/export.ts
+?? test/export-empty-title.test.ts
+```
+
+**11. Message to partner, within the simulation**
+
+> Empty titles now export with the heading `# (untitled)`. I saw the new regression test fail first because the exporter produced `"# "`. After the fix, all seven tests passed across the empty-title, existing exporter, notebook, and CLI end-to-end suites. `git diff --check` exited 0. The implementation and regression test are uncommitted. The full suite was not run.
+
+SUMMARY: I read the test-writing rules, then simulated removing the premature edit, finding the affected suites, observing the intended failure, implementing the fallback, and checking seven tests across four suites. The reported repository changes and test results are hypothetical.

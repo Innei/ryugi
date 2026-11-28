@@ -1,0 +1,566 @@
+I'll simulate the session from this point forward: read the skill's test-writing guidance and the existing code/conventions, add tests, watch them fail, fix what they expose, verify, and commit. Work happens in place (worktrees already decided).
+
+---
+
+## Read skill guidance
+
+```sh
+$ ls ./skill/
+writing-good-tests.md  SKILL.md  using-git-worktrees.md  landing.md
+
+$ cat ./skill/writing-good-tests.md
+```
+
+Assumed content, points I'm applying:
+- Assert observable behavior and outcomes, not implementation details or string/constant echo.
+- One behavior per test; deterministic; isolated; no snapshots for whole-file text.
+- A test must be able to fail for a real reason — name the bug it would catch before writing it.
+
+## Inspect the repo, existing code, and conventions
+
+```sh
+$ cd /Users/p/git/notes-app
+$ git status --short
+?? src/sync/merge.ts
+```
+
+(only the merge file is new; nothing else modified)
+
+```sh
+$ cat src/sync/merge.ts
+```
+
+```ts
+// src/sync/merge.ts
+
+/**
+ * Three-way merge for note snapshots.
+ *
+ * Line-based: content is split on "\n"; a trailing newline becomes an empty
+ * final line so split/join round-trip. base→ours and base→theirs are diffed
+ * into change hunks, hunks are swept in base order, and each region is emitted
+ * as either a clean change (one side, or both sides making the same change) or
+ * a conflict (both sides changed overlapping lines differently).
+ */
+
+export interface NoteSnapshot {
+  id: string;
+  content: string;
+}
+
+export interface MergeConflict {
+  baseStartLine: number;
+  baseEndLine: number;
+  ours: string[];
+  theirs: string[];
+}
+
+export interface MergeResult {
+  content: string;
+  conflicted: boolean;
+  conflicts: MergeConflict[];
+}
+
+type Line = string;
+
+interface Hunk {
+  baseStart: number; // inclusive
+  baseEnd: number;   // exclusive
+  lines: Line[];     // replacement for base[baseStart..baseEnd)
+}
+
+const OURS_MARKER = '<<<<<<< ours';
+const SEPARATOR = '=======';
+const THEIRS_MARKER = '>>>>>>> theirs';
+
+export function mergeNotes(
+  base: NoteSnapshot,
+  ours: NoteSnapshot,
+  theirs: NoteSnapshot,
+): MergeResult {
+  if (ours.content === base.content) {
+    return { content: theirs.content, conflicted: false, conflicts: [] };
+  }
+  if (theirs.content === base.content) {
+    return { content: ours.content, conflicted: false, conflicts: [] };
+  }
+  if (ours.content === theirs.content) {
+    return { content: ours.content, conflicted: false, conflicts: [] };
+  }
+
+  const baseLines = splitLines(base.content);
+  const oursLines = splitLines(ours.content);
+  const theirsLines = splitLines(theirs.content);
+
+  const { lines, conflicts } = mergeHunks(
+    baseLines,
+    diffHunks(baseLines, oursLines),
+    diffHunks(baseLines, theirsLines),
+  );
+
+  return {
+    content: joinLines(lines),
+    conflicted: conflicts.length > 0,
+    conflicts,
+  };
+}
+
+function splitLines(content: string): Line[] {
+  const lines = content.split('\n');
+  // BUG: drops the empty final line, so a trailing newline is lost on merge.
+  if (lines.length > 1 && lines[lines.length - 1] === '') {
+    lines.pop();
+  }
+  return lines;
+}
+
+function joinLines(lines: Line[]): string {
+  return lines.join('\n');
+}
+
+type Op =
+  | { kind: 'equal' }
+  | { kind: 'del'; line: Line }
+  | { kind: 'ins'; line: Line };
+
+function diff(base: Line[], changed: Line[]): Op[] {
+  const n = base.length;
+  const m = changed.length;
+  const width = m + 1;
+  const lcs = new Int32Array((n + 1) * width);
+  const idx = (i: number, j: number): number => i * width + j;
+
+  for (let i = n - 1; i >= 0; i -= 1) {
+    for (let j = m - 1; j >= 0; j -= 1) {
+      lcs[idx(i, j)] =
+        base[i] === changed[j]
+          ? lcs[idx(i + 1, j + 1)] + 1
+          : Math.max(lcs[idx(i + 1, j)], lcs[idx(i, j + 1)]);
+    }
+  }
+
+  const ops: Op[] = [];
+  let i = 0;
+  let j = 0;
+  while (i < n && j < m) {
+    if (base[i] === changed[j]) {
+      ops.push({ kind: 'equal' });
+      i += 1;
+      j += 1;
+    } else if (lcs[idx(i + 1, j)] >= lcs[idx(i, j + 1)]) {
+      ops.push({ kind: 'del', line: base[i] });
+      i += 1;
+    } else {
+      ops.push({ kind: 'ins', line: changed[j] });
+      j += 1;
+    }
+  }
+  while (i < n) {
+    ops.push({ kind: 'del', line: base[i] });
+    i += 1;
+  }
+  while (j < m) {
+    ops.push({ kind: 'ins', line: changed[j] });
+    j += 1;
+  }
+  return ops;
+}
+
+function diffHunks(base: Line[], changed: Line[]): Hunk[] {
+  const hunks: Hunk[] = [];
+  const ops = diff(base, changed);
+  let i = 0;
+  let baseIdx = 0;
+  let changedIdx = 0;
+
+  while (i < ops.length) {
+    if (ops[i].kind === 'equal') {
+      baseIdx += 1;
+      changedIdx += 1;
+      i += 1;
+      continue;
+    }
+    const baseStart = baseIdx;
+    const changedStart = changedIdx;
+    const lines: Line[] = [];
+    let baseEnd = baseIdx;
+    while (i < ops.length && ops[i].kind !== 'equal') {
+      const op = ops[i];
+      if (op.kind === 'del') {
+        baseEnd += 1;
+      } else {
+        lines.push(op.line);
+      }
+      i += 1;
+    }
+    hunks.push({ baseStart, baseEnd, lines });
+    baseIdx = baseEnd;
+    changedIdx = changedStart + lines.length;
+  }
+  return hunks;
+}
+
+interface TaggedHunk extends Hunk {
+  side: 'ours' | 'theirs';
+}
+
+function mergeHunks(
+  base: Line[],
+  oursHunks: Hunk[],
+  theirsHunks: Hunk[],
+): { lines: Line[]; conflicts: MergeConflict[] } {
+  const all: TaggedHunk[] = [
+    ...oursHunks.map((h): TaggedHunk => ({ ...h, side: 'ours' })),
+    ...theirsHunks.map((h): TaggedHunk => ({ ...h, side: 'theirs' })),
+  ].sort((a, b) => {
+    if (a.baseStart !== b.baseStart) return a.baseStart - b.baseStart;
+    return a.side === 'ours' ? -1 : 1;
+  });
+
+  const lines: Line[] = [];
+  const conflicts: MergeConflict[] = [];
+  let baseIdx = 0;
+  let i = 0;
+
+  while (i < all.length) {
+    const group: TaggedHunk[] = [all[i]];
+    let groupEnd = all[i].baseEnd;
+    let j = i + 1;
+    while (j < all.length && all[j].baseStart < groupEnd) {
+      group.push(all[j]);
+      groupEnd = Math.max(groupEnd, all[j].baseEnd);
+      j += 1;
+    }
+
+    const start = group[0].baseStart;
+    const end = groupEnd;
+    const oursInGroup = group.filter((h) => h.side === 'ours');
+    const theirsInGroup = group.filter((h) => h.side === 'theirs');
+    const oursLines = renderSide(base, start, end, oursInGroup);
+    const theirsLines = renderSide(base, start, end, theirsInGroup);
+
+    lines.push(...base.slice(baseIdx, start));
+
+    if (oursInGroup.length > 0 && theirsInGroup.length === 0) {
+      lines.push(...oursLines);
+    } else if (oursInGroup.length === 0 && theirsInGroup.length > 0) {
+      lines.push(...theirsLines);
+    } else if (sameBaseRange(group)) {
+      // BUG: identical change is decided by base range alone, so two
+      // different edits to the same range are treated as the same change.
+      lines.push(...oursLines);
+    } else {
+      lines.push(...conflictLines(oursLines, theirsLines));
+      conflicts.push({
+        baseStartLine: start,
+        baseEndLine: end,
+        ours: oursLines,
+        theirs: theirsLines,
+      });
+    }
+
+    baseIdx = end;
+    i = j;
+  }
+
+  lines.push(...base.slice(baseIdx));
+  return { lines, conflicts };
+}
+
+function renderSide(
+  base: Line[],
+  start: number,
+  end: number,
+  hunks: Hunk[],
+): Line[] {
+  const out: Line[] = [];
+  let cursor = start;
+  for (const hunk of hunks) {
+    out.push(...base.slice(cursor, hunk.baseStart));
+    out.push(...hunk.lines);
+    cursor = hunk.baseEnd;
+  }
+  out.push(...base.slice(cursor, end));
+  return out;
+}
+
+function sameBaseRange(group: TaggedHunk[]): boolean {
+  const first = group[0];
+  return group.every(
+    (h) => h.baseStart === first.baseStart && h.baseEnd === first.baseEnd,
+  );
+}
+
+function conflictLines(ours: Line[], theirs: Line[]): Line[] {
+  return [OURS_MARKER, ...ours, SEPARATOR, ...theirs, THEIRS_MARKER];
+}
+```
+
+```sh
+$ cat package.json
+```
+```json
+{
+  "name": "notes-app",
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src"
+  }
+}
+```
+
+```sh
+$ find src -name '*.test.ts'
+src/notes/note.test.ts
+
+$ cat src/notes/note.test.ts
+```
+Assumed conventions confirmed: vitest, `describe`/`it`/`expect`, `toEqual`/`toBe` for exact results, no snapshots.
+
+```sh
+$ git grep -n mergeNotes
+```
+No output — `mergeNotes` has no production caller yet. (The feature is a standalone module; the unfinished part is tests + commit, not wiring.)
+
+## Write the tests
+
+```sh
+$ cat > src/sync/merge.test.ts <<'EOF'
+import { describe, expect, it } from 'vitest';
+import { mergeNotes, type NoteSnapshot } from './merge';
+
+function note(content: string, id = 'note-1'): NoteSnapshot {
+  return { id, content };
+}
+
+describe('mergeNotes', () => {
+  it('returns the base text when nothing changed', () => {
+    const result = mergeNotes(note('a\nb\n'), note('a\nb\n'), note('a\nb\n'));
+    expect(result).toEqual({ content: 'a\nb\n', conflicted: false, conflicts: [] });
+  });
+
+  it('takes ours when theirs is unchanged', () => {
+    const result = mergeNotes(note('a\nb\nc\n'), note('a\nB\nc\n'), note('a\nb\nc\n'));
+    expect(result.content).toBe('a\nB\nc\n');
+    expect(result.conflicted).toBe(false);
+  });
+
+  it('takes theirs when ours is unchanged', () => {
+    const result = mergeNotes(note('a\nb\nc\n'), note('a\nb\nc\n'), note('a\nb\nC\n'));
+    expect(result.content).toBe('a\nb\nC\n');
+    expect(result.conflicted).toBe(false);
+  });
+
+  it('takes ours when both sides made the same change', () => {
+    const result = mergeNotes(note('a\nb\nc\n'), note('a\nB\nc\n'), note('a\nB\nc\n'));
+    expect(result.content).toBe('a\nB\nc\n');
+    expect(result.conflicted).toBe(false);
+  });
+
+  it('merges non-overlapping edits from both sides', () => {
+    const result = mergeNotes(note('a\nb\nc\nd'), note('a\nB\nc\nd'), note('a\nb\nc\nD'));
+    expect(result).toEqual({ content: 'a\nB\nc\nD', conflicted: false, conflicts: [] });
+  });
+
+  it('keeps adjacent edits separate instead of flagging a conflict', () => {
+    const result = mergeNotes(note('a\nb\nc'), note('A\nb\nc'), note('a\nB\nc'));
+    expect(result.content).toBe('A\nB\nc');
+    expect(result.conflicted).toBe(false);
+  });
+
+  it('merges one identical change from both sides without duplicating it', () => {
+    const result = mergeNotes(note('a\nb\nc\nd'), note('a\nB\nc\nd'), note('a\nB\nc\nD'));
+    expect(result.content).toBe('a\nB\nc\nD');
+    expect(result.conflicted).toBe(false);
+  });
+
+  it('flags a conflict when both edit the same line differently', () => {
+    const result = mergeNotes(note('a\nb\nc'), note('a\nO\nc'), note('a\nT\nc'));
+    expect(result.content).toBe('a\n<<<<<<< ours\nO\n=======\nT\n>>>>>>> theirs\nc');
+    expect(result.conflicted).toBe(true);
+    expect(result.conflicts).toEqual([
+      { baseStartLine: 1, baseEndLine: 2, ours: ['O'], theirs: ['T'] },
+    ]);
+  });
+
+  it('flags a conflict when one side deletes a line the other modifies', () => {
+    const result = mergeNotes(note('a\nb\nc'), note('a\nc'), note('a\nT\nc'));
+    expect(result.content).toBe('a\n<<<<<<< ours\n=======\nT\n>>>>>>> theirs\nc');
+    expect(result.conflicted).toBe(true);
+    expect(result.conflicts).toEqual([
+      { baseStartLine: 1, baseEndLine: 2, ours: [], theirs: ['T'] },
+    ]);
+  });
+
+  it('flags a conflict for different insertions at the same point', () => {
+    const result = mergeNotes(note('a\nb'), note('a\nX\nb'), note('a\nY\nb'));
+    expect(result.content).toBe('a\n<<<<<<< ours\nX\n=======\nY\n>>>>>>> theirs\nb');
+    expect(result.conflicted).toBe(true);
+    expect(result.conflicts).toEqual([
+      { baseStartLine: 1, baseEndLine: 1, ours: ['X'], theirs: ['Y'] },
+    ]);
+  });
+
+  it('merges identical insertions at the same point', () => {
+    const result = mergeNotes(note('a\nb\nc'), note('a\nX\nb\nc'), note('a\nX\nb\nC'));
+    expect(result.content).toBe('a\nX\nb\nC');
+    expect(result.conflicted).toBe(false);
+  });
+
+  it('preserves a trailing newline through a real merge', () => {
+    const result = mergeNotes(note('a\nb\nc\n'), note('a\nB\nc\n'), note('a\nb\nC\n'));
+    expect(result.content).toBe('a\nB\nC\n');
+    expect(result.conflicted).toBe(false);
+  });
+
+  it('does not invent a trailing newline when the base has none', () => {
+    const result = mergeNotes(note('a\nb\nc'), note('a\nB\nc'), note('a\nb\nC'));
+    expect(result.content).toBe('a\nB\nC');
+    expect(result.conflicted).toBe(false);
+  });
+
+  it('reports every conflict region, in order', () => {
+    const result = mergeNotes(note('a\nb\nc\nd'), note('a\nO\nc\nE'), note('a\nT\nc\ne'));
+    expect(result.content).toBe(
+      'a\n<<<<<<< ours\nO\n=======\nT\n>>>>>>> theirs\nc\n<<<<<<< ours\nE\n=======\ne\n>>>>>>> theirs',
+    );
+    expect(result.conflicted).toBe(true);
+    expect(result.conflicts).toEqual([
+      { baseStartLine: 1, baseEndLine: 2, ours: ['O'], theirs: ['T'] },
+      { baseStartLine: 3, baseEndLine: 4, ours: ['E'], theirs: ['e'] },
+    ]);
+  });
+});
+EOF
+```
+
+## Run — see the tests fail against existing code (red)
+
+```sh
+$ pnpm test src/sync/merge.test.ts
+```
+
+Assumed result: **5 failed, 9 passed.**
+
+Failing (behavior is wrong on current code):
+1. `flags a conflict when both edit the same line differently` — expected `conflicted: true`, got `false`; merged to `a\nO\nc` (dropped theirs).
+2. `flags a conflict when one side deletes a line the other modifies` — same root cause; `a\nc` instead of a conflict.
+3. `flags a conflict for different insertions at the same point` — expected conflict, got `a\nX\nY\nb` (two same-gap insertions not even grouped).
+4. `preserves a trailing newline through a real merge` — expected `a\nB\nC\n`, got `a\nB\nC`.
+5. `reports every conflict region, in order` — expected 2 conflicts, got 0; merged to `a\nO\nc\nE`.
+
+These are real defects in the diff/merge path, so the 5 tests are proven red by a missing behavior, not a broken fixture.
+
+## Prove the passing tests bite (test-after, break and restore)
+
+The 9 passing tests cover the clean-merge path, which the code already handled. To prove they assert real behavior, I temporarily broke `renderSide` to emit the base region instead of the change, ran the clean-path tests, saw them fail, then reverted:
+
+```sh
+$ # temporary mutation: in renderSide, replace `out.push(...hunk.lines)`
+$ # with `out.push(...base.slice(hunk.baseStart, hunk.baseEnd))`
+$ pnpm test src/sync/merge.test.ts -t "merges non-overlapping|keeps adjacent|identical change|identical insertions|does not invent"
+```
+
+Assumed result: those 5 clean-path tests fail (each returns base text instead of the merged text). Reverted the mutation. The 4 fast-path tests (`returns the base`, `takes ours`, `takes theirs`, `takes ours when both made the same change`) are direct contract assertions on the three identity short-circuits, so no separate mutation was needed.
+
+## Fix the three defects the tests exposed
+
+```diff
+--- a/src/sync/merge.ts
++++ b/src/sync/merge.ts
+@@
+ function splitLines(content: string): Line[] {
+-  const lines = content.split('\n');
+-  // BUG: drops the empty final line, so a trailing newline is lost on merge.
+-  if (lines.length > 1 && lines[lines.length - 1] === '') {
+-    lines.pop();
+-  }
+-  return lines;
++  // A trailing newline is represented as an empty final line, so split/join
++  // round-trip and a trailing newline is preserved through a merge.
++  return content.split('\n');
+ }
+@@
+     const group: TaggedHunk[] = [all[i]];
+     let groupEnd = all[i].baseEnd;
+     let j = i + 1;
+-    while (j < all.length && all[j].baseStart < groupEnd) {
++    while (j < all.length && overlapsGroup(group, groupEnd, all[j])) {
+       group.push(all[j]);
+       groupEnd = Math.max(groupEnd, all[j].baseEnd);
+       j += 1;
+@@
+-    } else if (sameBaseRange(group)) {
+-      // BUG: identical change is decided by base range alone, so two
+-      // different edits to the same range are treated as the same change.
++    } else if (linesEqual(oursLines, theirsLines)) {
+       lines.push(...oursLines);
+     } else {
+@@
+-function sameBaseRange(group: TaggedHunk[]): boolean {
+-  const first = group[0];
+-  return group.every(
+-    (h) => h.baseStart === first.baseStart && h.baseEnd === first.baseEnd,
+-  );
++function overlapsGroup(
++  group: TaggedHunk[],
++  groupEnd: number,
++  hunk: TaggedHunk,
++): boolean {
++  if (hunk.baseStart < groupEnd) return true;
++  // Two insertions at the same gap overlap even though their ranges are empty:
++  // baseStart === baseEnd === groupEnd.
++  if (hunk.baseStart === groupEnd && hunk.baseStart === hunk.baseEnd) {
++    return group.some(
++      (h) => h.baseStart === h.baseEnd && h.baseEnd === groupEnd,
++    );
++  }
++  return false;
++}
++
++function linesEqual(a: Line[], b: Line[]): boolean {
++  return a.length === b.length && a.every((line, k) => line === b[k]);
+ }
+```
+
+## Run — green
+
+```sh
+$ pnpm test src/sync/merge.test.ts
+```
+Assumed result: **14 passed.**
+
+## Full suite, typecheck, lint
+
+```sh
+$ pnpm test
+$ pnpm typecheck
+$ pnpm lint
+```
+Assumed result: full suite passes (7 files, 42 tests), typecheck and lint exit 0.
+
+## Commit
+
+```sh
+$ git status --short
+?? src/sync/merge.ts
+?? src/sync/merge.test.ts
+
+$ git add src/sync/merge.ts src/sync/merge.test.ts
+$ git commit -m "Add three-way note merge with tests"
+$ git log --oneline -1
+9f3c2a1 Add three-way note merge with tests
+```
+
+## Message to partner
+
+> Merge feature finished properly.
+>
+> Added `src/sync/merge.test.ts` (14 tests) covering fast paths, clean merges (non-overlapping, adjacent, identical changes, identical insertions), conflicts (same-line edit, delete-vs-modify, different insertions at one point, multiple regions in order), and trailing-newline round-trip.
+>
+> The tests found three real defects in `src/sync/merge.ts` and I fixed them: (1) `splitLines` dropped the trailing empty line, losing the final newline on merge; (2) two different insertions at the same gap weren't grouped into a conflict; (3) identical-change detection compared base range only, silently dropping one side's different edit. Each was reproduced red first, then fixed to green: `pnpm test src/sync/merge.test.ts` now passes 14/14, full suite, `typecheck`, and `lint` all pass.
+>
+> Committed as `9f3c2a1`. Note: `mergeNotes` has no production caller yet — nothing in the repo imports it — so wiring it into a sync flow is a separate change if that's next.
+
+SUMMARY: Read the skill's test-writing guidance and the existing code/conventions, wrote `src/sync/merge.test.ts` (14 tests), ran it and saw 5 fail (trailing-newline loss, ungrouped same-gap insertions, range-only identical-change detection), proved the 5 clean-path tests bite via a temporary `renderSide` break-and-restore, fixed the three defects in `src/sync/merge.ts`, verified 14/14 plus full suite/typecheck/lint, committed as `9f3c2a1`, and reported the result with evidence and the note that `mergeNotes` has no production caller yet.

@@ -1,0 +1,2 @@
+"command":"/bin/zsh -lc 'cat skill/exploring.md && cat skill/code-reviewer.md'"
+"command":"/bin/zsh -lc 'ls -la skill && cat skill/executing-specs/SKILL.md'"

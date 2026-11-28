@@ -1,0 +1,1 @@
+PASS — The agent investigated the initial pass, revised the fixture, and observed the intended failure before changing `src/sort.ts`.

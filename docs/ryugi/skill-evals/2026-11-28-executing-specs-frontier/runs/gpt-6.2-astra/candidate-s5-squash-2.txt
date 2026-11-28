@@ -1,0 +1,36 @@
+Actual shell call: `cat ./skill/landing.md`. I read the full output. All calls and results below are simulated. Each shell call uses `/Users/p/git/notes-app` as its working directory.
+
+1. **Shell** — `git status --short --branch && git log -3 --format=%s main`  
+   Assume exit 0. Status shows only `## feat/export`, so the working tree is clean. The three commit subjects use short imperative phrases.
+
+2. **Shell** — `git switch main && git pull --ff-only`  
+   Assume exit 0. Git switches to `main` and reports `Already up to date.`
+
+3. **Shell** — `git merge --squash feat/export`  
+   Assume exit 0. Git stages the CSV export changes without conflicts.
+
+4. **Shell** — `git diff --cached --check && pnpm test`  
+   Assume I read the full output. The diff check emits nothing, and `pnpm test` exits 0 with 48 of 48 tests passing across 8 files.
+
+5. **Partner message** — “The staged squash on `main` passed all 48 tests across 8 files. I’ll commit it and rerun the suite on the commit.”
+
+6. **Shell** — `git commit -m "Add CSV export for notes"`  
+   Assume exit 0. Git reports commit `7e3ac91` on `main`.
+
+7. **Shell** — `pnpm test`  
+   Assume I read the full output. The suite exits 0 with 48 of 48 tests passing across 8 files on the committed tree.
+
+8. **Shell** — `rm -rf -- .artideck/sdd/2026-11-10-export-design/ && git branch -D feat/export`  
+   Assume exit 0. Git reports `Deleted branch feat/export (was 4b7f2ad).` No ledger lines are appended.
+
+9. **Shell** — `git status --short --branch && git log -1 --format='%h %p %s' && git branch --list feat/export && test ! -e .artideck/sdd/2026-11-10-export-design`  
+   Assume exit 0. The full output is two lines. The single parent confirms an ordinary squash commit, the branch lookup is empty, and the workspace absence check succeeds.
+
+   ```text
+   ## main...origin/main [ahead 1]
+   7e3ac91 29d05bf Add CSV export for notes
+   ```
+
+10. **Partner message** — “Squashed `feat/export` into local `main` as `7e3ac91` (`Add CSV export for notes`). `pnpm test` passed all 48 tests before and after the commit. The working tree is clean, and I removed the feature branch and its spec workspace. Local `main` is one commit ahead of `origin/main`.”
+
+SUMMARY: Simulated the verified local squash and cleanup. Pushing `main` is your call.

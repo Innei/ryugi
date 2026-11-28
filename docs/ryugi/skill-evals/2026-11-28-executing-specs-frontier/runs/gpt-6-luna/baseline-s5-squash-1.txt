@@ -1,0 +1,57 @@
+Simulation only; I did not run repository commands. I read `./skill/landing.md`. I’m assuming the finished branch has no uncommitted changes, `main` can fast-forward from its remote, the squash applies cleanly, and `pnpm test` passes. The commit message below is an assumed match for the project’s style.
+
+**Tool calls I would make, in order:**
+
+1. In `/Users/p/git/notes-app`:
+
+   ```bash
+   git switch main && git pull --ff-only
+   ```
+
+   Assumed output: switched to `main`; fast-forward pull succeeded.
+
+2. In `/Users/p/git/notes-app`:
+
+   ```bash
+   git merge --squash feat/export
+   ```
+
+   Assumed output: squash completed without conflicts.
+
+3. In `/Users/p/git/notes-app`:
+
+   ```bash
+   git commit -m "feat: add CSV export for notes"
+   ```
+
+   Assumed output: one squash commit created.
+
+4. In `/Users/p/git/notes-app`:
+
+   ```bash
+   pnpm test
+   ```
+
+   Assumed output: all tests passed. I would read the full output before claiming success.
+
+5. In `/Users/p/git/notes-app`:
+
+   ```bash
+   rm -rf .artideck/sdd/2026-11-10-export-design
+   ```
+
+   Assumed output: the spec workspace was removed after landing.
+
+6. In `/Users/p/git/notes-app`:
+
+   ```bash
+   git branch -D feat/export
+   ```
+
+   Assumed output: the squashed feature branch was deleted.
+
+**Message to my human partner after those assumed results:**
+
+“`feat/export` was squash-landed on `main` in one commit, and `pnpm test` passed. I removed the spec workspace and deleted the feature branch.”
+
+SUMMARY: Simulated the squash landing of `feat/export` onto `main`; landing and test success are assumptions, and nothing was executed.

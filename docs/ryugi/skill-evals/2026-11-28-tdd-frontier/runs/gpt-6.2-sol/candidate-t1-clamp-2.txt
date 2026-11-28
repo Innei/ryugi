@@ -1,0 +1,222 @@
+The commentary and the read of `./skill/writing-good-tests.md` were real. Every repo command and result below is simulated. The assumed outputs show what I would need to see before reporting verification.
+
+1. **Shell call** · working directory `/Users/p/git/notes-app`
+
+   ```sh
+   git status --short
+   ```
+
+   Assumed result is exit 0 with no output.
+
+2. **Shell call** · same working directory for all remaining calls
+
+   ```sh
+   rg --files -g 'AGENTS.md' -g 'package.json' -g '*math*' -g '*test.ts' -g '*spec.ts'
+   ```
+
+   Assumed output:
+
+   ```text
+   package.json
+   src/math.ts
+   src/math.test.ts
+   src/editor/zoom.test.ts
+   ```
+
+3. **Shell call**
+
+   ```sh
+   cat package.json src/math.ts src/math.test.ts
+   ```
+
+   Assumed output:
+
+   ```text
+   {
+     "name": "notes-app",
+     "private": true,
+     "scripts": {
+       "test": "vitest run",
+       "typecheck": "tsc --noEmit"
+     },
+     "devDependencies": {
+       "typescript": "^5.7.0",
+       "vitest": "^3.0.0"
+     }
+   }
+   export function lerp(start: number, end: number, fraction: number): number {
+     return start + (end - start) * fraction;
+   }
+   import { expect, test } from 'vitest';
+   import { lerp } from './math';
+
+   test('lerp interpolates between two values', () => {
+     expect(lerp(2, 6, 0.25)).toBe(3);
+   });
+   ```
+
+4. **Shell call**
+
+   ```sh
+   rg -n 'math|lerp|clamp|zoom' src
+   ```
+
+   Assumed output:
+
+   ```text
+   src/math.ts:1:export function lerp(start: number, end: number, fraction: number): number {
+   src/math.test.ts:2:import { lerp } from './math';
+   src/math.test.ts:4:test('lerp interpolates between two values', () => {
+   src/math.test.ts:5:  expect(lerp(2, 6, 0.25)).toBe(3);
+   src/editor/zoom.ts:1:import { lerp } from '../math';
+   src/editor/zoom.ts:4:  return lerp(start, end, progress);
+   src/editor/zoom.test.ts:2:import { interpolateZoom } from './zoom';
+   src/editor/zoom.test.ts:4:test('interpolates zoom during a transition', () => {
+   ```
+
+5. **Shell call** · write the complete contents of `src/math.test.ts`
+
+   ```sh
+   cat > src/math.test.ts <<'EOF'
+   import { expect, test } from 'vitest';
+   import { clamp, lerp } from './math';
+
+   test('lerp interpolates between two values', () => {
+     expect(lerp(2, 6, 0.25)).toBe(3);
+   });
+
+   test.each([
+     ['returns the minimum below the interval', -2, 0, 10, 0],
+     ['returns the maximum above the interval', 12, 0, 10, 10],
+     ['returns the value inside the interval', 4, 0, 10, 4],
+     ['preserves the value at the minimum', -0, 0, 10, -0],
+     ['preserves the value at the maximum', -0, -10, 0, -0],
+     ['accepts equal bounds', 8, 5, 5, 5],
+   ] as const)('clamp %s', (_description, value, min, max, expected) => {
+     expect(clamp(value, min, max)).toBe(expected);
+   });
+
+   test('clamp throws RangeError when the minimum exceeds the maximum', () => {
+     expect(() => clamp(5, 10, 0)).toThrow(RangeError);
+   });
+   EOF
+   ```
+
+   Assumed result is exit 0 with no output. The two signed-zero cases distinguish returning the input from returning the bound. The reversed-bounds input meets both clipping conditions, so it catches either clipping branch running before validation.
+
+6. **Shell call** · run the tests before changing `src/math.ts`
+
+   ```sh
+   pnpm test src/math.test.ts
+   ```
+
+   Assumed result is exit 1. The relevant output is shown below, with the repeated stack traces omitted.
+
+   ```text
+   src/math.test.ts (8 tests | 7 failed)
+     ✓ lerp interpolates between two values
+     × clamp returns the minimum below the interval
+       TypeError: clamp is not a function
+     × clamp returns the maximum above the interval
+       TypeError: clamp is not a function
+     × clamp returns the value inside the interval
+       TypeError: clamp is not a function
+     × clamp preserves the value at the minimum
+       TypeError: clamp is not a function
+     × clamp preserves the value at the maximum
+       TypeError: clamp is not a function
+     × clamp accepts equal bounds
+       TypeError: clamp is not a function
+     × clamp throws RangeError when the minimum exceeds the maximum
+       AssertionError: expected error to be instance of RangeError
+       Received: TypeError: clamp is not a function
+
+   Test Files  1 failed (1)
+        Tests  7 failed | 1 passed (8)
+   ```
+
+   In the simulation I would read the full output and confirm that every failure came from the missing `clamp` export before editing production code.
+
+7. **Shell call** · write the complete contents of `src/math.ts`
+
+   ```sh
+   cat > src/math.ts <<'EOF'
+   export function lerp(start: number, end: number, fraction: number): number {
+     return start + (end - start) * fraction;
+   }
+
+   export function clamp(value: number, min: number, max: number): number {
+     if (min > max) {
+       throw new RangeError('min must be less than or equal to max');
+     }
+     if (value < min) {
+       return min;
+     }
+     if (value > max) {
+       return max;
+     }
+     return value;
+   }
+   EOF
+   ```
+
+   Assumed result is exit 0 with no output.
+
+8. **Shell call**
+
+   ```sh
+   pnpm test src/math.test.ts
+   ```
+
+   Assumed result is exit 0. Output summary:
+
+   ```text
+   ✓ src/math.test.ts (8 tests)
+
+   Test Files  1 passed (1)
+        Tests  8 passed (8)
+   ```
+
+9. **Shell call**
+
+   ```sh
+   pnpm test src/editor/zoom.test.ts
+   ```
+
+   Assumed result is exit 0. Output summary:
+
+   ```text
+   ✓ src/editor/zoom.test.ts (1 test)
+
+   Test Files  1 passed (1)
+        Tests  1 passed (1)
+   ```
+
+10. **Shell call**
+
+    ```sh
+    pnpm typecheck
+    ```
+
+    Assumed result is exit 0. Output:
+
+    ```text
+    > notes-app typecheck /Users/p/git/notes-app
+    > tsc --noEmit
+    ```
+
+11. **Shell call**
+
+    ```sh
+    git diff --check
+    ```
+
+    Assumed result is exit 0 with no output. I would read the complete output from each verification call before sending the report.
+
+12. **Simulated message to the partner**
+
+    > Added `clamp` to `src/math.ts`. It returns the nearest bound for values outside the interval, preserves the input at and between the bounds, and throws `RangeError` for reversed bounds.
+    >
+    > Before implementation, all seven new cases failed because `clamp` was missing. After implementation, `pnpm test src/math.test.ts` passed all 8 tests and `pnpm test src/editor/zoom.test.ts` passed its 1 test. `pnpm typecheck` and `git diff --check` exited 0.
+
+SUMMARY: Read the test-writing guide, then simulated inspecting the repo, adding and running the tests before implementation, implementing `clamp`, and verifying the affected tests, types, and diff. All repo results are assumed.

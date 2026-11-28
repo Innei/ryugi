@@ -1,0 +1,75 @@
+**Simulated session.** I read `./skill/writing-good-tests.md` with `cat ./skill/writing-good-tests.md`. That was the only command actually run. The repo commands below are hypothetical, their results are assumed, and the quoted messages are what I would send to my partner.
+
+1. **Message** — “I’ll reproduce the missing item on a partial last page, then make the slice change and run the affected checks.”
+
+2. **Shell** — Inspect the working tree, implementation, callers, tests, and available checks.
+
+   ```sh
+   cd /Users/p/git/notes-app && git status --short
+   cd /Users/p/git/notes-app && cat src/paginate.ts package.json
+   cd /Users/p/git/notes-app && rg -n '\bpaginate\b'
+   cd /Users/p/git/notes-app && rg --files
+   ```
+
+   Assume the tree is clean. `paginate` is a named export with one-based pages, `start = (page - 1) * size`, and `end = Math.min(start + size, items.length)`. Checking that last detail matters because subtracting one from an *unclamped* end can still return every item on a partial page. Assume `src/notes.ts` is the only caller, `src/notes.test.ts` exercises it, tests are colocated, and there is no existing pagination test or end-to-end suite. The package defines `test` as `vitest run` and `typecheck` as `tsc --noEmit`, with no separate build script.
+
+3. **Shell** — Write the regression test. The last page has two items, so the failure will show exactly which item disappeared.
+
+   ```sh
+   cd /Users/p/git/notes-app && cat > src/paginate.test.ts <<'EOF'
+   import { expect, it } from 'vitest'
+   import { paginate } from './paginate'
+
+   it('includes the final item on a partial last page', () => {
+     expect(paginate(['a', 'b', 'c', 'd', 'e'], 2, 3)).toEqual(['d', 'e'])
+   })
+   EOF
+   ```
+
+4. **Shell** — Run the test against the original implementation and read the full output.
+
+   ```sh
+   cd /Users/p/git/notes-app && pnpm test src/paginate.test.ts
+   ```
+
+   Assume exit `1`, with one failed test, `includes the final item on a partial last page`. Its assertion expected `['d', 'e']` and received `['d']`. No other failures appeared.
+
+5. **Message** — “Reproduced it. Page 2 of five items at size 3 returned `['d']`. The regression test expected `['d', 'e']`.”
+
+6. **Shell** — Replace the single faulty expression, preserving the rest of the file.
+
+   ```sh
+   cd /Users/p/git/notes-app && python3 - <<'PY'
+   from pathlib import Path
+
+   path = Path('src/paginate.ts')
+   source = path.read_bytes()
+   old = b'items.slice(start, end - 1)'
+   assert source.count(old) == 1, 'Expected exactly one matching slice'
+   path.write_bytes(source.replace(old, b'items.slice(start, end)'))
+   PY
+   ```
+
+   Assumed complete contents of `src/paginate.ts` after the write:
+
+   ```ts
+   export function paginate<T>(items: T[], page: number, size: number): T[] {
+     const start = (page - 1) * size
+     const end = Math.min(start + size, items.length)
+     return items.slice(start, end)
+   }
+   ```
+
+7. **Shell** — Run the regression, the caller’s tests, and the typecheck. Read each command’s full output.
+
+   ```sh
+   cd /Users/p/git/notes-app && pnpm test src/paginate.test.ts
+   cd /Users/p/git/notes-app && pnpm test src/notes.test.ts
+   cd /Users/p/git/notes-app && pnpm typecheck
+   ```
+
+   Assume the regression run reports 1 passed, the caller run reports 4 passed, and `tsc --noEmit` emits no diagnostics. All three commands exit `0`.
+
+8. **Message** — “Fixed the missing final item by passing `end` directly to `slice`. The regression that previously returned `['d']` now passes with `['d', 'e']`. All four caller tests passed, and the TypeScript check exited 0.”
+
+SUMMARY: Read the test guidance, then simulated caller discovery, a failing regression, the one-line fix, and verification. The red-to-green result, four passing caller tests, and clean typecheck are assumed results. No repo files were changed or checked in this session.

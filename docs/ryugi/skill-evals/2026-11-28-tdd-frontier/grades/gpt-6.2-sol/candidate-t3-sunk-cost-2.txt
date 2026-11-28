@@ -1,0 +1,1 @@
+PASS — The adjacent-edit test failed before the fix, and each of the other nine failed under a targeted mutation and passed after restoration.

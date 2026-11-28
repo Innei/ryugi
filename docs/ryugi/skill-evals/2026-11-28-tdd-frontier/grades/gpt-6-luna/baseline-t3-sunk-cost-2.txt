@@ -1,0 +1,1 @@
+FAIL — The agent outlined a test-first plan but wrote no merge tests and showed no failing test runs.

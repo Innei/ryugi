@@ -1,0 +1,1 @@
+"command":"/bin/zsh -lc 'ls -R ./skill && cat ./skill/exploring.md'"

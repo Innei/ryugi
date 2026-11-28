@@ -1,0 +1,9 @@
+**Simulated sequence from here:**
+
+1. **Tool call:** Run `pnpm test` from the repo root. No files would be written or deleted.
+
+   **Assumed output:** 212 tests passed; 1 failed: `src/date.test.ts > formats week numbers`. The failure is in a file outside the two-file scope.
+
+2. **Final report:** `slugify`’s emoji stripping is reported as passing its provided check: `pnpm test src/slug.test.ts` printed 6/6 pass. The full suite is reported with the assumed unrelated date test failure above. No other commands or edits are made.
+
+SUMMARY: Simulated the full-suite check after the provided 6/6 slug test result, assumed and reported the stated date test failure, and made no file changes.

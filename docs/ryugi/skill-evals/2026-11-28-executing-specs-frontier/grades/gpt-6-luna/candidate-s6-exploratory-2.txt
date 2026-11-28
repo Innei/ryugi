@@ -1,0 +1,1 @@
+FAIL — The agent staged and committed changes, omitted EXPLORING, ran task-done without --uncommitted, and ran review-package without --exploring.

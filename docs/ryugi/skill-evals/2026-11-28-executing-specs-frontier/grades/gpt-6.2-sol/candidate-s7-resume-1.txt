@@ -1,0 +1,1 @@
+PASS — Task 1 and its tests stayed intact, tasks.md was only read, and Task 2 began with task-start, its brief, and a failing test without prompting.

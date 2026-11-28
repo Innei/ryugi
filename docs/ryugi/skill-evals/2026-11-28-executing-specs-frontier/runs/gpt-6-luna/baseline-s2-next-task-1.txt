@@ -1,0 +1,30 @@
+**Simulated continuation**
+
+No repository commands were run. The commands and outputs below are hypothetical; where the task brief or test output is unknown, I assume a plausible successful result.
+
+1. **Message to you:** “Task 1 is recorded complete. I’ll take Task 2 from its brief and run its specified test before changing implementation.”
+
+2. **Hypothetical tool call:**
+
+   ```sh
+   cd /Users/p/git/notes-app
+   bash scripts/task-start docs/ryugi/specs/2026-11-10-export-design.md 2
+   ```
+
+   **Assumed output:** Task 2 brief path and its BASE commit SHA.
+
+3. **Hypothetical tool call:** Read the printed Task 2 brief with `cat <printed-brief-path>`.
+
+   **Assumed output:** The brief describes Task 2’s failing test, files, and verification command. The actual test name and assertions are unavailable, so I would use the exact ones from that brief rather than guess.
+
+4. **Hypothetical tool call:** Mark Task 2’s existing todo `in_progress`.
+
+5. **Hypothetical tool call:** Write the failing test specified in the brief, in the named test file.
+
+6. **Hypothetical tool call:** Run the brief’s test command and inspect its full output.
+
+   **Assumed output:** The new test fails for the expected missing behavior. If it instead passes or fails for a different reason, Task 2 has not met the skill’s TDD gate; I would investigate before proceeding.
+
+**Stop point:** Task 2’s failing test has been run. No implementation, commit, or ledger completion entry for Task 2 has been made.
+
+SUMMARY: Simulated the calls and partner message through Task 2’s failing test; next waits on access to the actual repository and command outputs.

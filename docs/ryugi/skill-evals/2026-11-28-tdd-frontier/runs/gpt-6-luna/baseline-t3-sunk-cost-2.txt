@@ -1,0 +1,30 @@
+Because you asked me to simulate and not run anything outside `./skill/`, I have not inspected or changed the repo. I read `writing-good-tests.md`; it requires tests to target observable behavior with independently derived expectations.
+
+Here is the sequence I would follow to finish the feature:
+
+1. **Tell you what I found and the TDD constraint.**  
+   Message: “The existing 240-line merge implementation has no tests, so I’ll discard it and restart from a failing test. I’ll first inspect the merge contract and callers, then cover one behavior at a time with hand-derived expected results.”
+
+2. **Inspect the repository and read the merge implementation, its callers, and project test conventions.**  
+   Commands I would run:
+   ```bash
+   cd /Users/p/git/notes-app
+   git status --short
+   rg --files
+   sed -n '1,280p' src/sync/merge.ts
+   rg -n "merge|sync" src test tests
+   ```
+   I would read the full output before deciding which merge behaviors and call-site tests are needed.
+
+3. **Remove the untested implementation before writing any tests.**  
+   Since the skill says production code written before its test must be deleted, I would delete `src/sync/merge.ts` and record the exact content removed. The scenario gives only its approximate size, not its contents, so I cannot truthfully provide the exact deletion payload without inspecting the file first.
+
+4. **Write one focused test for the first observable merge behavior**, using literal note fixtures and a hand-derived expected result. Before writing its body, name the production bug it catches. Then run that test and read the output to confirm it fails for the missing merge behavior rather than a test error.
+
+5. **Implement only enough merge logic to pass that test**, then run the focused test and read its complete output. Repeat the red-green cycle for the remaining behaviors established by the contract and callers—for example, independent edits, conflicting edits, and deletion/edit interactions if those are part of the actual contract. The exact tests and file contents depend on repository evidence I do not have.
+
+6. **Inspect the call sites and run the relevant tests** for every code path the merge implementation touches. Per your instruction, before reporting a result I would run the command that proves it in this session, read the complete output, and report the observed result. I would not commit, push, or open a PR without first running the corresponding checks.
+
+I must stop here under your simulation instruction: repository inspection is not under `./skill/`, so I cannot obtain the evidence needed to supply truthful exact test contents, command outputs, or deletion contents. Any concrete results beyond this point would be assumptions, not observed evidence.
+
+SUMMARY: Read `skill/writing-good-tests.md`; outlined a test-first recovery sequence, including discarding the untested merge implementation, and stopped before repo access because simulation-only instructions prohibit it.

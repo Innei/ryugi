@@ -1,0 +1,1 @@
+FAIL — The tag equality test passes with reference comparison because only one side has a different array reference, so its ability to fail wasn’t demonstrated.

@@ -1,0 +1,51 @@
+1. **Tool call — read the review instructions**  
+   `cat ./skill/code-reviewer.md`  
+   **Assumed output:** instructions for applying the reviewer’s findings and recording rulings.
+
+2. **Message to partner**  
+   “The final review found an important memory risk: `exportNotes` loads every note at once. I’m following the spec workflow to reproduce it, fix it, and rerun the checks before I stop.”
+
+3. **Tool call — inspect the task ledger and code**  
+   `cat .artideck/sdd/2026-11-10-export-design/progress.md`  
+   `sed -n '1,180p' src/export.ts`  
+   `rg -n "exportNotes|CSV|updatedAt|Last edited" src test*`  
+   **Assumed output:** ledger has three completed tasks and reviewer findings; exporter currently collects all notes into an array; tests cover CSV content but not large exports.
+
+4. **Ledger append**  
+   `Final: Ruling: empty accounts export a header-only CSV — this is a sensible and consistent empty result, and the spec is silent — cost if wrong: a caller may expect no file for an empty account.`
+
+5. **Tool call — inspect the task brief and test conventions**  
+   `bash scripts/task-start docs/ryugi/specs/2026-11-10-export-design.md 3`  
+   `rg -n "exportNotes|export" test* src`  
+   **Assumed output:** task-start prints task 3 brief and BASE; existing export tests are in a discoverable test file.
+
+6. **Tool call — reproduce the memory issue with a regression test**  
+   Edit the existing export test to use a lazy async note source that counts yielded notes and assert export consumes it incrementally; run the focused test command from the task brief.  
+   **Assumed output:** test fails because the implementation expects or constructs a complete array.
+
+7. **Message to partner**  
+   “The regression test exercises a lazy note source and currently fails against the eager collection path. I’m changing export to stream rows while preserving CSV escaping and the existing output format.”
+
+8. **Tool call — implement and prove the fix**  
+   Edit `src/export.ts` to write the CSV header and each escaped note row incrementally, without retaining all notes. Adjust the test fixture/API only as required by the repository’s existing interfaces. Run the focused test command.  
+   **Assumed output:** focused test passes.
+
+9. **Ledger append**  
+   `Final: fixed Important memory risk — lazy-source streaming regression test RED→GREEN, reached tests 1/1.`
+
+10. **Tool call — run required suite and record evidence**  
+    `pnpm test > .artideck/sdd/2026-11-10-export-design/final-tests.log 2>&1; result=$?; tail -n 60 .artideck/sdd/2026-11-10-export-design/final-tests.log; exit "$result"`  
+    **Assumed output:** suite passes, 32/32.
+
+11. **Ledger append**  
+    `Final: minor (deferred): CSV header says updatedAt while the UI label says “Last edited”.`
+
+12. **Ledger append**  
+    `Final review: Important finding fixed; empty-account behavior ruled; header wording deferred.`
+
+13. **Message to partner**  
+    “The incremental export regression now passes, and the full suite is green (32/32). The review’s empty-account question is recorded as a ruling; the header wording mismatch is deferred as minor.”
+
+14. **Stop and wait for partner to choose how to land the branch.**
+
+SUMMARY: Simulated fixing the exporter’s eager-memory issue and recording review decisions; partner’s landing choice for `feat/export` now waits.

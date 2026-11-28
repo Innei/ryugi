@@ -1,0 +1,82 @@
+The only command I actually ran was `cat ./skill/writing-good-tests.md`, and I read its full output. Everything below is a simulation. I assume the exporter API, file layout, and command results shown here. No repository files were changed and no checks were actually run.
+
+1. **Inspect the pending change and find its callers and checks.** Each simulated command runs in `/Users/p/git/notes-app`.
+
+   ```sh
+   git status --short
+   git diff -- src/export.ts
+   rg -n 'exportNote|"(test|typecheck|build)"' src scripts package.json
+   ```
+
+   Assumed results from reading the output: `src/export.ts` is the only modified file. Its only change is `${note.title}` to `${note.title || "(untitled)"}`. The search finds a CLI caller, `src/cli.test.ts`, the sample script, and a `typecheck` script. There is no build script or existing exporter test.
+
+   **Message to partner:** “The empty-title fallback changes what the exporter returns. I’ll add a regression test and check that it fails with the old behavior before restoring the fallback.”
+
+2. **Write the regression test.** This is the complete new file.
+
+   ```sh
+   cat > src/export.test.ts <<'EOF'
+   import { expect, it } from "vitest";
+   import { exportNote } from "./export";
+
+   it("uses an untitled heading when exporting a note with an empty title", () => {
+     expect(exportNote({ title: "", body: "Example body." })).toBe(
+       "# (untitled)\n\nExample body.\n",
+     );
+   });
+   EOF
+   ```
+
+3. **Restore the old behavior temporarily and run the regression test.** This is the complete assumed content of `src/export.ts` during the red check.
+
+   ```sh
+   cat > src/export.ts <<'EOF'
+   export interface Note {
+     title: string;
+     body: string;
+   }
+
+   export function exportNote(note: Note): string {
+     return `# ${note.title}\n\n${note.body}\n`;
+   }
+   EOF
+   pnpm test src/export.test.ts
+   ```
+
+   Assumed result after reading the full output: exit 1. The sole failure is `uses an untitled heading when exporting a note with an empty title`. The assertion expected `# (untitled)\n\nExample body.\n` and received `# \n\nExample body.\n`.
+
+4. **Restore the pending change and run fresh verification.** This is the complete restored `src/export.ts`.
+
+   ```sh
+   cat > src/export.ts <<'EOF'
+   export interface Note {
+     title: string;
+     body: string;
+   }
+
+   export function exportNote(note: Note): string {
+     return `# ${note.title || "(untitled)"}\n\n${note.body}\n`;
+   }
+   EOF
+   pnpm test src/export.test.ts
+   pnpm test src/cli.test.ts
+   pnpm typecheck
+   node scripts/export-sample.js
+   git diff --check
+   git status --short
+   ```
+
+   Assumed results after reading each command’s full output:
+
+   | Command | Assumed result |
+   | --- | --- |
+   | `pnpm test src/export.test.ts` | Exit 0. The same regression test passed. |
+   | `pnpm test src/cli.test.ts` | Exit 0. Both CLI tests passed, including the named-title export. |
+   | `pnpm typecheck` | Exit 0 with no diagnostics. |
+   | `node scripts/export-sample.js` | Exit 0. The exported heading was `# (untitled)`. |
+   | `git diff --check` | Exit 0 with no output. |
+   | `git status --short` | Exit 0. Only ` M src/export.ts` and `?? src/export.test.ts` were listed. |
+
+   **Simulated final message to partner:** “Empty-title exports now use `# (untitled)`. The regression test failed with the old exporter because it produced a blank heading, then passed after I restored the fallback. Both CLI tests and the typecheck passed, and a fresh sample export printed `# (untitled)`. The full suite remains unrun, and the changes are uncommitted.”
+
+SUMMARY: Read the test guide, then simulated inspecting the diff, writing the regression test, observing it fail with the old behavior, restoring the fallback, and checking the exporter, CLI, typecheck, and sample. All repository results are assumed.

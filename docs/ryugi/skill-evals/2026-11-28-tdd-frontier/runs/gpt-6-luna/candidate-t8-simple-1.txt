@@ -1,0 +1,50 @@
+I read `skill/writing-good-tests.md`. From this point on, I’m simulating the work; I will not run shell commands or change repository files. The skill classifies changing a tested sort key argument as a direct wiring change, so I would change the argument directly and update any existing test that pins the old ordering.
+
+**Simulated tool call 1 — inspect the relevant files**
+
+```sh
+git status --short
+sed -n '1,220p' src/components/NotesList.tsx
+sed -n '1,240p' src/pages/NotesPage.test.tsx
+```
+
+**Assumed output:** the worktree is clean. `NotesList.tsx` contains `const sorted = sortBy(notes, 'createdAt')`. The page test renders two notes with different titles and creation dates, and expects their displayed order by creation date. I would use the test’s actual fixture shape and rendering queries when making the edit; that output was not provided, so I can’t claim an exact replacement test body.
+
+**Simulated message to you:** “The page test appears to pin the old creation-date ordering, so I’ll update that behavioral expectation to title order along with the sort key.”
+
+**Simulated tool call 2 — edit the existing page test**
+
+I would change only the ordering expectation in `src/pages/NotesPage.test.tsx` so it expects the two rendered notes in title order, using the existing fixture and query style. I can’t provide exact file contents or a truthful exact edit command because the test file’s contents were not supplied. I would not invent a test assertion disconnected from the actual test structure.
+
+**Simulated tool call 3 — edit the sort key**
+
+Exact intended change in `src/components/NotesList.tsx`:
+
+```diff
+- const sorted = sortBy(notes, 'createdAt')
++ const sorted = sortBy(notes, 'title')
+```
+
+No other production code or files would be edited.
+
+**Simulated message to you:** “The page expectation and sort key are updated. I’ll run the page test and typecheck to verify the change.”
+
+**Simulated tool call 4 — verify**
+
+```sh
+pnpm test src/pages/NotesPage.test.tsx
+```
+
+**Assumed output:** the page test passes. This is a plausible result, not evidence from an actual run.
+
+**Simulated tool call 5 — typecheck**
+
+```sh
+pnpm typecheck
+```
+
+**Assumed output:** typecheck passes. This is also a plausible result, not evidence from an actual run.
+
+I would not report the change as actually verified: your simulation-only instruction prohibits running those checks, and no output was supplied. The only concrete evidence available is the scenario’s stated code and test coverage.
+
+SUMMARY: Read the test-writing guidance, simulated inspecting the page and component, identified the test expectation and sort key edits, then described the verification commands with assumed results; no repository changes or verification runs occurred.

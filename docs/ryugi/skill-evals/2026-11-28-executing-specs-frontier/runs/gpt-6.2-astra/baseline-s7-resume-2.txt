@@ -1,0 +1,60 @@
+**Simulated transcript.** Every shell call below uses `/Users/p/git/notes-app` as its working directory. Only the skill directory was read in the real session.
+
+1. **Shell** `bash scripts/sdd-workspace docs/ryugi/specs/2026-11-10-export-design.md`  
+   Given output: `/Users/p/git/notes-app/.artideck/sdd/2026-11-10-export-design/`.
+
+2. **Shell** `cat .artideck/sdd/2026-11-10-export-design/progress.md`  
+   Read the three supplied lines. The ledger names this spec and records Task 1 through `d4e5f6a`. Task 2 is the first open task.
+
+3. **Shell** `git status --short --branch`  
+   Assumed output:
+   ```text
+   ## feat/export
+    M src/export.ts
+   ```
+
+4. **Shell** `git log -2 --oneline --decorate`  
+   Assume `HEAD` is `d4e5f6a` on `feat/export`, immediately after `a1b2c3d` on `main`.
+
+5. **Shell** `git diff HEAD -- src/export.ts`  
+   Assume the only change is a comment above the existing parser. Leave the edit in place.
+
+6. **Shell** `cat docs/ryugi/specs/2026-11-10-export-design.md .artideck/sdd/2026-11-10-export-design/tasks.md`  
+   Assume the spec contains its design inline. The existing Task 2 calls for `writeCsvRow(fields)` to serialize fields in order, quote fields containing commas, and double embedded quotes. Its test belongs in `src/export.test.ts`.
+
+7. **Partner message** “The ledger points to Task 2. I’ll leave the existing parser edit in place and run the row-writing test first.”
+
+8. **Shell** `bash scripts/task-start docs/ryugi/specs/2026-11-10-export-design.md 2`  
+   Assume it prints `.artideck/sdd/2026-11-10-export-design/briefs/task-2.md` and `BASE=d4e5f6a`.
+
+9. **Shell** `cat .artideck/sdd/2026-11-10-export-design/briefs/task-2.md`  
+   Assume the brief names `writeCsvRow`, specifies a comma and embedded quotes in the same field, and gives `pnpm test export` as Verify.
+
+10. **Todos** `{"todos":[{"content":"Task 1 — parse","status":"completed"},{"content":"Task 2 — write rows","status":"in_progress"},{"content":"Task 3 — wire the button","status":"pending"}]}`
+
+11. **Shell** `cat src/export.ts src/export.test.ts package.json`  
+    Assume the module already exports a `writeCsvRow` scaffold that joins fields with commas. The test file imports `expect` and `it` from Vitest, contains four parser tests, and ends with a newline. The package test script is `vitest run`.
+
+12. **Shell**
+    ```sh
+    cat >> src/export.test.ts <<'EOF'
+
+    it('quotes a CSV field containing a comma and doubles embedded quotes', async () => {
+      const { writeCsvRow } = await import('./export')
+      expect(writeCsvRow(['Shopping', 'Milk, "whole"'])).toBe('Shopping,"Milk, ""whole"""')
+    })
+    EOF
+    ```
+
+13. **Shell** `pnpm test export`  
+    Assume exit `1`. After reading the full simulated output, the relevant result is:
+    ```text
+    FAIL  src/export.test.ts > quotes a CSV field containing a comma and doubles embedded quotes
+    Expected: 'Shopping,"Milk, ""whole"""'
+    Received: 'Shopping,Milk, "whole"'
+
+    Test Files  1 failed (1)
+         Tests  1 failed | 4 passed (5)
+    ```
+
+SUMMARY: In simulation, Task 2 reached RED for the expected CSV escaping mismatch. No ledger line was appended. Implementation remains with the coding agent, and no partner decision is pending.

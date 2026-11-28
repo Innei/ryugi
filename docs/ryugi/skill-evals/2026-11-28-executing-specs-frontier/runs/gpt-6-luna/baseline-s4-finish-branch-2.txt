@@ -1,0 +1,24 @@
+**Simulation only:** I did not run commands or inspect files. I’m assuming the ledger contains the entries described in your situation and that no verify page was created.
+
+1. **Tool call I would make**
+
+   ```sh
+   rg -n 'Ruling:|minor \(deferred\)' .artideck/sdd/2026-11-10-export-design/progress.md
+   ```
+
+   **Assumed output:** It shows the Task 2 ruling about quoting CSV fields per RFC 4180 and the deferred minor that the CSV header says `updatedAt`. No additional entries change the finish decision.
+
+2. **Message I would send**
+
+   The branch work and verification are complete. Two recorded decisions need your judgment: the CSV quoting ruling and the deferred `updatedAt` header issue. There is no verify page to link; the inline test command is the verification evidence. The spec workspace should stay until the branch lands.
+
+3. **Stop and wait for your decision.** Since this is a branch, I would offer these landing choices:
+
+   1. **Squash into `main`** (default)
+   2. **Rebase onto `main`**
+   3. **Push and open a PR**
+   4. **Keep the branch as-is**
+
+   I would not run cleanup or landing commands before your choice. After landing, I would read `landing.md` and follow it; the workspace cleanup would happen only when its stated conditions are met.
+
+SUMMARY: Simulated the remaining ledger review and finish; the two recorded decisions and the branch landing choice now wait on you.

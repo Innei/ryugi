@@ -1,0 +1,121 @@
+Simulating from Task 2 (failing test already seen), branch `feat/export`, SPEC=`docs/ryugi/specs/2026-11-10-export-design.md`, workspace `.artideck/sdd/2026-11-10-export-design/`.
+
+**Ruling on the comma/newline gap, then ledger it.**
+
+```bash
+cat >> .artideck/sdd/2026-11-10-export-design/progress.md <<'EOF'
+
+Ruling: CSV rows quote per RFC 4180 — any field containing a comma, double quote, CR or LF is wrapped in double quotes and embedded double quotes are doubled. — The spec says only "one row per note: id, title, updatedAt" and is silent on escaping; a title containing a comma or newline would otherwise split or merge rows, breaking the one-row-per-note guarantee. — Cost if wrong: a downstream consumer doing a naive split(',') now sees surrounding quotes, but such a consumer was already broken by titles containing commas; RFC 4180 is the boring, widely-parsed default.
+EOF
+```
+*Assumed output: append succeeds, exit 0.*
+
+**Extend the test** with the three cases the ruling names (comma, newline, embedded quote). Final `src/export/csv.test.ts`:
+
+```ts
+import { describe, expect, it } from 'vitest';
+import { toRow, type ExportNote } from './csv';
+
+const base = {
+  id: '1',
+  title: 'Hello',
+  updatedAt: '2026-11-10T00:00:00.000Z',
+};
+
+function note(over: Partial<ExportNote>): ExportNote {
+  return { ...base, ...over };
+}
+
+describe('CSV row', () => {
+  it('writes one row per note: id, title, updatedAt', () => {
+    expect(toRow(note({}))).toBe('1,Hello,2026-11-10T00:00:00.000Z');
+  });
+
+  it('quotes a title containing a comma so the row stays one row', () => {
+    expect(toRow(note({ title: 'Buy milk, eggs' }))).toBe(
+      '1,"Buy milk, eggs",2026-11-10T00:00:00.000Z'
+    );
+  });
+
+  it('quotes a title containing a newline so it stays on one row', () => {
+    expect(toRow(note({ title: 'Line one\nLine two' }))).toBe(
+      '1,"Line one\nLine two",2026-11-10T00:00:00.000Z'
+    );
+  });
+
+  it('doubles embedded double quotes when quoting', () => {
+    expect(toRow(note({ title: 'He said "hi"' }))).toBe(
+      '1,"He said ""hi""",2026-11-10T00:00:00.000Z'
+    );
+  });
+});
+```
+
+**Confirm red** (module still missing, edge cases present):
+
+```bash
+pnpm test src/export/csv.test.ts
+```
+*Assumed output: 4 tests failed — `Cannot find module './csv' or its corresponding type declarations`.*
+
+**Implement** `src/export/csv.ts`:
+
+```ts
+export type ExportNote = {
+  id: string;
+  title: string;
+  updatedAt: string;
+};
+
+const needsQuoting = /[",\r\n]/;
+
+function quoteField(value: string): string {
+  if (needsQuoting.test(value)) {
+    return `"${value.replace(/"/g, '""')}"`;
+  }
+  return value;
+}
+
+export function toRow(note: ExportNote): string {
+  return [note.id, note.title, note.updatedAt].map(quoteField).join(',');
+}
+```
+
+**Green:**
+
+```bash
+pnpm test src/export/csv.test.ts
+```
+*Assumed output: 4 passed.*
+
+**Verify (whole task, full suite):**
+
+```bash
+pnpm test
+```
+*Assumed output: all suites green, 12 passed.*
+
+**Commit:**
+
+```bash
+git add src/export/csv.ts src/export/csv.test.ts
+git commit -m "feat(export): write one CSV row per note with RFC 4180 quoting"
+```
+*Assumed output: commit `a1b2c3d` created.*
+
+**Close** (BASE `c3d4e5f` from the task-start brief, assumed):
+
+```bash
+bash scripts/task-done docs/ryugi/specs/2026-11-10-export-design.md 2 c3d4e5f -- pnpm test
+```
+*Assumed output: task-done re-runs `pnpm test` (12 passed) and appends to the ledger:*
+
+```
+Task 2: complete (commits c3d4e5..a1b2c3, tests: pnpm test → 12 passed)
+```
+
+Mark todo 2 complete; todo 3 becomes next.
+
+**To partner:** Task 2 closed — rows now quote per RFC 4180 so a title with a comma/newline/quote can't break one-row-per-note (ledgered as a ruling, since the spec is silent). Taking Task 3 next; nothing needs your input.
+
+SUMMARY: Closed Task 2 ("Write rows") on branch feat/export under TDD — added RFC 4180 quoting for comma/newline/quote in titles (ledgered ruling), proved 4 tests red→green, full `pnpm test` green (12 passed, assumed), committed `a1b2c3d`; Task 3 is next and waits on no one.

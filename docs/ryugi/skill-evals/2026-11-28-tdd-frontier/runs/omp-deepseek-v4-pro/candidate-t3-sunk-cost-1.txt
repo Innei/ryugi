@@ -1,0 +1,429 @@
+I read the skill files first (the one real action allowed): `./skill/` lists `SKILL.md` and `writing-good-tests.md`. The guidance I'll apply: hand-derived literal `want`s, complete fixtures, and a mutation check to prove tests aren't tautological.
+
+Here is the full simulated session.
+
+---
+
+## 1. Inspect repo state
+
+```bash
+cd /Users/p/git/notes-app && git status --short --branch && git log --oneline -3
+```
+
+**Assumed output:**
+```
+## main...origin/main
+?? src/sync/merge.ts
+?? src/sync/merge.manual.ts
+```
+
+Nothing committed, two untracked files: the feature and a throwaway script I used for the earlier manual check.
+
+## 2. Find test convention and the Note type
+
+```bash
+ls src && echo --- && ls src/sync && echo --- && grep -rn "export interface Note" src
+```
+
+**Assumed output:**
+```
+types.ts   notes.ts   notes.test.ts   sync/
+merge.ts   merge.manual.ts
+src/types.ts:3:export interface Note {
+```
+
+Tests are colocated `*.test.ts` next to source; `Note` lives in `src/types.ts`.
+
+## 3. Read package scripts
+
+```bash
+cat package.json
+```
+
+**Assumed output (scripts):**
+```json
+"scripts": {
+  "test": "vitest run",
+  "typecheck": "tsc --noEmit"
+}
+```
+
+## 4. Read the Note type
+
+```bash
+cat src/types.ts
+```
+
+**Assumed content:**
+```typescript
+export interface Note {
+  id: string;
+  title: string;
+  body: string;
+  tags: string[];
+  updatedAt: string; // ISO-8601
+  deleted: boolean;
+}
+```
+
+## 5. Read the merge implementation
+
+```bash
+cat src/sync/merge.ts
+```
+
+**Assumed content (240 lines incl. doc comments; operative logic):**
+```typescript
+import type { Note } from '../types';
+
+export type ConflictField = 'title' | 'body' | 'tags' | 'deleted';
+
+export interface Conflict {
+  field: ConflictField;
+  base: unknown;
+  ours: unknown;
+  theirs: unknown;
+}
+
+export type MergeResult =
+  | { ok: true; note: Note }
+  | { ok: false; conflicts: Conflict[] };
+
+const FIELDS: readonly ConflictField[] = ['title', 'body', 'tags', 'deleted'];
+
+function deepEqual(a: unknown, b: unknown): boolean {
+  if (a === b) return true;
+  if (Array.isArray(a) && Array.isArray(b)) {
+    return a.length === b.length && a.every((v, i) => deepEqual(v, b[i]));
+  }
+  if (a && b && typeof a === 'object' && typeof b === 'object') {
+    const ka = Object.keys(a);
+    const kb = Object.keys(b);
+    return (
+      ka.length === kb.length &&
+      ka.every((k) => deepEqual((a as Record<string, unknown>)[k], (b as Record<string, unknown>)[k]))
+    );
+  }
+  return false;
+}
+
+function setField(note: Note, field: ConflictField, value: unknown): void {
+  (note as unknown as Record<ConflictField, unknown>)[field] = value;
+}
+
+function edited(base: Note, side: Note): boolean {
+  return (
+    !deepEqual(side.title, base.title) ||
+    !deepEqual(side.body, base.body) ||
+    !deepEqual(side.tags, base.tags)
+  );
+}
+
+function newer(a: string, b: string): string {
+  return a > b ? a : b;
+}
+
+export function mergeNotes(base: Note | null, ours: Note, theirs: Note): MergeResult {
+  if (base === null) {
+    if (deepEqual(ours, theirs)) return { ok: true, note: ours };
+
+    const conflicts: Conflict[] = [];
+    for (const field of FIELDS) {
+      if (!deepEqual(ours[field], theirs[field])) {
+        conflicts.push({ field, base: null, ours: ours[field], theirs: theirs[field] });
+      }
+    }
+    return { ok: false, conflicts };
+  }
+
+  const note: Note = { ...base };
+  const conflicts: Conflict[] = [];
+
+  for (const field of FIELDS) {
+    const oursChanged = !deepEqual(ours[field], base[field]);
+    const theirsChanged = !deepEqual(theirs[field], base[field]);
+
+    if (!theirsChanged) {
+      setField(note, field, ours[field]); // only ours changed
+    } else if (!oursChanged) {
+      setField(note, field, theirs[field]); // only theirs changed
+    } else if (ours[field] === theirs[field]) {
+      setField(note, field, ours[field]); // both changed the same way
+    } else {
+      conflicts.push({ field, base: base[field], ours: ours[field], theirs: theirs[field] });
+    }
+  }
+
+  // Deleting while the other side is still editing cannot be reconciled.
+  const oursDeletes = ours.deleted && !base.deleted;
+  const theirsDeletes = theirs.deleted && !base.deleted;
+  if (oursDeletes && edited(base, theirs)) {
+    conflicts.push({ field: 'deleted', base: base.deleted, ours: ours.deleted, theirs: theirs.deleted });
+  }
+  if (theirsDeletes && edited(base, ours)) {
+    conflicts.push({ field: 'deleted', base: base.deleted, ours: ours.deleted, theirs: theirs.deleted });
+  }
+
+  if (conflicts.length > 0) return { ok: false, conflicts };
+
+  note.updatedAt = newer(ours.updatedAt, theirs.updatedAt);
+  return { ok: true, note };
+}
+```
+
+I spot the bug while reading: the "both changed the same way" branch uses `ours[field] === theirs[field]` — reference equality. For `tags` (an array) two structurally-equal arrays are different references, so identical tag edits will spuriously conflict. I'll let the test confirm rather than "fix as I read."
+
+## 6. Check existing test style
+
+```bash
+sed -n '1,30p' src/notes.test.ts
+```
+
+**Assumed output:** `import { describe, it, expect } from 'vitest';` with colocated `.test.ts`. Confirms convention.
+
+## 7. Decision — write tests
+
+240 lines of branch/boundary logic where a wrong answer looks plausible; I can name specific bugs a test would catch (wrong resolution direction, spurious conflict, silent delete-vs-edit). So: tests first, against the contract.
+
+Write `src/sync/merge.test.ts`:
+
+```typescript
+import { describe, it, expect } from 'vitest';
+
+import type { Note } from '../types';
+import { mergeNotes } from './merge';
+
+function note(over: Partial<Note> & Pick<Note, 'id'>): Note {
+  return {
+    title: 'Title',
+    body: 'Body',
+    tags: ['inbox'],
+    updatedAt: '2026-01-01T00:00:00.000Z',
+    deleted: false,
+    ...over,
+  };
+}
+
+describe('mergeNotes', () => {
+  it('returns the base note when neither side changed anything', () => {
+    const b = note({ id: 'n1' });
+    expect(mergeNotes(b, note({ id: 'n1' }), note({ id: 'n1' }))).toEqual({ ok: true, note: b });
+  });
+
+  it('takes ours when only ours changed', () => {
+    const b = note({ id: 'n1' });
+    const result = mergeNotes(b, note({ id: 'n1', title: 'Mine' }), note({ id: 'n1' }));
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.note.title).toBe('Mine');
+  });
+
+  it('takes theirs when only theirs changed', () => {
+    const b = note({ id: 'n1' });
+    const result = mergeNotes(b, note({ id: 'n1' }), note({ id: 'n1', body: 'Their body' }));
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.note.body).toBe('Their body');
+  });
+
+  it('merges different fields changed on each side', () => {
+    const b = note({ id: 'n1' });
+    const result = mergeNotes(
+      b,
+      note({ id: 'n1', title: 'Mine' }),
+      note({ id: 'n1', body: 'Their body' }),
+    );
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.note.title).toBe('Mine');
+      expect(result.note.body).toBe('Their body');
+    }
+  });
+
+  it('merges without conflict when both sides changed the same field to the same value', () => {
+    const b = note({ id: 'n1' });
+    const result = mergeNotes(
+      b,
+      note({ id: 'n1', title: 'Agreed' }),
+      note({ id: 'n1', title: 'Agreed' }),
+    );
+    expect(result).toEqual({ ok: true, note: { ...b, title: 'Agreed' } });
+  });
+
+  it('conflicts when both sides changed the same field differently', () => {
+    const b = note({ id: 'n1' });
+    const result = mergeNotes(
+      b,
+      note({ id: 'n1', title: 'Mine' }),
+      note({ id: 'n1', title: 'Theirs' }),
+    );
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.conflicts).toEqual([
+        { field: 'title', base: 'Title', ours: 'Mine', theirs: 'Theirs' },
+      ]);
+    }
+  });
+
+  it('merges identical tag edits made on both sides (arrays compare by value)', () => {
+    const b = note({ id: 'n1', tags: ['inbox'] });
+    const result = mergeNotes(
+      b,
+      note({ id: 'n1', tags: ['inbox', 'work'] }),
+      note({ id: 'n1', tags: ['inbox', 'work'] }),
+    );
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.note.tags).toEqual(['inbox', 'work']);
+  });
+
+  it('applies a deletion when the other side made no change', () => {
+    const b = note({ id: 'n1' });
+    const result = mergeNotes(b, note({ id: 'n1', deleted: true }), note({ id: 'n1' }));
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.note.deleted).toBe(true);
+  });
+
+  it('merges when both sides delete', () => {
+    const b = note({ id: 'n1' });
+    const result = mergeNotes(
+      b,
+      note({ id: 'n1', deleted: true }),
+      note({ id: 'n1', deleted: true }),
+    );
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.note.deleted).toBe(true);
+  });
+
+  it('conflicts when one side deletes while the other edits', () => {
+    const b = note({ id: 'n1' });
+    const result = mergeNotes(
+      b,
+      note({ id: 'n1', deleted: true }),
+      note({ id: 'n1', body: 'Edited elsewhere' }),
+    );
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.conflicts.map((c) => c.field)).toContain('deleted');
+  });
+
+  it('merges identical concurrent creates (no base)', () => {
+    const fresh = note({ id: 'n2' });
+    expect(mergeNotes(null, fresh, { ...fresh })).toEqual({ ok: true, note: fresh });
+  });
+
+  it('conflicts on concurrent creates that differ (no base)', () => {
+    const result = mergeNotes(
+      null,
+      note({ id: 'n2', title: 'Mine' }),
+      note({ id: 'n2', title: 'Theirs' }),
+    );
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.conflicts.some((c) => c.field === 'title')).toBe(true);
+  });
+
+  it('keeps the newer updatedAt', () => {
+    const b = note({ id: 'n1', updatedAt: '2026-01-01T00:00:00.000Z' });
+    const result = mergeNotes(
+      b,
+      note({ id: 'n1', updatedAt: '2026-02-01T00:00:00.000Z' }),
+      note({ id: 'n1', updatedAt: '2026-03-01T00:00:00.000Z' }),
+    );
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.note.updatedAt).toBe('2026-03-01T00:00:00.000Z');
+  });
+});
+```
+
+## 8. Run the new tests — expect red on the array case
+
+```bash
+pnpm test src/sync/merge.test.ts
+```
+
+**Assumed output:** 12 passed, 1 failed:
+
+```
+FAIL  src/sync/merge.test.ts > mergeNotes > merges identical tag edits made on both sides (arrays compare by value)
+AssertionError: expected false to be true
+```
+
+The tags test is the repro: identical tag edits on both sides produce a conflict, because `ours[field] === theirs[field]` is false for two distinct array instances. This test was never going to pass on the current code — a real red, not a fixture typo.
+
+## 9. Fix the bug
+
+```diff
+-    } else if (ours[field] === theirs[field]) {
++    } else if (deepEqual(ours[field], theirs[field])) {
+```
+
+## 10. Rerun the single file
+
+```bash
+pnpm test src/sync/merge.test.ts
+```
+
+**Assumed output:** `13 passed`.
+
+The tags test went red→green; the fix is proven by that test.
+
+## 11. Mutation check — prove the *other* tests are meaningful
+
+The remaining 12 tests passed on first run only because the code already implements those behaviors. A test only seen passing proves nothing, so I break behavior on purpose, watch the right test fail, and restore.
+
+**Mutation A — swap the "only ours" resolution:**
+```diff
+-      setField(note, field, ours[field]); // only ours changed
++      setField(note, field, theirs[field]); // INJECTED
+```
+`pnpm test src/sync/merge.test.ts` → **assumed** `2 failed`: "takes ours when only ours changed" and "merges different fields changed on each side". Restore → green.
+
+**Mutation B — drop the delete-vs-edit conflict rule** (remove both `if (…Deletes && edited(…))` blocks):
+`pnpm test src/sync/merge.test.ts` → **assumed** `1 failed`: "conflicts when one side deletes while the other edits". Restore → green.
+
+**Mutation C — remove the identical-concurrent-create short-circuit:**
+```diff
+-    if (deepEqual(ours, theirs)) return { ok: true, note: ours };
++    // INJECTED: fall through
+```
+`pnpm test src/sync/merge.test.ts` → **assumed** `1 failed`: "merges identical concurrent creates (no base)". Restore → green.
+
+Each branch family now has a named test that fails under the realistic mutation guarding it.
+
+## 12. Delete the throwaway script
+
+```bash
+grep -rn "merge.manual" src || true
+rm src/sync/merge.manual.ts
+```
+
+**Assumed output:** `grep` finds no imports of `merge.manual` (it was only run by hand), then `rm` succeeds.
+
+## 13. Typecheck and full suite
+
+```bash
+pnpm typecheck
+pnpm test
+```
+
+**Assumed output:** typecheck clean; `pnpm test` reports all suites green (no pre-existing failures present).
+
+## 14. Commit
+
+```bash
+git add src/sync/merge.ts src/sync/merge.test.ts
+git status --short
+git commit -m "Add three-way note merge with tests"
+```
+
+**Assumed output:** status shows exactly `A src/sync/merge.ts` and `A src/sync/merge.test.ts`, nothing else; commit created on `main` (assumed hash `c1a2b3d`).
+
+---
+
+**Message to my partner:**
+
+Finished the merge feature. `src/sync/merge.ts` now has 13 tests in `src/sync/merge.test.ts`.
+
+- Found and fixed one real bug: the "both sides changed the same way" check used `===`, so identical tag edits (arrays) on both sides produced a spurious conflict. The failing test `merges identical tag edits made on both sides` was the repro; the fix is `deepEqual(ours[field], theirs[field])`.
+- Proven the rest aren't tautological by mutation: swapping resolution direction, dropping the delete-vs-edit rule, and removing the identical-concurrent-create short-circuit each made their named test fail before I restored them.
+- `pnpm typecheck` and the full `pnpm test` suite are green.
+- Deleted the throwaway `merge.manual.ts`.
+- Committed as `c1a2b3d` (assumed) on `main`. Not pushed — you didn't ask me to push, so I left that to you.
+
+SUMMARY: Read the TDD skill and writing-good-tests.md, then (simulated) inspected the repo, read merge.ts and the Note type, wrote 13 tests in src/sync/merge.test.ts, ran them to get one real red (tags array reference-equality → spurious conflict), fixed it with deepEqual, re-ran to green, proved the other tests meaningful via three mutation checks, deleted the throwaway script, ran typecheck + full suite (green), and committed; reporting the bug found, the fix, and the commit.

@@ -1,0 +1,1 @@
+PASS — The full suite exercised `slugify` through note creation, and the report named the failure in `src/date.test.ts`, “formats week numbers.”

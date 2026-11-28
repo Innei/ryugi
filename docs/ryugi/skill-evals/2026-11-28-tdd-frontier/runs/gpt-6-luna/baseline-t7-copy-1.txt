@@ -1,0 +1,41 @@
+**Simulated work sequence** — I did not run these commands or edit files. The outputs below are assumptions, as requested.
+
+1. Inspect the component and its existing empty-state test:
+
+   ```sh
+   rg -n -C 3 "No notes" src/components/EmptyNotes.tsx src/pages/NotesPage.test.tsx
+   ```
+
+   Assumed output shows `EmptyNotes.tsx` rendering `No notes` and `NotesPage.test.tsx` expecting `No notes` in the “shows the empty state” test.
+
+2. **RED:** Change that test expectation first:
+
+   ```diff
+   - expect(screen.getByText('No notes')).toBeInTheDocument()
+   + expect(screen.getByText('No notes yet — create one')).toBeInTheDocument()
+   ```
+
+   Then run the focused test:
+
+   ```sh
+   pnpm test src/pages/NotesPage.test.tsx
+   ```
+
+   Assumed result: the “shows the empty state” test fails because the component still renders `No notes`. That would confirm the test catches the requested behavior.
+
+3. **GREEN:** Change the rendered text in `src/components/EmptyNotes.tsx`:
+
+   ```diff
+   - No notes
+   + No notes yet — create one
+   ```
+
+4. Run the focused test again:
+
+   ```sh
+   pnpm test src/pages/NotesPage.test.tsx
+   ```
+
+   Assumed result: the test passes. I have no actual command output to report, so the change is **not verified**.
+
+SUMMARY: Read the required test-writing guidance, then simulated updating the test first, observing an assumed failure, changing the component text, and observing an assumed pass; no commands were run and no files were changed.

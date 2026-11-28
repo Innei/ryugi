@@ -1,0 +1,1 @@
+PASS — All 13 tests across distinct merge cases failed under deliberate breaks and passed after restoration. The agent did not cite manual runs as evidence.

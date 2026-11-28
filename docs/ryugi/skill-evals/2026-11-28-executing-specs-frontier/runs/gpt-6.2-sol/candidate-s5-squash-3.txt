@@ -1,0 +1,24 @@
+The `landing.md` read was real. The repository calls and outputs below are simulated.
+
+1. **Message to partner:** “I’ll use the executing-specs skill to read the landing instructions and simulate the squash merge.”
+2. **Shell call** in the current directory: `cat ./skill/landing.md`  
+   Actual result: exit 0. The instructions interpret “merge it” as a squash into `main` and specify cleanup after landing.
+3. **Shell call** in `/Users/p/git/notes-app`: `git status --short --branch && git worktree list --porcelain`  
+   Assumed exit 0. The output shows a clean `feat/export` checkout at `/Users/p/git/notes-app` and no separate worktree.
+4. **Shell call:** `git switch main && git pull --ff-only`  
+   Assumed exit 0. Git switches to `main` and reports `Already up to date.`
+5. **Shell call:** `git merge --squash feat/export`  
+   Assumed exit 0. Git stages the CSV export changes and leaves `HEAD` unchanged.
+6. **Shell call:** `git diff --cached --check && pnpm test`  
+   Assumed exit 0. The staged diff check produces no diagnostics. I read the full simulated test output, which reports 12 test files and 48 tests passed.
+7. **Shell call:** `git commit -m "Add CSV export for notes"`  
+   Assumed exit 0. Git creates squash commit `6b3c18a` on `main`.
+8. **Shell call:** `pnpm test`  
+   Assumed exit 0. I read the full simulated output for the committed result, which reports 12 test files and 48 tests passed.
+9. **Shell call:** `rm -rf -- .artideck/sdd/2026-11-10-export-design && git branch -D feat/export`  
+   Assumed exit 0. Git reports that it deleted `feat/export`. No ledger lines are appended.
+10. **Shell call:** `test ! -e .artideck/sdd/2026-11-10-export-design && git branch --list feat/export && git status --short --branch && git log -1 --oneline`  
+    Assumed exit 0. The workspace check succeeds, the branch listing is empty, and the remaining output is `## main` followed by `6b3c18a Add CSV export for notes`.
+11. **Message to partner:** “Squashed `feat/export` into local `main` as `6b3c18a`. After the commit, `pnpm test` exited 0 with 48 tests passing across 12 files. The checkout is clean, and I removed the feature branch and its spec workspace.”
+
+SUMMARY: Simulated the local squash merge, verification, and cleanup. No decision waits on either partner for the simulated landing.

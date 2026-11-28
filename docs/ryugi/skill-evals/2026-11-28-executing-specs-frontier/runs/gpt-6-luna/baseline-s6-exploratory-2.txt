@@ -1,0 +1,72 @@
+Simulated only. I read `./skill/exploring.md`, `./skill/code-reviewer.md`, and `./skill/landing.md`; I did not run repository commands or change files. The spec contents and command outputs were not provided, so the implementation details and successful results below are assumptions, not verified facts.
+
+1. **Start message to partner:** “I’ll read the executing-specs support files under `./skill/`, then simulate the required work sequence without running repository commands.” *(Sent.)*
+
+2. **Read support files.** The actual reads confirmed that exploratory work stays uncommitted, uses `EXPLORING`, closes tasks with `--uncommitted`, and gets a read-only final review package.
+
+3. **Read the spec and inspect the repository state.** I would run:
+   ```bash
+   cat docs/ryugi/specs/2026-11-10-export-design.md
+   git status --short
+   ```
+   **Assumed output:** the spec describes CSV export of notes; the checkout is on `main` with no pre-existing changes affecting `src/export.ts` or `src/export.test.ts`. I cannot safely invent the spec’s exact columns or behavior, so the task brief and implementation would follow the actual spec contents.
+
+4. **Create the one-task slice and exploratory marker.** I would write `.artideck/sdd/2026-11-10-export-design/tasks.md` with:
+   ```markdown
+   ## Task 1: Export notes as CSV
+
+   **Goal:** Implement the CSV export behavior required by `docs/ryugi/specs/2026-11-10-export-design.md`.
+   **Files:** `src/export.ts`, `src/export.test.ts`
+   **Interfaces:** Produces: the spec-defined CSV export function. Consumes: none.
+   **Failing test:** Add a test for the spec-defined export output and CSV escaping; run it before implementation and confirm it fails for the missing behavior.
+   **Verify:** `pnpm test`
+   **Expected:** The complete test suite passes, including the CSV export tests.
+
+   ## Review Focus
+
+   Verify spec-defined column ordering, escaping of quotes/commas/newlines, empty notes, and any required Unicode or line-ending behavior not covered by the tests.
+   ```
+   I’d also create `.artideck/sdd/2026-11-10-export-design/EXPLORING`:
+   ```text
+   Exploratory: may be thrown away.
+   src/export.ts
+   src/export.test.ts
+   ```
+   **Ledger line to append:**
+   ```text
+   Slicing: 1 tasks — Implement the CSV export and its behavior tests together in one independently verifiable task.
+   ```
+
+5. **Take the task.** I would run:
+   ```bash
+   bash scripts/task-start docs/ryugi/specs/2026-11-10-export-design.md 1
+   ```
+   **Assumed output:** a brief path under `.artideck/sdd/2026-11-10-export-design/` and the current `main` BASE SHA. I’d read the printed brief before editing:
+   ```bash
+   cat <printed-brief-path>
+   ```
+
+6. **Write the test first and observe failure.** Following the brief’s exact test name and expected behavior, I’d edit `src/export.test.ts`, then run the brief’s focused test command. **Assumed result:** it fails because the export implementation is missing. No exact test name or output can be claimed without the brief and command output.
+
+7. **Implement the export.** I’d edit `src/export.ts` to satisfy the spec and the failing test. Then I’d run the brief’s Verify command:
+   ```bash
+   pnpm test
+   ```
+   **Assumed result:** all tests pass. This is not evidence of an actual passing run.
+
+8. **Close the task without committing.** I would run:
+   ```bash
+   bash scripts/task-done docs/ryugi/specs/2026-11-10-export-design.md 1 <BASE> --uncommitted -- pnpm test
+   ```
+   **Assumed output:** the test command passes and the task completion line is appended. Exact ledger line, only if that assumed result occurred:
+   ```text
+   Task 1: complete (uncommitted, tests: pnpm test → passed)
+   ```
+
+9. **Produce the review package.** I would run:
+   ```bash
+   bash scripts/review-package docs/ryugi/specs/2026-11-10-export-design.md --exploring
+   ```
+   **Assumed output:** a review-package path. The skill requires a fresh-context review using that package, the spec, the ledger, and the verbatim Review Focus; the review prompt would be the contents of `./skill/code-reviewer.md` with those paths and Review Focus filled in. Any findings and their handling depend on the reviewer’s actual report, which was not supplied. As requested, this simulation stops at producing the review package.
+
+**SUMMARY:** Simulated the one-task exploratory CSV export workflow through review-package production; no repository commands were run and no files were changed. The next actual steps would depend on the spec, task brief, test outputs, and review report. The work would remain uncommitted; your partner would decide whether to keep or discard the listed paths.

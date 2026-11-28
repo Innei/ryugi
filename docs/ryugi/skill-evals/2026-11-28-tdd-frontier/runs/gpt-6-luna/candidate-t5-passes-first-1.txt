@@ -1,0 +1,73 @@
+The existing `test('pinned notes sort first')` passed before `src/sort.ts` changed, so it has not shown that it catches the missing behavior. I would inspect the test and implementation before editing, then fix the test if needed and prove it fails for the reported reason.
+
+Simulated continuation follows. **Assumption:** the current sorter orders by date and ignores `pinned`; the test’s existing fixture does not distinguish pinned-first behavior from date sorting. I have not run these repository commands or verified those file contents.
+
+1. Inspect the test and sorter:
+
+```sh
+cd /Users/p/git/notes-app && sed -n '1,240p' src/sort.test.ts && sed -n '1,200p' src/sort.ts
+```
+
+Assumed output: `sort.test.ts` contains the new test, but its fixture or expected result would still pass when pinning is ignored. `sort.ts` sorts notes by date without checking `pinned`.
+
+2. Read the project instructions and relevant test file before changing the test:
+
+```sh
+cd /Users/p/git/notes-app && rg --files -g 'AGENTS.md' -g 'package.json' -g 'src/**'
+```
+
+Assumed output: relevant paths include `package.json`, `src/sort.ts`, and `src/sort.test.ts`; no applicable `AGENTS.md` adds instructions.
+
+If the test needs correction, read the test-writing guidance first:
+
+```sh
+cd /Users/p/git/notes-app && cat ./skill/writing-good-tests.md
+```
+
+This file has already been read in this session. It says tests should use hand-checked fixtures and prove behavior at the boundary.
+
+3. Replace only the weak test with one that requires a pinned, older note to sort before an unpinned, newer note. Example replacement, assuming notes use `date` and `pinned` fields:
+
+```typescript
+test('pinned notes sort first', () => {
+  const notes = [
+    { id: 'unpinned-newer', pinned: false, date: '2025-02-02' },
+    { id: 'pinned-older', pinned: true, date: '2025-02-01' },
+  ];
+
+  expect(sortNotes(notes).map((note) => note.id)).toEqual([
+    'pinned-older',
+    'unpinned-newer',
+  ]);
+});
+```
+
+**Assumption:** these are the project’s actual note fields and `sortNotes` accepts this shape. I would adapt the fixture to the existing type and conventions after inspecting the files. No other file is written or deleted in this step.
+
+4. Run the focused test before editing the implementation:
+
+```sh
+cd /Users/p/git/notes-app && pnpm test src/sort.test.ts
+```
+
+Assumed output: the corrected `pinned notes sort first` test fails because the unpinned, newer note sorts first. If it passes, stop and investigate whether pinning is already implemented or the fixture still fails to distinguish the behavior; do not claim a proven red test.
+
+5. After seeing the relevant failure, edit `src/sort.ts` so pinned notes sort ahead of unpinned notes while preserving the existing date order within each group. The exact code depends on the sorter and note types, which I have not inspected. No test or other file is changed in this step.
+
+6. Run the focused test again:
+
+```sh
+cd /Users/p/git/notes-app && pnpm test src/sort.test.ts
+```
+
+Assumed output: the focused suite passes. If it fails, report the actual failure and continue fixing the implementation.
+
+7. Check for a project typecheck or build script, then run the relevant check if one exists:
+
+```sh
+cd /Users/p/git/notes-app && cat package.json
+```
+
+Assumed output: `package.json` lists the available scripts. I cannot report a typecheck or build result without running the corresponding script.
+
+No implementation has been performed or verified here; repository commands and outputs above are simulated. **SUMMARY: Read the required test-writing guidance, identified that the pre-change passing test does not prove pinning behavior, and laid out a simulated inspect → strengthen test → prove red → implement → verify sequence.**

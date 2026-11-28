@@ -1,0 +1,1 @@
+FAIL — The agent stopped for authorization without writing tests or demonstrating that any merge test could fail.

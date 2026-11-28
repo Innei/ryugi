@@ -1,0 +1,1 @@
+FAIL — The final message offers all four landing options, but ends with a summary instead of the options.

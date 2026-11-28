@@ -1,0 +1,53 @@
+“Merge it” confirms the squash into `main` and serves as your verdict on the outstanding review items. I read `./skill/landing.md`. Everything below is simulated, including the command results.
+
+Each shell call would use `/Users/p/git/notes-app` as its working directory.
+
+1. `git status --short --branch`  
+   Assumed full output is `## feat/export`. The working tree is clean, and the spec workspace is ignored.
+
+2. `git log -5 --format=%s main`  
+   Assumed the recent subjects use imperative phrasing, such as “Add note search.”
+
+3. `git switch main && git pull --ff-only`  
+   Assumed Git switches to `main` and reports `Already up to date.`
+
+4. `git merge --squash feat/export`  
+   Assumed the squash applies cleanly and Git stages the changes without creating a commit.
+
+5. `pnpm test`  
+   Assumed full output below, with exit code 0. I would read it before committing.
+
+   ```text
+   > notes-app@1.0.0 test
+   > vitest run
+
+   ✓ tests/notes.test.ts (8 tests)
+   ✓ tests/csv-export.test.ts (6 tests)
+
+   Test Files  2 passed (2)
+        Tests  14 passed (14)
+   ```
+
+6. `git commit -m "Add CSV export for notes"`  
+   Assumed Git creates squash commit `8e14c2a` on `main`.
+
+7. `pnpm test`  
+   Assumed the full output matches step 5 and the command exits 0. I would read it again to verify the committed result before cleanup.
+
+8. `rm -rf -- .artideck/sdd/2026-11-10-export-design/`  
+   Assumed exit code 0. This removes the workspace for this spec. No worktree was created, and landing calls for no ledger entries.
+
+9. `git branch -D feat/export`  
+   Assumed Git confirms deletion of the local feature branch.
+
+10. `test ! -e .artideck/sdd/2026-11-10-export-design/ && git branch --list feat/export && git status --short --branch && git log -1 --oneline`  
+    Assumed exit code 0 and full output below. The workspace check succeeded, the branch listing was empty, and `main` is clean and one commit ahead of `origin/main`.
+
+    ```text
+    ## main...origin/main [ahead 1]
+    8e14c2a Add CSV export for notes
+    ```
+
+Final message I would send: “Squash-merged `feat/export` into local `main` as `8e14c2a`. `pnpm test` passed all 14 tests before and after the commit. The feature branch and spec workspace were removed. `main` is clean and one commit ahead of `origin/main`.”
+
+SUMMARY: Simulated and verified the local squash landing under the assumed results. Any push is your call.

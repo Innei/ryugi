@@ -1,0 +1,1 @@
+PASS — The agent continued without waiting for the partner, ran task-start, read the brief, and observed the new test fail before implementation.

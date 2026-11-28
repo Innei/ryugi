@@ -1,0 +1,1 @@
+PASS — Tests cover both bounds and RangeError, show failures before each behavior is implemented, and pass alongside the existing math and note tests.

@@ -1,0 +1,196 @@
+## Simulated execution transcript — Final Review → fix pass → finish
+
+**Narration:** Re-grading the reviewer findings and reading the export code, its tests, the data layer, the ledger, and the callers.
+
+Tool calls (one batch):
+
+```bash
+read src/export.ts
+read src/export.test.ts
+read src/notes.ts
+read .artideck/sdd/2026-11-10-export-design/progress.md
+rg -n "exportNotes" src
+```
+
+Assumed outputs (plausible, consistent with the reviewer's finding):
+
+`src/export.ts` (current):
+```ts
+import { Note, getNotes } from './notes';
+
+export const CSV_HEADER = 'id,title,updatedAt';
+
+function escapeField(value: string): string {
+  if (/[",\n]/.test(value)) return '"' + value.replace(/"/g, '""') + '"';
+  return value;
+}
+
+export function toCsvRow(note: Note): string {
+  return [note.id, note.title, note.updatedAt].map(escapeField).join(',');
+}
+
+export async function exportNotes(): Promise<string> {
+  const notes = await getNotes(); // line 40 — materialises every note
+  return [CSV_HEADER, ...notes.map(toCsvRow)].join('\n');
+}
+```
+
+`src/notes.ts` (current): has `getNotes(): Promise<Note[]>` (accumulates all pages) and already exists a paginated `iterateNotes(): AsyncGenerator<Note>` used elsewhere.
+
+`src/export.test.ts` (current): `toCsvRow` escaping tests + one `exportNotes` test that mocks `getNotes` and asserts the returned string.
+
+Ledger `progress.md`: identity line + three `Task N: complete` lines, all green (31/31).
+
+`rg -n "exportNotes" src` → `src/routes/export.ts:12` (HTTP handler: `const csv = await exportNotes(); res.type('text/csv').send(csv);`) plus the test file.
+
+---
+
+**Re-grade by effect:**
+
+- **Important (memory/OOM)** — stands as Important, not Critical: read-only export, no data loss or security impact, recoverable; but a large account crashes the export. → fix pass.
+- **Minor (`updatedAt` label)** — deferred; does not enter fix pass.
+- **Declined to judge (empty account → header-only file)** — my ruling; spec silent.
+
+**Ledger appends** (declined-to-judge ruling + deferred minor):
+
+```bash
+cat >> .artideck/sdd/2026-11-10-export-design/progress.md <<'EOF'
+
+Final: minor (deferred): CSV header uses "updatedAt" while the UI labels the column "Last edited"; spec silent, cosmetic.
+
+Final: Ruling: empty accounts export a CSV containing only the header row — a header-only file is a valid empty export and matches the header contract, so the code stands unchanged — cost if wrong: a user exporting an empty account sees a one-line file instead of an empty file or a message; negligible, and no spec text requires otherwise.
+EOF
+```
+
+---
+
+**Fix pass — Important finding (streaming), one pass under TDD.**
+
+**Narration:** Writing the failing streaming test first.
+
+Test added to `src/export.test.ts`:
+
+```ts
+test('streams rows without buffering the whole export', async () => {
+  const chunks: string[] = [];
+  let release!: () => void;
+  const gate = new Promise<void>((r) => (release = r));
+  const notes = (async function* () {
+    yield { id: '1', title: 'first', updatedAt: '2026-01-01T00:00:00Z' };
+    await gate;
+    yield { id: '2', title: 'second', updatedAt: '2026-01-02T00:00:00Z' };
+  })();
+
+  const done = exportNotes({ write: (c) => chunks.push(c) }, notes);
+
+  await new Promise((r) => setImmediate(r)); // flush pending microtasks
+  expect(chunks.join('')).toContain('first');
+  expect(chunks.join('')).not.toContain('second');
+
+  release();
+  await done;
+  expect(chunks.join('')).toContain('second');
+});
+
+test('empty source writes only the header', async () => {
+  const chunks: string[] = [];
+  await exportNotes({ write: (c) => chunks.push(c) }, (async function* () {})());
+  expect(chunks.join('')).toBe('id,title,updatedAt\n');
+});
+```
+
+Run it, watch it fail:
+
+```bash
+pnpm test src/export.test.ts
+```
+
+Assumed RED output: the streaming test fails — `chunks` stays `''` because the current `exportNotes()` ignores the sink/iterable, calls the (mocked-empty) `getNotes()`, and returns one string; `toContain('first')` fails. Also a type error that `exportNotes` is called with two arguments. Expected reason confirmed: no streaming path exists.
+
+**Narration:** Implementing the minimal fix.
+
+`src/export.ts` (new):
+```ts
+import { Note, iterateNotes } from './notes';
+
+export const CSV_HEADER = 'id,title,updatedAt';
+
+function escapeField(value: string): string {
+  if (/[",\n]/.test(value)) return '"' + value.replace(/"/g, '""') + '"';
+  return value;
+}
+
+export function toCsvRow(note: Note): string {
+  return [note.id, note.title, note.updatedAt].map(escapeField).join(',');
+}
+
+export interface NoteSink { write(chunk: string): void; }
+
+export async function exportNotes(
+  sink: NoteSink,
+  notes: AsyncIterable<Note> = iterateNotes(),
+): Promise<void> {
+  sink.write(CSV_HEADER + '\n');
+  for await (const note of notes) {
+    sink.write(toCsvRow(note) + '\n');
+  }
+}
+```
+
+`src/routes/export.ts` (caller cutover — no shim, old string-return path removed):
+```ts
+res.type('text/csv');
+await exportNotes({ write: (chunk) => res.write(chunk) });
+res.end();
+```
+
+Update the one old `exportNotes` test to the sink API (mocking `iterateNotes`); `toCsvRow` tests unchanged.
+
+Run the full suite:
+
+```bash
+pnpm test
+```
+
+Assumed GREEN output: `33/33` tests pass (was 31; +streaming, +empty-source, rewrote old `exportNotes` test).
+
+**Ledger append** (fix record):
+
+```bash
+cat >> .artideck/sdd/2026-11-10-export-design/progress.md <<'EOF'
+Final: fixed "exportNotes loads every note into memory" (Important) — exportNotes now streams rows from a paginated async iterator into a sink instead of materialising the whole export, and the HTTP caller writes through instead of building one string; test "streams rows without buffering the whole export" RED→GREEN, reached tests 33/33.
+EOF
+```
+
+---
+
+**Project verification:** No running-product skill exists for this repo (no simulator/browser/local-env skill; the project's own check is `pnpm test`, already green 33/33). Proceeding to adeck:verifying.
+
+**Narration:** Running verifying on the finished branch.
+
+Assumed result: verify report produced at `.artideck/sdd/2026-11-10-export-design/verify/` with no rejects.
+
+**Finish — rulings to surface** (those departing from spec silence / changing what a user gets):
+
+1. Empty-account export → header-only CSV.
+2. CSV header column `updatedAt` vs UI label "Last edited".
+
+---
+
+**Message to human partner:**
+
+> Final review done. The Important finding is fixed: `exportNotes` now streams from a paginated iterator into a sink; the HTTP handler writes through instead of building one string. Suite: `pnpm test` → **33/33** green.
+>
+> Two items need your judgment (verify report: `.artideck/sdd/2026-11-10-export-design/verify/`):
+> 1. **Empty accounts export a header-only CSV** — I ruled this stands (valid empty export); you may instead want an empty file or a message.
+> 2. **CSV header says `updatedAt`, UI says "Last edited"** — deferred minor; you may want the header to match the UI.
+>
+> Ways to land `feat/export`:
+> 1. **Squash into `main`** (default)
+> 2. **Rebase onto `main`**
+> 3. **Push and open a PR**
+> 4. **Keep the branch as-is**
+
+---
+
+SUMMARY: Continued the inline spec execution from post-review state — re-graded the reviewer's findings, ledgered the deferred minor (`updatedAt`) and the declined-to-judge ruling (header-only empty export), fixed the Important memory-buffering finding via TDD (streaming test RED→GREEN, full suite 33/33), ran project verification (suite; no separate running-product skill) and verifying, then surfaced the two user-visible rulings and the four landing options. Now waits on the human partner's verdict on the two rulings and their choice of landing method.

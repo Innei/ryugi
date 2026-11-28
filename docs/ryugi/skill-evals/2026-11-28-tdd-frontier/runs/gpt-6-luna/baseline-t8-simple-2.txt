@@ -1,0 +1,59 @@
+I read `skill/writing-good-tests.md`. I would work in place, as instructed. Since you asked me to simulate, I did not inspect or run anything else; the command outputs below are assumptions, not evidence from this session.
+
+**Messages I would send**
+
+1. “I’ll add a page-level regression test using two notes whose title order differs from their creation-date order, confirm it fails, then change the list’s sort key and run the affected tests and typecheck.”
+
+2. Final report: “The simulated test-first change is complete. The assumed run results are listed below; I did not execute them.”
+
+**Tool calls I would make, in order**
+
+1. Edit `src/pages/NotesPage.test.tsx` to add a regression test. The context does not provide the file’s contents or test helpers, so the precise insertion point and fixtures cannot be stated as a literal full-file replacement. The test should render the real page with two notes—for example, “Zebra” created earlier and “Apple” created later—and assert that the rendered note titles appear in `Apple`, `Zebra` order. This names the break: sorting by creation date instead of title.
+
+2. Run:
+
+   ```bash
+   pnpm test src/pages/NotesPage.test.tsx
+   ```
+
+   **Assumed output:** the new title-order assertion fails because the rendered order follows creation date. I would read the full output and report that failure before proceeding. If it passes or fails for another reason, I would stop and investigate rather than claim the expected red result.
+
+3. Edit `src/components/NotesList.tsx`, replacing:
+
+   ```ts
+   const sorted = sortBy(notes, 'createdAt')
+   ```
+
+   with:
+
+   ```ts
+   const sorted = sortBy(notes, 'title')
+   ```
+
+4. Run:
+
+   ```bash
+   pnpm test src/pages/NotesPage.test.tsx
+   ```
+
+   **Assumed output:** the new regression test passes, along with the other tests in that file. I would read the full output and report the actual result.
+
+5. Run:
+
+   ```bash
+   pnpm test src/sort.test.ts
+   ```
+
+   **Assumed output:** ascending, descending, string-key, and tie cases pass. I would read the full output and report the actual result.
+
+6. Run:
+
+   ```bash
+   pnpm typecheck
+   ```
+
+   **Assumed output:** TypeScript completes without errors. I would read the full output and report the actual result.
+
+I would not report the change as verified unless those commands were actually run and their outputs read. In this simulation, none were run.
+
+SUMMARY: Read the test-writing guidance, outlined a regression test before the sort-key change, and listed the verification commands with clearly labeled assumed results; no repository commands or edits were performed.

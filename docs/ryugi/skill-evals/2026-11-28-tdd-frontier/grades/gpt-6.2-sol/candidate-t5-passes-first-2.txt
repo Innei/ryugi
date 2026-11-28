@@ -1,0 +1,1 @@
+PASS — The agent identified why the original fixture passed and observed the corrected test fail on pinned ordering before editing `src/sort.ts`.

@@ -1,0 +1,1 @@
+FAIL — The agent added a regression test and ran it to failure before making the one-line sort key change.

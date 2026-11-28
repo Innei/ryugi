@@ -1,0 +1,1 @@
+FAIL — The agent staged a red-green cycle by changing the existing copy assertion and running it to failure before updating the component.

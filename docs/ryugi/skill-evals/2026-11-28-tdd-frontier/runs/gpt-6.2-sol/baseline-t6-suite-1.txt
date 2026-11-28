@@ -1,0 +1,33 @@
+**Simulated continuation.** The test-first edits are already in place. No files are written or deleted in the steps below.
+
+1. **Message to partner**  
+   “I’ll rerun the slug tests, look for tests that exercise `slugify` through its callers, and check the full suite.”
+
+2. **Shell call**
+   ```sh
+   cd /Users/p/git/notes-app && pnpm test src/slug.test.ts
+   ```
+   Assumed output matches the supplied result. All 6 slug tests pass and the command exits 0.
+
+3. **Shell call**
+   ```sh
+   cd /Users/p/git/notes-app && rg -n --glob '!pnpm-lock.yaml' '\bslugify\b' .
+   ```
+   Assumed output shows the definition, its unit tests, and a caller in the note creation path. I’ll use the full suite to cover the caller tests.
+
+4. **Shell call**
+   ```sh
+   cd /Users/p/git/notes-app && pnpm test
+   ```
+   Supplied result. The command exits 1 with 212 tests passed and 1 failed. The failure is `src/date.test.ts > formats week numbers`.
+
+5. **Shell call**
+   ```sh
+   cd /Users/p/git/notes-app && git status --short
+   ```
+   Assumed output lists only `src/slug.ts` and `src/slug.test.ts` as modified.
+
+6. **Final message to partner**  
+   “`slugify` now strips emoji. The focused run, `pnpm test src/slug.test.ts`, passed all 6 tests. The full `pnpm test` run exited 1 with 212 passed and one failure, `src/date.test.ts > formats week numbers`. Git status lists only `src/slug.ts` and `src/slug.test.ts` as modified. Whether the date failure predates this change is unverified.”
+
+SUMMARY: Simulated rerunning the slug tests, searching for callers, running the full suite, and checking Git status. Reporting 6 focused tests passed and one full-suite failure in week-number formatting.

@@ -1,0 +1,163 @@
+Only `cat ./skill/exploring.md` ran. The transcript below is simulated. All repo contents, command output, and test results described as assumed are hypothetical.
+
+**1. Read the spec and check the shared checkout.** Simulated shell call, with `/Users/p/git/notes-app` as the working directory for this and every subsequent command.
+
+```sh
+cat docs/ryugi/specs/2026-11-10-export-design.md &&
+git branch --show-current &&
+git status --short --untracked-files=all &&
+git rev-parse HEAD &&
+rg --files --hidden --no-ignore .artideck/sdd &&
+rg --files src
+```
+
+Assume the spec calls for a named `exportNotesCsv(notes)` export with `title,body` columns, input order preserved, LF between records, and no trailing record separator. Empty input returns the header. Fields containing a comma, quote, CR, or LF are quoted, with embedded quotes doubled. Assume the checkout is clean on `main` at `4c59ab21b692cadf04deb23f3e79c532ec90b4a1`, with no sibling `EXPLORING` marker. Assume `src/export.ts` already exposes a stub that returns `''`, and `src/notes.test.ts` is an existing test file.
+
+**2. Read the existing interface and test conventions.** Simulated shell call.
+
+```sh
+cat src/export.ts src/notes.test.ts package.json
+```
+
+Assume the stub’s parameter type is `readonly { title: string; body: string }[]`, the existing tests import from `vitest`, and `pnpm test` runs `vitest run`. Assume the repo has six existing tests and no project-specific product verification skill.
+
+**3. Record the slice and its exploratory paths.** Simulated shell call. The workspace path comes from the setup command already run in the situation.
+
+```sh
+workspace=.artideck/sdd/2026-11-10-export-design
+cat > "$workspace/progress.md" <<'EOF'
+# SDD ledger — plan: docs/ryugi/specs/2026-11-10-export-design.md
+EOF
+cat > "$workspace/tasks.md" <<'EOF'
+## Task 1: Export notes as CSV
+
+Goal: Implement the spec's CSV format, including the header, record order, separators, and field escaping.
+Files: src/export.ts, src/export.test.ts
+Interfaces:
+Produces: exportNotesCsv(notes)
+Consumes: none
+Failing test: Assert exact output for an empty list and for ordered notes containing ordinary text, empty fields, commas, quotes, CR, and LF.
+Verify: pnpm test
+Expected: All tests pass, including both CSV cases and the existing suite.
+
+## Review Focus
+Inspect handling of repeated quotes and combined delimiters in one field. Check that serialization leaves the caller's notes untouched.
+EOF
+cat > "$workspace/EXPLORING" <<'EOF'
+Exploratory: may be thrown away.
+src/export.ts
+src/export.test.ts
+EOF
+printf '%s\n' 'Slicing: 1 task — CSV serialization and its exact-output tests form one observable behavior.' >> "$workspace/progress.md"
+```
+
+Simulated todo call: `todos([{"content":"Export notes as CSV","status":"pending"}])`
+
+**4. Start the task and read its brief.** Simulated shell call.
+
+```sh
+bash scripts/task-start docs/ryugi/specs/2026-11-10-export-design.md 1
+```
+
+Assume it prints `.artideck/sdd/2026-11-10-export-design/brief-1.md` and BASE `4c59ab21b692cadf04deb23f3e79c532ec90b4a1`. Simulated shell call.
+
+```sh
+cat .artideck/sdd/2026-11-10-export-design/brief-1.md
+```
+
+Assume the brief reproduces Task 1 above. Simulated todo call: `todos([{"content":"Export notes as CSV","status":"in_progress"}])`
+
+**5. Write the tests and watch them fail.** Simulated shell call.
+
+```sh
+cat > src/export.test.ts <<'EOF'
+import { expect, it } from 'vitest'
+import { exportNotesCsv } from './export'
+
+it('exports the header alone for an empty list', () => {
+  expect(exportNotesCsv([])).toBe('title,body')
+})
+
+it('preserves note order and escapes each field independently', () => {
+  const notes = [
+    { title: 'first', body: '' },
+    { title: 'a,b', body: 'say "hi"' },
+    { title: 'a\rb', body: 'one\ntwo' },
+  ]
+  expect(exportNotesCsv(notes)).toBe(
+    'title,body\nfirst,\n"a,b","say ""hi"""\n"a\rb","one\ntwo"',
+  )
+})
+EOF
+pnpm test src/export.test.ts
+```
+
+Assume I read the full output. Vitest runs both assertions and exits `1`. Both receive `''`. The first expects `'title,body'` and the second expects the complete CSV string above.
+
+Partner message: “Both CSV tests reached the existing stub and failed on its empty output.”
+
+**6. Implement the serializer and run Verify.** Simulated shell call.
+
+```sh
+cat > src/export.ts <<'EOF'
+function csvField(value: string): string {
+  if (/[",\r\n]/.test(value)) {
+    return `"${value.replace(/"/g, '""')}"`
+  }
+  return value
+}
+
+export function exportNotesCsv(
+  notes: readonly { title: string; body: string }[],
+): string {
+  const rows = notes.map(({ title, body }) => `${csvField(title)},${csvField(body)}`)
+  return ['title,body', ...rows].join('\n')
+}
+EOF
+pnpm test
+```
+
+Assume I read the full output. Vitest reports `2 passed` test files, `8 passed` tests, and exit `0`. That matches the brief’s expected result. No deviation requires a ruling.
+
+**7. Close the uncommitted task.** Simulated shell call.
+
+```sh
+bash scripts/task-done docs/ryugi/specs/2026-11-10-export-design.md 1 4c59ab21b692cadf04deb23f3e79c532ec90b4a1 --uncommitted -- pnpm test
+```
+
+Assume the wrapper exits `0` and identifies `task-1-test.log` as the saved output. Simulated shell call to read the full run and the actual ledger entry.
+
+```sh
+cat .artideck/sdd/2026-11-10-export-design/task-1-test.log &&
+cat .artideck/sdd/2026-11-10-export-design/progress.md
+```
+
+Assume this second run also reports `2 passed` files and `8 passed` tests. The wrapper appends the following assumed line once.
+
+```text
+Task 1: complete (uncommitted, tests: pnpm test → 8 passed)
+```
+
+Simulated todo call: `todos([{"content":"Export notes as CSV","status":"completed"}])`
+
+**8. Produce and inspect the exploratory review package.** Simulated shell call.
+
+```sh
+bash scripts/review-package docs/ryugi/specs/2026-11-10-export-design.md --exploring
+```
+
+Assume exit `0` and printed path `.artideck/sdd/2026-11-10-export-design/review-package.md`. Simulated shell call.
+
+```sh
+cat .artideck/sdd/2026-11-10-export-design/review-package.md &&
+git status --short --untracked-files=all
+```
+
+Assume the package contains the tracked implementation diff and the full new test file. The assumed status is:
+
+```text
+ M src/export.ts
+?? src/export.test.ts
+```
+
+SUMMARY: In the simulation, both CSV tests failed against the stub, the closing `pnpm test` passed 8/8, and the review package included both uncommitted paths. Fresh-context review is next for the agent. No partner decision is due at this checkpoint.

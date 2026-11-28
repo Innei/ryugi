@@ -1,0 +1,214 @@
+The only actual tool call was `cat ./skill/writing-good-tests.md`. It exited 0, and I read the full output. The transcript below is simulated. Every repo command uses `/Users/p/git/notes-app` as its working directory, and every result is assumed.
+
+**1. Shell — inspect the uncommitted change before touching it.**
+
+```sh
+git status --short && git diff -- src/export.ts
+```
+
+Assumed output, exit 0:
+
+```diff
+ M src/export.ts
+diff --git a/src/export.ts b/src/export.ts
+index 81dac10..3c6f712 100644
+--- a/src/export.ts
++++ b/src/export.ts
+@@ -1,3 +1,3 @@
+ export function exportNote(note: { title: string; body: string }): string {
+-  return `# ${note.title}\n\n${note.body}`;
++  return `# ${note.title || "(untitled)"}\n\n${note.body}`;
+ }
+```
+
+**2. Shell — find callers, tests, and build checks.**
+
+```sh
+rg --files --hidden -g '!node_modules' -g '!.git' -g '!dist' | sort
+```
+
+Assumed output, exit 0:
+
+```text
+.gitignore
+package.json
+pnpm-lock.yaml
+scripts/export-sample.js
+src/export.ts
+src/note.test.ts
+src/note.ts
+tsconfig.json
+```
+
+```sh
+rg -n 'exportNote|/export\b' src scripts
+```
+
+Assumed output, exit 0:
+
+```text
+src/export.ts:1:export function exportNote(note: { title: string; body: string }): string {
+scripts/export-sample.js:1:import { exportNote } from "../dist/export.js";
+scripts/export-sample.js:3:console.log(exportNote({ title: "", body: "Sample body" }));
+```
+
+```sh
+cat package.json tsconfig.json
+```
+
+Assumed output, exit 0:
+
+```json
+{
+  "name": "notes-app",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "build": "tsc -p tsconfig.json"
+  },
+  "devDependencies": {
+    "typescript": "5.7.3",
+    "vitest": "3.2.4"
+  }
+}
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": true,
+    "rootDir": "src",
+    "outDir": "dist"
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["src/**/*.test.ts"]
+}
+```
+
+**3. Message to partner**
+
+> The sample reads compiled JavaScript. I’ll add a test against the source and run it with the fallback removed, then restore the change, rebuild, and rerun the sample. I’ll cover a named note too, so an exporter that always prints `(untitled)` would fail.
+
+**4. Shell — write the test, then temporarily restore the original behavior.** The heredocs give the complete contents of both files.
+
+```sh
+cat > src/export.test.ts <<'EOF'
+import { expect, it } from "vitest";
+import { exportNote } from "./export.js";
+
+it.each([
+  { title: "", expected: "# (untitled)\n\nMeeting notes" },
+  { title: "Monday", expected: "# Monday\n\nMeeting notes" },
+])("exports the heading and body for title '$title'", ({ title, expected }) => {
+  expect(exportNote({ title, body: "Meeting notes" })).toBe(expected);
+});
+EOF
+```
+
+Assumed exit 0, no output.
+
+```sh
+cat > src/export.ts <<'EOF'
+export function exportNote(note: { title: string; body: string }): string {
+  return `# ${note.title}\n\n${note.body}`;
+}
+EOF
+```
+
+Assumed exit 0, no output.
+
+**5. Shell — check that the old behavior fails for the reported reason.**
+
+```sh
+pnpm test src/export.test.ts
+```
+
+Assumed full output, exit 1:
+
+```text
+> notes-app@1.0.0 test /Users/p/git/notes-app
+> vitest run src/export.test.ts
+
+ RUN  v3.2.4 /Users/p/git/notes-app
+
+ ❯ src/export.test.ts (2 tests | 1 failed) 5ms
+   × exports the heading and body for title '' 4ms
+     → expected '# \n\nMeeting notes' to be '# (untitled)\n\nMeeting notes'
+   ✓ exports the heading and body for title 'Monday' 1ms
+
+ FAIL  src/export.test.ts > exports the heading and body for title ''
+AssertionError: expected '# \n\nMeeting notes' to be '# (untitled)\n\nMeeting notes'
+
+- Expected
++ Received
+
+- # (untitled)
++ #
+
+  Meeting notes
+
+ ❯ src/export.test.ts:8:53
+      8|   expect(exportNote({ title, body: "Meeting notes" })).toBe(expected);
+       |                                                     ^
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 1 passed (2)
+   Duration  263ms
+
+ ELIFECYCLE  Test failed. See above for more details.
+```
+
+**6. Shell — restore the fallback and check both cases.**
+
+```sh
+cat > src/export.ts <<'EOF'
+export function exportNote(note: { title: string; body: string }): string {
+  return `# ${note.title || "(untitled)"}\n\n${note.body}`;
+}
+EOF
+```
+
+Assumed exit 0, no output.
+
+```sh
+pnpm test src/export.test.ts
+```
+
+Assumed full output, exit 0:
+
+```text
+> notes-app@1.0.0 test /Users/p/git/notes-app
+> vitest run src/export.test.ts
+
+ RUN  v3.2.4 /Users/p/git/notes-app
+
+ ✓ src/export.test.ts (2 tests) 3ms
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Duration  246ms
+```
+
+**7. Shell — rebuild the sample’s dependency and run the sample.**
+
+```sh
+pnpm build && node scripts/export-sample.js
+```
+
+Assumed full output, exit 0:
+
+```text
+> notes-app@1.0.0 build /Users/p/git/notes-app
+> tsc -p tsconfig.json
+
+# (untitled)
+
+Sample body
+```
+
+**8. Message to partner, within the simulation**
+
+> Empty titles now export with the heading `# (untitled)`. With the fallback removed, the empty-title test received `"# "` as its heading and failed. The `Monday` case passed. After restoring the fallback, `pnpm test src/export.test.ts` passed both cases. `pnpm build` exited 0, and the rebuilt sample printed `# (untitled)` above `Sample body`. Verification covered the export tests, build, and sample. The changes are uncommitted.
+
+SUMMARY: Read the test guidance, then simulated inspection, a regression test, an observed failure with the fallback removed, restoration, a two-case pass, a build, and a sample run. All repo results are assumed. No repo command or edit actually ran.

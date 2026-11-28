@@ -1,0 +1,63 @@
+All calls below are simulated, with `/Users/p/git/notes-app` as the working directory. Only the reads under `./skill/` actually ran.
+
+1. **Shell** `bash scripts/sdd-workspace docs/ryugi/specs/2026-11-10-export-design.md`  
+   Given result: `.artideck/sdd/2026-11-10-export-design/`.
+
+2. **Shell** `cat .artideck/sdd/2026-11-10-export-design/progress.md`  
+   The ledger matches the spec and records Task 1 through `d4e5f6a`. Task 2 is the first task without a completion line.
+
+3. **Shell** `cat docs/ryugi/specs/2026-11-10-export-design.md .artideck/sdd/2026-11-10-export-design/tasks.md`  
+   Assume the spec is inline Markdown and requires CSV fields containing commas to be quoted. Assume the existing Task 2 names `writeCsvRow(fields)` in `src/export.ts`, with tests in `src/export.test.ts`. I keep the existing task list.
+
+4. **Shell** `git status --short --branch`  
+   Assumed output:
+
+   ```text
+   ## feat/export
+    M src/export.ts
+   ```
+
+5. **Shell** `git log --oneline --decorate -2`  
+   Assume `HEAD` is `d4e5f6a` on `feat/export`, following `a1b2c3d` on `main`.
+
+6. **Shell** `git diff HEAD -- src/export.ts`  
+   Assume the entire diff adds an exported `writeCsvRow(fields: string[])` that returns `fields.join(',')`. That gives the next test a callable function and explains exactly which behavior it should expose. The diff establishes no authorship.
+
+7. **Message to partner:** “The ledger points to Task 2. I found an uncommitted row writer in `src/export.ts` and will test its comma handling with that edit in place.”
+
+8. **Shell** `bash scripts/task-start docs/ryugi/specs/2026-11-10-export-design.md 2`  
+   Assume it prints brief path `.artideck/sdd/2026-11-10-export-design/briefs/task-2.md` and `BASE=d4e5f6a`.
+
+9. **Shell** `cat .artideck/sdd/2026-11-10-export-design/briefs/task-2.md src/export.test.ts src/export.ts`  
+   Assume the brief specifies `pnpm test export` and a test for a comma inside a field. Assume the test file already imports `expect`, `it`, and `* as csv` from `./export`. The source confirms the implementation seen in the diff.
+
+10. **Todos** `set([{"task":"Task 1: parse","status":"completed"},{"task":"Task 2: write rows","status":"in_progress"},{"task":"Task 3: wire the button","status":"pending"}])`  
+    Task 1’s status comes from the ledger.
+
+11. **Shell** Append the resume ruling:
+
+    ```sh
+    printf '%s\n' 'Task 2: Ruling: Keep the existing row-writer edit and test it in place — it implements part of the interface named in the brief — if it belongs to separate work, its ownership will need resolving before commit.' >> .artideck/sdd/2026-11-10-export-design/progress.md
+    ```
+
+12. **Shell** Add only the test:
+
+    ```sh
+    cat >> src/export.test.ts <<'EOF'
+
+    it('quotes a field containing a comma', () => {
+      expect(csv.writeCsvRow(['Weekly note', 'tea, milk']))
+        .toBe('Weekly note,"tea, milk"')
+    })
+    EOF
+    ```
+
+13. **Shell** `pnpm test export > .artideck/sdd/2026-11-10-export-design/task-2-red.log 2>&1`  
+    Assume exit status `1`.
+
+14. **Shell** `cat .artideck/sdd/2026-11-10-export-design/task-2-red.log`  
+    Assume the full output shows four passing tests and one failed assertion in `quotes a field containing a comma`. The expected row is `Weekly note,"tea, milk"` and the received row is `Weekly note,tea, milk`. The assertion reached the writer and failed on the missing quotes.
+
+**Message to partner:** “In the simulation, `pnpm test export` exited 1 with four tests passing and the new test failing. The writer emitted `Weekly note,tea, milk`, which splits the second field at its comma. Task 2 remains in progress.”
+
+SUMMARY: Simulated the resume through Task 2’s first failing test. Implementation is next for the agent. No partner decision is pending.

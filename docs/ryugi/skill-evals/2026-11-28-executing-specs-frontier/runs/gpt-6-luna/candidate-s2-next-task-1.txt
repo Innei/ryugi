@@ -1,0 +1,27 @@
+1. Send partner: “Task 1 is recorded complete (`pnpm test export`: 4/4 pass). I’m continuing with Task 2 and will stop after its failing test runs, as requested.”
+
+2. Tool call:
+   ```sh
+   bash scripts/task-start docs/ryugi/specs/2026-11-10-export-design.md 2
+   ```
+   Assume it prints Task 2’s brief path and BASE successfully.
+
+3. Tool call: read the exact brief path printed by `task-start` (for example, `cat .artideck/sdd/2026-11-10-export-design/task-2.md`). Assume the brief says to write and run a focused failing test before implementation.
+
+4. Tool call: create a todo for Task 2 and mark it `in_progress`.
+
+5. Tool calls: inspect the Task 2 files and relevant tests using `rg --files` and `rg`/`sed`. Assume the brief identifies the CSV export behavior and test command; no implementation or commit is made yet.
+
+6. Tool call: edit only the test file named in the brief to add the Task 2 behavior test. Assume the test checks the specified behavior and is syntactically valid.
+
+7. Tool call:
+   ```sh
+   pnpm test <the focused Task 2 test selector from the brief>
+   ```
+   Assume it runs and fails for the expected missing behavior. Read the full output and report that failure as the red test evidence.
+
+8. Send partner: “Task 2’s focused test ran and failed as expected: `<assumed failure summary>`. I’m stopping here.”
+
+No ledger line is appended: Task 2 has not passed verification or completed.
+
+SUMMARY: Simulated Task 2 setup and the expected failing-test run; now waiting for your partner before continuing.

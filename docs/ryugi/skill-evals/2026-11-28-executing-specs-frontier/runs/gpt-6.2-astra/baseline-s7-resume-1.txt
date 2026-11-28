@@ -1,0 +1,94 @@
+Simulated transcript. All shell calls use `/Users/p/git/notes-app` as their working directory. Results beyond those supplied are assumptions.
+
+1. **Partner message** — “I’ll check the ledger, branch history, and local edit before taking the next task.”
+
+2. **Shell** — `bash scripts/sdd-workspace docs/ryugi/specs/2026-11-10-export-design.md`  
+   Result: `.artideck/sdd/2026-11-10-export-design/`.
+
+3. **Shell** — `cat .artideck/sdd/2026-11-10-export-design/progress.md`  
+   The first line identifies the requested spec. The sole completion entry covers Task 1 through `d4e5f6a`. Its `4/4 pass` is a historical result.
+
+4. **Shell** — `git status --short --branch`  
+   Assumed output:
+   ```text
+   ## feat/export
+    M src/export.ts
+   ```
+
+5. **Shell** — `git log --oneline --decorate main..HEAD`  
+   Assumed output:
+   ```text
+   d4e5f6a (HEAD -> feat/export) Parse notes for export
+   ```
+
+6. **Shell** — `git diff HEAD -- src/export.ts`  
+   Assume the diff adds an exported `writeRows(rows: string[][])` that joins fields with commas and rows with `\r\n`. This could be partial Task 2 work. Its author is unknown. The test can exercise it as found.
+
+7. **Shell** — `cat docs/ryugi/specs/2026-11-10-export-design.md`  
+   Assume this is the full spec, with no `Read:` indirection. It requires CSV fields containing commas to be quoted and embedded double quotes to be doubled.
+
+8. **Shell** — `cat .artideck/sdd/2026-11-10-export-design/tasks.md`  
+   Assume the existing tasks are parse, write rows, and wire the button. Task 2 specifies `writeRows` and a regression test for a field containing both a comma and a quote.
+
+9. **Todos** — `update_plan({"plan":[{"step":"Task 1 — Parse","status":"completed"},{"step":"Task 2 — Write rows","status":"pending"},{"step":"Task 3 — Wire the button","status":"pending"}]})`  
+   The Task 1 status mirrors the ledger.
+
+10. **Shell** — `bash scripts/task-start docs/ryugi/specs/2026-11-10-export-design.md 2`  
+    Assumed output:
+    ```text
+    Brief: .artideck/sdd/2026-11-10-export-design/task-2.md
+    BASE: d4e5f6a
+    ```
+
+11. **Shell** — `cat .artideck/sdd/2026-11-10-export-design/task-2.md`  
+    Assume the brief names `src/export.test.ts`, the `writeRows` export from `./export`, and `pnpm test export`, with five tests expected to pass after implementation.
+
+12. **Todos** — `update_plan({"plan":[{"step":"Task 1 — Parse","status":"completed"},{"step":"Task 2 — Write rows","status":"in_progress"},{"step":"Task 3 — Wire the button","status":"pending"}]})`
+
+13. **Shell** — `cat src/export.test.ts`  
+    Assume it contains four parser tests, imports `it` and `expect` from Vitest, and imports `parseNotes` from `./export`.
+
+14. **Partner message** — “The local edit already joins fields with commas. I’ll run the brief’s quoting test against it as it stands.”
+
+15. **Edit** — `apply_patch` with this exact input:
+    ```diff
+    *** Begin Patch
+    *** Update File: src/export.test.ts
+    @@
+    -import { parseNotes } from './export'
+    +import { parseNotes, writeRows } from './export'
+    +
+    +it('quotes a field containing a comma and doubles embedded quotes', () => {
+    +  expect(writeRows([['Meeting', 'Bring "tea", please']])).toBe(
+    +    'Meeting,"Bring ""tea"", please"',
+    +  )
+    +})
+    *** End Patch
+    ```
+
+16. **Shell** — `pnpm test export`  
+    Assume the command exits `1` and I read its full output:
+    ```text
+    > notes-app@1.0.0 test
+    > vitest run export
+
+     RUN  v3.2.4 /Users/p/git/notes-app
+
+     ❯ src/export.test.ts (5 tests | 1 failed) 8ms
+       × quotes a field containing a comma and doubles embedded quotes 4ms
+         → expected 'Meeting,Bring "tea", please' to be 'Meeting,"Bring ""tea"", please"'
+
+     FAIL  src/export.test.ts > quotes a field containing a comma and doubles embedded quotes
+    AssertionError: expected 'Meeting,Bring "tea", please' to be 'Meeting,"Bring ""tea"", please"'
+
+    Expected: "Meeting,"Bring ""tea"", please""
+    Received: "Meeting,Bring "tea", please"
+
+     ❯ src/export.test.ts:5:60
+
+     Test Files  1 failed (1)
+          Tests  1 failed | 4 passed (5)
+       Duration  214ms
+    ```
+
+SUMMARY: In the simulation, Task 2 reached RED on the intended CSV quoting assertion. The existing source edit was preserved, and no ledger line was appended. Implementation is next for the agent when work resumes. No partner decision is pending.

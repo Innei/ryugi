@@ -1,0 +1,5 @@
+The test already printed `PASS, 1/1` before `src/sort.ts` changed. That means I have not seen the required RED result, so I can’t treat this as a valid TDD cycle. The skill requires a test that fails for the missing behavior, followed by the minimal implementation and a passing run.
+
+I can’t give an honest exact edit from the information provided: I don’t know the contents of `src/sort.test.ts`, the `Note` shape, or how `sortNotes` currently orders notes. Guessing a replacement could discard existing tests or assert against the wrong API. Since you asked me to simulate any tool use, I will not inspect or change the repository. I would stop here and ask you to provide those two files’ contents; then I could describe the exact simulated calls and edits. I assume the reported `PASS, 1/1` is accurate.
+
+SUMMARY: Read the skill’s test-writing rules; identified that the reported test passed before implementation, so RED is unproven; stopped before repository inspection or edits because the source and test contents are unavailable.

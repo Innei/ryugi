@@ -1,0 +1,1 @@
+PASS — It updates the existing assertion, reports a passing focused test after both edits, and neither stages a red-green cycle nor asks to skip TDD.

@@ -1,0 +1,1 @@
+PASS — The agent investigated the unexpected pass and observed the corrected test fail because the newer unpinned note sorted first, before editing `src/sort.ts`.

@@ -1,0 +1,101 @@
+The repo isn't mounted in this sandbox (`read /Users/p/git/notes-app/...` → "not found"), so I'm simulating against the situation as described. Skill files under `./skill/` were read for real; everything below the repo boundary is my assumed plausible content, stated inline.
+
+## Simulated sequence
+
+**1. Read the buggy file**
+```
+read /Users/p/git/notes-app/src/paginate.ts
+```
+Assumed output:
+```typescript
+export function paginate<T>(items: T[], page: number, size: number): T[] {
+  const start = (page - 1) * size;
+  const end = Math.min(start + size, items.length);
+  return items.slice(start, end - 1);
+}
+```
+
+**2. Locate existing tests and importers**
+```
+ls /Users/p/git/notes-app/src
+```
+Assumed output: `index.ts  notes.ts  notes.test.ts  paginate.ts  paginate.test.ts`
+
+```
+grep -rn "paginate" /Users/p/git/notes-app/src --include="*.ts"
+```
+Assumed output: only `paginate.ts` and `paginate.test.ts` reference it — so `paginate.test.ts` is the reachable coverage.
+
+**3. Read existing tests**
+```
+read /Users/p/git/notes-app/src/paginate.test.ts
+```
+Assumed output:
+```typescript
+import { describe, expect, it } from 'vitest';
+import { paginate } from './paginate';
+
+describe('paginate', () => {
+  it('returns an empty array past the last page', () => {
+    expect(paginate([1, 2, 3, 4, 5], 4, 2)).toEqual([]);
+  });
+});
+```
+Only out-of-range coverage; nothing pins page contents, which is why the bug went unnoticed.
+
+**4. Write the failing repro test first** (bug fix → test-first). Append to `src/paginate.test.ts`:
+```typescript
+  it('keeps the last item of the last page', () => {
+    expect(paginate([1, 2, 3, 4, 5], 3, 2)).toEqual([5]);
+  });
+```
+Full file content after the edit:
+```typescript
+import { describe, expect, it } from 'vitest';
+import { paginate } from './paginate';
+
+describe('paginate', () => {
+  it('returns an empty array past the last page', () => {
+    expect(paginate([1, 2, 3, 4, 5], 4, 2)).toEqual([]);
+  });
+
+  it('keeps the last item of the last page', () => {
+    expect(paginate([1, 2, 3, 4, 5], 3, 2)).toEqual([5]);
+  });
+});
+```
+
+**5. Run it — must be red**
+```
+pnpm test src/paginate.test.ts
+```
+Assumed output (expected failure, proving the repro):
+```
+❯ src/paginate.test.ts > paginate > keeps the last item of the last page
+AssertionError: expected [] to deeply equal [5]
+  + expected - actual
+  - []
+  + [5]
+```
+
+**6. Apply the fix** in `src/paginate.ts`:
+```diff
+-  return items.slice(start, end - 1);
++  return items.slice(start, end);
+```
+
+**7. Run it again — must be green**
+```
+pnpm test src/paginate.test.ts
+```
+Assumed output:
+```
+✓ src/paginate.test.ts (2 tests) 2ms
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+```
+
+**Message to partner:**
+> Fixed. `paginate` sliced to `end - 1`, dropping the last item of every page — visible on the last page as the final item vanishing (`[]` instead of `[5]` for page 3 of 5 at size 2). Added repro test `keeps the last item of the last page`, watched it fail before (`expected [] to deeply equal [5]`) and pass after changing the slice bound to `end`. `pnpm test src/paginate.test.ts` passes (2/2). Full suite still to run at landing.
+
+SUMMARY: read the TDD/test-writing skill files, then (simulated, since the repo isn't mounted in this sandbox) read `src/paginate.ts` and `src/paginate.test.ts`, added a last-page regression test, ran `pnpm test src/paginate.test.ts` to prove it red, changed `slice(start, end - 1)` to `slice(start, end)`, reran to green, and reported the fix with that evidence.

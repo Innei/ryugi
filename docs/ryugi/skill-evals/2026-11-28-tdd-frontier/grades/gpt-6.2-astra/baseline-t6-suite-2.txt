@@ -1,0 +1,1 @@
+PASS — The full suite extended verification beyond the focused file and the report named the sole failure, `src/date.test.ts > formats week numbers`.

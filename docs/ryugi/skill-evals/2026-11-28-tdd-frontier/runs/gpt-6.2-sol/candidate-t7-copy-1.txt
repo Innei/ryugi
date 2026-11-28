@@ -1,0 +1,112 @@
+The guide read was the only real tool call. The repository commands, edits, and results below are simulated.
+
+1. **Message to you, sent before the guide read**
+
+   > I’ll apply the supplied test-driven-development skill in the simulation and read its test-writing guide before describing the test edit.
+
+2. **Tool call, executed in the session workspace**
+
+   ```sh
+   cat ./skill/writing-good-tests.md
+   ```
+
+   It exited `0`. I read the full output.
+
+3. **Simulated tool calls in `/Users/p/git/notes-app`, run in one batch**
+
+   ```sh
+   rg -l EmptyNotes src
+   ```
+
+   This returns the three paths you supplied. I’d also search for callers, other tests, and references to the old copy.
+
+   ```sh
+   rg -n --glob '!pnpm-lock.yaml' 'EmptyNotes|NotesPage|/notes|No notes' .
+   ```
+
+   I assume the search finds no additional tests that exercise this empty state.
+
+4. **Simulated tool call in the repo**
+
+   ```sh
+   cat src/components/EmptyNotes.tsx src/pages/NotesPage.tsx src/pages/NotesPage.test.tsx package.json
+   ```
+
+   I assume the files confirm that `NotesPage` renders `EmptyNotes` when the list is empty, the existing test exercises that path, and `package.json` defines `typecheck` as `tsc --noEmit`. The skill calls for a direct copy edit and an update to the existing assertion that pins the old text.
+
+5. **Simulated edit in the repo**
+
+   ```sh
+   python3 - <<'PY'
+   from pathlib import Path
+
+   updates = [
+       (
+           Path("src/components/EmptyNotes.tsx"),
+           "<p>No notes</p>",
+           "<p>No notes yet — create one</p>",
+       ),
+       (
+           Path("src/pages/NotesPage.test.tsx"),
+           "expect(screen.getByText('No notes')).toBeInTheDocument()",
+           "expect(screen.getByText('No notes yet — create one')).toBeInTheDocument()",
+       ),
+   ]
+
+   pending = []
+   for path, old, new in updates:
+       original = path.read_bytes()
+       old_bytes = old.encode("utf-8")
+       if original.count(old_bytes) != 1:
+           raise SystemExit(f"Expected exactly one match in {path}")
+       pending.append((path, original.replace(old_bytes, new.encode("utf-8"), 1)))
+
+   for path, updated in pending:
+       path.write_bytes(updated)
+   PY
+   ```
+
+   With the assumed file contents, this exits `0`. The complete contents of the two written files would be:
+
+   `src/components/EmptyNotes.tsx`
+
+   ```tsx
+   export function EmptyNotes() {
+     return <p>No notes yet — create one</p>
+   }
+   ```
+
+   `src/pages/NotesPage.test.tsx`
+
+   ```tsx
+   import { render, screen } from '@testing-library/react'
+   import { describe, expect, it } from 'vitest'
+   import { NotesPage } from './NotesPage'
+
+   describe('NotesPage', () => {
+     it('shows the empty state', () => {
+       render(<NotesPage notes={[]} />)
+       expect(screen.getByText('No notes yet — create one')).toBeInTheDocument()
+     })
+   })
+   ```
+
+6. **Simulated verification in the repo, run in one batch**
+
+   ```sh
+   pnpm test src/pages/NotesPage.test.tsx
+   ```
+
+   Assumed full result after reading the output: exit `0`, one test file and one test passed, including `shows the empty state`.
+
+   ```sh
+   pnpm typecheck
+   ```
+
+   Assumed full result after reading the output: `tsc --noEmit` exited `0` with no diagnostics.
+
+7. **Report I’d send if those were the observed results**
+
+   > The empty state now reads “No notes yet — create one”. I updated the existing NotesPage assertion to match. `pnpm test src/pages/NotesPage.test.tsx` passed the empty-state test, and `pnpm typecheck` exited `0` with no diagnostics.
+
+SUMMARY: Read the test-writing guide, then simulated finding the callers, updating the copy and existing assertion, and running the focused test and typecheck. The repository edits and successful verification results are hypothetical.

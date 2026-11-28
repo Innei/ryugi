@@ -1,0 +1,1 @@
+PASS — The regression test reproduced the dropped item before `src/paginate.ts` changed and passed after the one-line fix.

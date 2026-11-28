@@ -3,191 +3,73 @@ name: test-driven-development
 description: Use when implementing any feature or bugfix, before writing implementation code
 ---
 
-# Test-Driven Development (TDD)
+# Test-Driven Development
 
-## Overview
-
-Write the test first. Watch it fail. Write minimal code to pass.
-
-**Core principle:** If you didn't watch the test fail, you don't know if it tests the right thing.
-
-**Violating the letter of the rules is violating the spirit of the rules.**
-
-## When to Use
-
-**Always:**
-
-- New features
-- Bug fixes
-- Refactoring
-- Behavior changes
-
-**Exceptions (ask your human partner):**
-
-- Throwaway prototypes
-- Generated code
-- Configuration files
-
-Thinking "skip TDD just this once"? Stop. That's rationalization.
+Tests are for code that can be wrong in ways reading it won't show. Decide
+for each change whether it needs one. Simple changes are written directly
+and checked by running them; the rest get a test that has been seen to fail.
 
 **Before the first edit:** adeck:using-git-worktrees decides where the
 work happens, unless adeck:executing-specs already did at its Setup.
 
-## The Iron Law
+## Decide first
 
-```
-NO PRODUCTION CODE WITHOUT A FAILING TEST FIRST
-```
+**A bug fix always starts with a test that reproduces it**, however small
+or obvious the fix: it broke, so it was not obvious. The test fails on the
+current code for the reported reason before you change that code. A deadline
+does not change this; the repro is how you know the fix worked.
 
-Write code before the test? Delete it. Start over.
+**Otherwise, write it directly** when the whole behavior is visible in the
+diff and a reader would call it right at a glance: copy, styling, config
+values, renames, wiring that passes data through, or changing which input
+goes into logic that is already tested (a sort key, a flag, an argument).
+Don't add a test for it — a test that asserts a string or a constant equals
+its new value catches nothing. Update existing tests that pin the old value.
 
-**No exceptions:**
+**Test it** when a wrong answer would look plausible:
 
-- Don't keep it as "reference"
-- Don't "adapt" it while writing tests
-- Don't look at it
-- Delete means delete
+- **Logic:** branches, boundaries, calculations, parsing, state transitions,
+  ordering, concurrency.
+- **A contract** other code or other people rely on.
+- **A refactor** of logic: what it must preserve is covered before you
+  start; add what is missing first.
 
-Implement fresh from tests. Period.
+Unsure? Ask whether a reviewer reading the diff would see it if it were
+wrong. If they would, write it directly; if it could look right and still be
+wrong, test it.
 
-No exceptions without your human partner's permission.
+## A test is proven red
 
-## Red-Green-Refactor
+A test only ever seen passing proves nothing. For each behavior you test,
+either:
 
-RED: write a failing test → verify it fails correctly → GREEN: minimal
-code → verify it passes, all green → REFACTOR: clean up, stay green →
-next test.
+- **Test first:** write it, run it, and see it fail because the behavior is
+  missing — an assertion failure or the missing export, not a typo or a
+  broken fixture. Then write the code. Bug fixes always go this way.
+- **Test after:** the code exists, so break the behavior on purpose (revert
+  the change, invert the branch, return the default), run the test and see
+  it fail, then restore the code and see it pass.
 
-### RED - Write Failing Test
+A test that passes before the behavior exists is a finding: either it does
+not test what its name says, or the behavior already exists. Find out which
+before you write production code.
 
-Write one minimal test showing what should happen.
+## Run what the change can reach
 
-**Requirements:**
+Every change, tested or written directly, is checked by running something:
+the tests that exercise the code you touched (the files that import it, its
+callers' tests, the end-to-end tests that load it), and the typecheck or
+build when there is one. Search for them; a scope statement in your task
+bounds the deliverable, not your verification. The full suite runs once,
+when the branch lands (adeck:executing-specs `landing.md`).
 
-- One behavior
-- Clear name
-- Real code (no mocks unless unavoidable)
+Your report says, per behavior, what proves it: the test and how it was
+proven red, or what you ran for a change written directly. Any failure a
+run shows — including one you didn't cause — goes in your report by name; a
+red test you watched scroll past and didn't mention is a report falsified by
+omission.
 
-### Verify RED - Watch It Fail
+## Writing the tests
 
-**MANDATORY. Never skip.**
-
-```bash
-npm test path/to/test.test.ts
-```
-
-Confirm:
-
-- Test fails (not errors)
-- Failure message is expected
-- Fails because feature missing (not typos)
-
-**Test passes?** You're testing existing behavior. Fix test.
-
-**Test errors?** Fix error, re-run until it fails correctly.
-
-### GREEN - Minimal Code
-
-Write simplest code to pass the test.
-
-Don't add features, refactor other code, or "improve" beyond the test.
-
-### Verify GREEN - Watch It Pass
-
-**MANDATORY.**
-
-```bash
-npm test path/to/test.test.ts
-```
-
-Confirm:
-
-- Test passes
-- Other tests still pass
-- Output pristine (no errors, warnings)
-
-**Test fails?** Fix code, not test.
-
-**Other tests fail?** Fix now.
-
-**"Other tests" means every test your change can reach, not just your
-file.** A green run of the test you wrote is not a green change. Before
-you call the change done, run the tests that exercise the code you
-touched: the files that import it, its callers' tests, and the
-end-to-end tests that load it. Search for them; a scope statement in
-your task bounds the deliverable, not your verification. The full suite
-runs once, when the branch lands (adeck:executing-specs `landing.md`).
-Say which tests you ran. Any failure a run shows — including one you
-didn't cause — goes in your report by name; a red test you watched
-scroll past and didn't mention is a report falsified by omission.
-
-### REFACTOR - Clean Up
-
-After green only:
-
-- Remove duplication
-- Improve names
-- Extract helpers
-
-Keep tests green. Don't add behavior.
-
-### Repeat
-
-Next failing test for next feature.
-
-## Good Tests
-
-| Quality          | Good                                | Bad                                                 |
-| ---------------- | ----------------------------------- | --------------------------------------------------- |
-| **Minimal**      | One thing. "and" in name? Split it. | `test('validates email and domain and whitespace')` |
-| **Clear**        | Name describes behavior             | `test('test1')`                                     |
-| **Shows intent** | Demonstrates desired API            | Obscures what code should do                        |
-
-When writing or changing any test, read [writing-good-tests.md](writing-good-tests.md) for the rules that keep tests honest:
-
-- Name the production change that would make the test fail — before writing it
-- Assert on real behavior, never on mock behavior
-- Keep test-only code in test utilities, out of production classes
-- Understand a dependency's side effects before mocking it
-
-## Common Rationalizations
-
-| Excuse                                               | Reality                                                                                                                                                     |
-| ---------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| "Too simple to test"                                 | Simple code breaks. Test takes 30 seconds.                                                                                                                  |
-| "I'll test after"                                    | Tests written after pass immediately, which proves nothing. You never watched them catch the bug.                                                           |
-| "Tests after achieve same goals (spirit not ritual)" | Tests-after answer "what does this do?"; tests-first answer "what should this do?" You verify the cases you remembered, not the ones you'd have discovered. |
-| "Already manually tested"                            | Ad-hoc: no record, no re-run when the code changes. "Worked when I tried it" is not a test.                                                                 |
-| "Deleting X hours is wasteful"                       | Sunk cost. That time is spent either way; keeping code you can't trust is the waste.                                                                        |
-| "Keep as reference, write tests first"               | You'll adapt it. That's testing after. Delete means delete.                                                                                                 |
-| "Need to explore first"                              | Fine. Throw away exploration, start with TDD.                                                                                                               |
-| "Test hard = design unclear"                         | Listen to test. Hard to test = hard to use.                                                                                                                 |
-| "TDD will slow me down"                              | Debugging in production is slower. TDD catches it before commit.                                                                                            |
-| "Manual test faster"                                 | Manual doesn't prove edge cases. You'll re-test every change.                                                                                               |
-| "Existing code has no tests"                         | You're improving it. Add tests for existing code.                                                                                                           |
-
-## Red Flags - STOP and Start Over
-
-- Code before test
-- Test passes immediately
-- Can't explain why test failed
-- Rationalizing "just this once"
-- "This is different because..."
-- Any excuse in the table above
-
-**All of these mean: Delete code. Start over with TDD.**
-
-## When Stuck
-
-| Problem                | Solution                                                             |
-| ---------------------- | -------------------------------------------------------------------- |
-| Don't know how to test | Write wished-for API. Write assertion first. Ask your human partner. |
-| Test too complicated   | Design too complicated. Simplify interface.                          |
-| Must mock everything   | Code too coupled. Use dependency injection.                          |
-| Test setup huge        | Extract helpers. Still complex? Simplify design.                     |
-
-## Debugging Integration
-
-Bug found? Write failing test reproducing it. Follow TDD cycle. Test proves fix and prevents regression.
-
-Never fix bugs without a test.
+Before writing or changing a test, a mock or a test helper, read
+[writing-good-tests.md](writing-good-tests.md).

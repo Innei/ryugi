@@ -1,0 +1,213 @@
+All calls below are simulated. I assumed the repository layout, test output, and Git SHAs shown where the situation supplied none. The only actual command was `rg --files --hidden ./skill`.
+
+1. **Tool call** `shell`, working directory `/Users/p/git/notes-app`
+
+   ```sh
+   git status --short --branch
+   cat docs/ryugi/specs/2026-11-10-export-design.md
+   cat .artideck/sdd/2026-11-10-export-design/progress.md
+   cat package.json
+   rg --files --hidden -g '!node_modules' -g '!.git' -g '*SKILL.md' -g 'AGENTS.md'
+   rg -n 'listForExport|exportNotes|writeCsv' src
+   ```
+
+   **Assumed result:** `feat/export` is clean. The ledger contains three completed tasks and the 31/31 suite result. The spec requires all notes in the existing export order and leaves empty-account behavior open. The CSV writer already consumes an `Iterable` incrementally and awaits each sink write. `listForExport` uses a SQLite statement’s `.all()`, and `exportNotes` maps that array before calling the writer. The existing statement supports `.iterate()` over the same query. The test script runs Vitest, and the repository has no project-specific runtime verification skill.
+
+2. **Tool call** `shell`, same working directory
+
+   ```sh
+   cat src/export.ts src/export.test.ts src/notes/repository.ts src/csv.ts
+   ```
+
+   **Assumed result:** `listForExport` has no other source callers. The repository’s prepared statement is typed to return `Note` rows. The existing writer closes the iterator if a sink write fails. The export tests include a header-only case and use a sink with an awaited `write` method.
+
+   **Message to partner:** “I’ll fix the memory issue. I’m deferring the header wording and keeping header-only files for empty accounts.”
+
+3. **Tool call** `shell`, same working directory. Append the review triage to the ledger before editing code.
+
+   ```sh
+   cat >> .artideck/sdd/2026-11-10-export-design/progress.md <<'EOF'
+   Final: important (fix pass): Export loads every note before writing and can exhaust memory on a large account.
+   Final: minor (deferred): The CSV header uses updatedAt for the field the UI calls “Last edited”.
+   Final: Ruling: Empty accounts get a CSV containing the standard header and zero data rows — the file imports as an empty table with the same columns as any other export — if users expect a no-data message, the download alone may leave them wondering whether any rows were omitted.
+   EOF
+   ```
+
+   **Assumed result:** Exit 0.
+
+4. **Tool call** `apply_patch`, with this patch as its input
+
+   ```diff
+   *** Begin Patch
+   *** Update File: src/export.test.ts
+   @@
+   -describe("exportNotes", () => {
+   +describe("exportNotes", () => {
+   +  it("starts writing before enumerating a large account", async () => {
+   +    const noteCount = 200_000;
+   +    let notesRead = 0;
+   +    let linesWritten = 0;
+   +    let notesReadAtFirstDataLine: number | undefined;
+   +
+   +    function* scanNotes() {
+   +      for (let index = 0; index < noteCount; index++) {
+   +        notesRead++;
+   +        yield makeNote({ id: String(index), title: `Note ${index}` });
+   +      }
+   +    }
+   +
+   +    await exportNotes(
+   +      {
+   +        listForExport: () => Array.from(scanNotes()),
+   +        iterateForExport: scanNotes,
+   +      },
+   +      {
+   +        async write() {
+   +          linesWritten++;
+   +          if (linesWritten === 2) {
+   +            notesReadAtFirstDataLine = notesRead;
+   +          }
+   +        },
+   +      },
+   +    );
+   +
+   +    expect(notesReadAtFirstDataLine).toBe(1);
+   +    expect(notesRead).toBe(noteCount);
+   +    expect(linesWritten).toBe(noteCount + 1);
+   +  });
+   +
+   *** End Patch
+   ```
+
+   **Assumed result:** The test was added. The test runner transpiles TypeScript without checking excess properties on this transitional test double.
+
+5. **Tool call** `shell`, same working directory
+
+   ```sh
+   pnpm test src/export.test.ts -t 'starts writing before enumerating a large account'
+   ```
+
+   **Assumed result, read in full:** Exit 1. The selected test failed at `expect(notesReadAtFirstDataLine).toBe(1)` with `expected 200000 to be 1`. The other tests in the file were skipped by the filter.
+
+6. **Tool call** `apply_patch`, with this patch as its input
+
+   ```diff
+   *** Begin Patch
+   *** Update File: src/notes/repository.ts
+   @@
+   -  listForExport(): Note[];
+   +  iterateForExport(): Iterable<Note>;
+   @@
+   -    listForExport: () => exportStatement.all(),
+   +    iterateForExport: () => exportStatement.iterate(),
+   *** Update File: src/export.ts
+   @@
+   -  repository: Pick<NoteRepository, "listForExport">,
+   +  repository: Pick<NoteRepository, "iterateForExport">,
+   @@
+   -  const notes = repository.listForExport();
+   -  await writeCsv(sink, CSV_HEADER, notes.map(toCsvRow));
+   +  function* rows() {
+   +    for (const note of repository.iterateForExport()) {
+   +      yield toCsvRow(note);
+   +    }
+   +  }
+   +
+   +  await writeCsv(sink, CSV_HEADER, rows());
+   *** Update File: src/export.test.ts
+   @@
+   -        listForExport: () => Array.from(scanNotes()),
+            iterateForExport: scanNotes,
+   @@
+   -      { listForExport: () => notes },
+   +      { iterateForExport: () => notes },
+   @@
+   -      { listForExport: () => [] },
+   +      { iterateForExport: () => [] },
+   *** End Patch
+   ```
+
+   **Assumed result:** The patch applied. The export now consumes the same ordered query through a cursor and yields one CSV row at a time.
+
+7. **Tool call** `shell`, same working directory
+
+   ```sh
+   pnpm test src/export.test.ts -t 'starts writing before enumerating a large account' &&
+   pnpm test &&
+   git diff --check
+   ```
+
+   **Assumed result, read in full:** Exit 0. The targeted test passed. The full suite passed 32/32, including the existing header-only case. `git diff --check` produced no output.
+
+   **Message to partner:** “The regression test first saw all 200,000 notes read before the first data row. With the cursor in place, it saw one. The full suite passed 32/32 in the simulation.”
+
+8. **Tool call** `shell`, same working directory
+
+   ```sh
+   git add src/export.ts src/export.test.ts src/notes/repository.ts &&
+   git commit -m 'Stream notes through CSV export' &&
+   cat >> .artideck/sdd/2026-11-10-export-design/progress.md <<'EOF'
+   Final: fixed export materialized every note before writing — starts writing before enumerating a large account RED→GREEN, reached tests 32/32
+   EOF
+   ```
+
+   **Assumed result:** Exit 0. Git created `e18b4d2`, and the ledger recorded the fix. No second reviewer was dispatched.
+
+9. **Tool call** `shell`, same working directory. Verify the committed branch and read back the decisions that belong in the report.
+
+   ```sh
+   pnpm test &&
+   git diff --check main...HEAD &&
+   git status --short --branch &&
+   git log --oneline main..HEAD &&
+   rg -n 'Ruling:|minor \(deferred\)|Final: fixed' .artideck/sdd/2026-11-10-export-design/progress.md
+   ```
+
+   **Assumed result, read in full:** Exit 0. Tests passed 32/32. The branch diff check produced no output. Status showed a clean `feat/export` checkout. The log showed `e18b4d2` above the three task commits. The ledger showed the fixed memory finding, the empty-account ruling, and the deferred header wording.
+
+10. **Tool call** `shell`, same working directory. This simulation assumes a local Markdown verification report for the plain Markdown spec.
+
+    ```sh
+    cat > .artideck/sdd/2026-11-10-export-design/verify.md <<'EOF'
+    # Verify CSV export
+
+    Design: `docs/ryugi/specs/2026-11-10-export-design.md`
+    Branch: `feat/export` at `e18b4d2`
+
+    ## Export behavior
+
+    `pnpm test` passed 32/32 on the committed branch. The 200,000-note
+    regression saw all 200,000 notes read before the first data row before
+    the fix and one note read after it. The test also checked that all
+    200,000 data rows and the header reached the sink. This measures when
+    the exporter consumes rows. It does not measure production memory use.
+
+    `git diff --check main...HEAD` exited 0.
+
+    ## Decisions awaiting the partner’s verdict
+
+    - Empty accounts download a CSV with the standard header and no data
+      rows. The export suite covers this behavior.
+    - The CSV column remains `updatedAt`. The UI calls the field “Last
+      edited”. The final review deferred the wording difference.
+
+    Landing waits on the verdict for this group.
+    EOF
+    cat .artideck/sdd/2026-11-10-export-design/verify.md
+    git status --short --branch
+    ```
+
+    **Assumed result:** Exit 0. The report read back as written, and the branch stayed clean because the report is in the ignored spec workspace.
+
+11. **Final message to partner**
+
+    In the simulation, `feat/export` now streams notes through the CSV writer in commit `e18b4d2`. The regression test failed before the fix with 200,000 notes read before the first data row. After the fix it passed with one note read at that point and all 200,000 rows written. On the committed branch, `pnpm test` passed 32/32 and `git diff --check main...HEAD` exited 0.
+
+    Landing waits on your verdict on two behaviors. Empty accounts download a header-only CSV, and the CSV keeps `updatedAt` while the UI says “Last edited”. [Verification report](/Users/p/git/notes-app/.artideck/sdd/2026-11-10-export-design/verify.md)
+
+    1. **Squash into `main`** (default)
+    2. **Rebase onto `main`**
+    3. **Push and open a PR**
+    4. **Keep the branch as-is**
+
+SUMMARY: Simulated the review fix, RED→GREEN verification, commit, and report. Your verdict on the two CSV behaviors and your landing choice are pending.

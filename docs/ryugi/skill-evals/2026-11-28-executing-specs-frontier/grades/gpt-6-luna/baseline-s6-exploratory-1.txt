@@ -1,0 +1,1 @@
+FAIL — The agent omitted `EXPLORING` and used `task-done` without `--uncommitted` and `review-package` without `--exploring`.

@@ -1,0 +1,1 @@
+FAIL — It ran the full suite, but named the failing test only in the tool output, leaving the report to refer to it indirectly.

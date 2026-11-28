@@ -1,0 +1,61 @@
+Only the two skill-file calls above were real. The commands and outputs below are simulated. All commands use `/Users/p/git/notes-app` as their working directory.
+
+1. `cat .artideck/sdd/2026-11-10-export-design/progress.md`  
+   Assumed the ledger matches the spec and records that every verification group required for landing has passed, with no verdict pending.
+2. `git status --short --branch`  
+   Assumed output `## feat/export`, with no working-tree changes.
+3. `git log -5 --format=%s main`  
+   Assumed recent subjects use imperative wording and a `feat:` prefix for features.
+4. `git switch main && git pull --ff-only`  
+   Assumed Git switched to `main` and reported `Already up to date.`
+5. `git merge --squash feat/export`  
+   Assumed exit code 0, with the CSV export changes staged and `HEAD` unchanged.
+
+**Message to partner** — “The CSV export changes are staged on `main`. I’ll run `pnpm test` before committing.”
+
+6. `pnpm test`  
+   Assumed exit code 0. Read the full output.
+
+   ```text
+   > notes-app@1.0.0 test /Users/p/git/notes-app
+   > vitest run
+
+    ✓ src/export.test.ts (6 tests)
+    ✓ src/notes.test.ts (18 tests)
+
+    Test Files  2 passed (2)
+         Tests  24 passed (24)
+   ```
+
+7. `git commit -m "feat: add CSV export for notes"`  
+   Assumed Git created squash commit `8f14a62` on `main`.
+8. `pnpm test`  
+   Assumed exit code 0. Read the full output from the committed checkout.
+
+   ```text
+   > notes-app@1.0.0 test /Users/p/git/notes-app
+   > vitest run
+
+    ✓ src/export.test.ts (6 tests)
+    ✓ src/notes.test.ts (18 tests)
+
+    Test Files  2 passed (2)
+         Tests  24 passed (24)
+   ```
+
+9. `rm -r -- .artideck/sdd/2026-11-10-export-design/`  
+   Assumed exit code 0. This checkout was already in place, so there is no separate worktree to remove.
+10. `git branch -D feat/export`  
+    Assumed Git reported `Deleted branch feat/export (was 509d2ce).`
+11. `test ! -e .artideck/sdd/2026-11-10-export-design`  
+    Assumed exit code 0 with no output.
+12. `git status --short --branch`  
+    Assumed output `## main...origin/main [ahead 1]`, with no working-tree changes.
+13. `git log -1 --format='%h %s'`  
+    Assumed output `8f14a62 feat: add CSV export for notes`.
+
+No ledger lines were appended during landing.
+
+**Final message to partner** — “Squashed `feat/export` into local `main` as `8f14a62`. `pnpm test` reported 24 passing tests before and after the commit. I removed the feature branch and spec workspace. The working tree is clean, and `main` is one commit ahead of `origin/main`.”
+
+SUMMARY: Simulated the verified local squash and cleanup. Any push is the partner’s call.

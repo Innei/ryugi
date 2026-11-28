@@ -1,0 +1,114 @@
+**Simulated transcript.** All calls below use `/Users/p/git/notes-app` as the working directory. Outputs, paths within the project, and commit IDs are assumed. Task 2’s brief has already been read, its todo is `in_progress`, and its original test was observed failing earlier in this simulated session. Assume the brief gives BASE `19d42ef`, Verify `pnpm test`, and Expected “all tests pass.”
+
+**1. Partner message**
+
+> I’ll preserve commas, quotes, and line breaks in titles using CSV quoting, and test that the next note still starts a separate record.
+
+**2. Shell**
+
+```sh
+git diff -- src/export/csv.ts src/export/csv.test.ts
+```
+
+Assume the diff shows the original ordinary-row test and a partial implementation of `writeRows(notes)` that joins each note’s three string fields with commas and joins records with `\n`. The test file already imports `it`, `expect`, and `writeRows`.
+
+**3. Shell**
+
+```sh
+cat >> src/export/csv.test.ts <<'EOF'
+
+it.each([
+  ['comma', 'one,two', '"one,two"'],
+  ['quote', 'say "hi"', '"say ""hi"""'],
+  ['line feed', 'one\ntwo', '"one\ntwo"'],
+  ['carriage return', 'one\rtwo', '"one\rtwo"'],
+])('preserves a title containing a %s', (_kind, title, encoded) => {
+  const updatedAt = '2026-11-10T12:00:00Z'
+  const notes = [
+    { id: '1', title, updatedAt },
+    { id: '2', title: 'Next', updatedAt },
+  ]
+
+  expect(writeRows(notes)).toBe(`1,${encoded},${updatedAt}\n2,Next,${updatedAt}`)
+})
+EOF
+```
+
+Assume exit `0`.
+
+**4. Shell**
+
+```sh
+pnpm test
+```
+
+Assume I read the full output. Exit `1`, with 8 tests passing and all 4 new cases failing on the output assertion. The comma case received `1,one,two,2026-11-10T12:00:00Z` as its first record. The quote case received a bare `say "hi"` field. The line-feed and carriage-return cases each received a bare line break inside the title. These failures exercise the quoting decision independently.
+
+**5. Edit**
+
+```json
+{
+  "path": "src/export/csv.ts",
+  "old_string": "  return notes.map(({ id, title, updatedAt }) => [id, title, updatedAt].join(',')).join('\\n')",
+  "new_string": "  function encodeField(value: string): string {\n    if (/[,\"\\r\\n]/.test(value)) {\n      return `\"${value.replace(/\"/g, '\"\"')}\"`\n    }\n    return value\n  }\n\n  return notes\n    .map(({ id, title, updatedAt }) => [id, title, updatedAt].map(encodeField).join(','))\n    .join('\\n')"
+}
+```
+
+Assume the edit matches once and succeeds.
+
+**6. Shell**
+
+```sh
+pnpm test
+```
+
+Assume I read the full output. Exit `0`, 12 of 12 tests passed, including the original row test and all four quoting cases. This matches the brief’s Expected result.
+
+**7. Partner message**
+
+> `pnpm test` exited 0 with 12/12 passing. All four quoting cases failed on the raw fields before the change and passed afterward.
+
+**8. Shell — commit and ruling in one call**
+
+```sh
+git add -- src/export/csv.ts src/export/csv.test.ts &&
+git commit -m "Write CSV note rows with escaped fields" &&
+printf '%s\n' 'Task 2: Ruling: Quote fields containing commas, double quotes, or line breaks and double each embedded quote — this preserves the full title and keeps each note in one CSV record — a consumer that splits the file on physical lines will misread multiline titles.' >> .artideck/sdd/2026-11-10-export-design/progress.md
+```
+
+Assume exit `0`, with commit `73af291` on `feat/export`. The quoted `printf` argument is the exact ruling appended.
+
+**9. Shell — final verification and completion record**
+
+```sh
+bash scripts/task-done docs/ryugi/specs/2026-11-10-export-design.md 2 19d42ef -- pnpm test
+```
+
+Assume exit `0`. The helper reports the full test log at `.artideck/sdd/2026-11-10-export-design/task-2-verify.log` and appends this exact line:
+
+```text
+Task 2: complete (commits 19d42ef..73af291, tests: pnpm test → 12/12 passed)
+```
+
+**10. Shell — read the full final run and confirm the ledger entry**
+
+```sh
+cat .artideck/sdd/2026-11-10-export-design/task-2-verify.log &&
+tail -n 2 .artideck/sdd/2026-11-10-export-design/progress.md
+```
+
+Assume exit `0`. I read the full log, which reports 12/12 passing, and the ledger ends with the ruling and completion lines reproduced above.
+
+**11. Todo**
+
+```json
+{"task": 2, "title": "Write rows", "status": "complete"}
+```
+
+Assume the update succeeds.
+
+**12. Partner message**
+
+> Task 2 closed at `73af291`. The final `task-done` run of `pnpm test` passed 12/12. Task 3 is next.
+
+SUMMARY: Simulated Task 2 through its verified commit and ledger entry. Task 3 remains with the coding agent. No partner decision is pending.

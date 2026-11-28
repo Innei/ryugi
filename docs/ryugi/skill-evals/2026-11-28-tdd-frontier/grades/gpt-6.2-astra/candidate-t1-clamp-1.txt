@@ -1,0 +1,1 @@
+PASS — Tests cover clamp boundaries and RangeError, fail before implementation, and pass afterward in the only test file that imports math.ts.

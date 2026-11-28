@@ -1,0 +1,131 @@
+**Simulation.** Every `shell` call below would run in `/Users/p/git/notes-app`. The only actual commands were reads under `./skill/`. All repository output, test results, and commit IDs below are assumed.
+
+**1. `shell` — recover the active task’s brief and inspect the current changes.**
+
+```sh
+w=.artideck/sdd/2026-11-10-export-design
+cat "$w/tasks.md" "$w/progress.md"
+rg --files --hidden "$w"
+git status --short --branch
+git diff
+```
+
+Assume the workspace contains `briefs/task-2.md`. The ledger records Task 1 complete. The branch is `feat/export`, and the diff shows the already-written plain-row test. Task 2’s todo is already `in_progress`.
+
+**2. `shell` — read the recorded BASE, verification command, and row-writer interface.**
+
+```sh
+cat .artideck/sdd/2026-11-10-export-design/briefs/task-2.md
+cat src/export/rows.ts src/export/rows.test.ts
+```
+
+Assume the brief records BASE `81d6af29b031b821a4512d123e7989b55fbcd3ad` and Verify `pnpm test`, expected exit 0 with all tests passing. The existing test calls `writeRows(notes)`. The three fields are strings, Task 1 owns the header, and the row writer currently returns `''`. Its contract uses LF between records with no trailing LF.
+
+**3. `shell` — record the quoting decision while the task is open.**
+
+```sh
+cat >> .artideck/sdd/2026-11-10-export-design/progress.md <<'EOF'
+Task 2: Ruling: Preserve titles exactly. Wrap any field containing a comma, double quote, CR, or LF in double quotes and double each embedded double quote — this keeps each note in one CSV record with three fields — a reader that splits on physical lines will misread multiline titles.
+EOF
+```
+
+**Partner message:** “I’ll preserve commas, quotes, and line breaks in titles using CSV quoting, and test that the following note still starts a new record.”
+
+**4. `shell` — add a regression test and observe it fail before changing the writer.**
+
+```sh
+cat >> src/export/rows.test.ts <<'EOF'
+
+it('preserves punctuation and line breaks within a title', () => {
+  const updatedAt = '2026-11-10T09:00:00Z'
+  for (const [title, field] of [
+    ['one,two', '"one,two"'],
+    ['say "hi"', '"say ""hi"""'],
+    ['one\ntwo', '"one\ntwo"'],
+    ['one\rtwo', '"one\rtwo"'],
+    ['one,\r\n"two"', '"one,\r\n""two"""'],
+  ]) {
+    expect(writeRows([
+      { id: '1', title, updatedAt },
+      { id: '2', title: 'Next', updatedAt },
+    ])).toBe(`1,${field},${updatedAt}\n2,Next,${updatedAt}`)
+  }
+})
+EOF
+pnpm test
+```
+
+Assume I read the full output. Exit 1, with 7 tests passing and 2 failing. Both failures are row-content assertions. The new test expected `1,"one,two",2026-11-10T09:00:00Z` followed by the second record and received `''`. The existing plain-row test also received `''`.
+
+**5. `shell` — implement the writer and run the brief’s Verify command.**
+
+```sh
+python3 - <<'PY'
+from pathlib import Path
+path = Path('src/export/rows.ts')
+source = path.read_text()
+stub = "  return ''\n"
+assert source.count(stub) == 1
+path.write_text(source.replace(stub, r'''  return notes.map(({ id, title, updatedAt }) =>
+    [id, title, updatedAt].map(field =>
+      /[",\r\n]/.test(field) ? `"${field.replace(/"/g, '""')}"` : field
+    ).join(',')
+  ).join('\n')
+'''))
+PY
+pnpm test
+```
+
+Assume the full, short `pnpm test` output reads:
+
+```text
+> notes-app@1.0.0 test
+> vitest run
+
+ RUN  v3.2.4 /Users/p/git/notes-app
+
+ ✓ src/notes.test.ts (6 tests) 3ms
+ ✓ src/export/header.test.ts (1 test) 1ms
+ ✓ src/export/rows.test.ts (2 tests) 2ms
+
+ Test Files  3 passed (3)
+      Tests  9 passed (9)
+   Start at  10:14:20
+   Duration  240ms
+```
+
+**Partner message:** “`pnpm test` exited 0 with 9/9 tests passing across 3 files, including the plain-row and quoted-title cases. That matches Task 2’s expected result.”
+
+**6. `shell` — commit the verified paths and close Task 2 in the same call.**
+
+```sh
+git add -- src/export/rows.ts src/export/rows.test.ts &&
+git commit -m "Write CSV records for exported notes" &&
+bash scripts/task-done docs/ryugi/specs/2026-11-10-export-design.md 2 \
+  81d6af29b031b821a4512d123e7989b55fbcd3ad -- pnpm test
+```
+
+Assume the commit is `4c2d8a1`, `task-done` exits 0, and it reports its full verification log at `.artideck/sdd/2026-11-10-export-design/task-2-verify.log`.
+
+**7. `shell` — read the closing run’s full output and the ledger entry it produced.**
+
+```sh
+w=.artideck/sdd/2026-11-10-export-design
+cat "$w/task-2-verify.log"
+tail -n 1 "$w/progress.md"
+git log -1 --format='%h %s'
+```
+
+Assume the full log shows the same three test files and all 9 tests passing. The commit subject is `4c2d8a1 Write CSV records for exported notes`. The exact line appended by `task-done` is:
+
+```text
+Task 2: complete (commits 81d6af2..4c2d8a1, tests: pnpm test → 9 passed)
+```
+
+**8. `todos.update`**
+
+```json
+{"task":2,"status":"complete"}
+```
+
+SUMMARY: In the simulation, Task 2 closed at `4c2d8a1` after the closing `pnpm test` run passed 9/9 tests. Task 3 remains pending for the coding agent. No partner decision is needed.

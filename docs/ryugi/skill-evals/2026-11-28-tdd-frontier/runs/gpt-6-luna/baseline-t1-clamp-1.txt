@@ -1,0 +1,13 @@
+**Simulated tool calls and messages, in order**
+
+1. **Message to partner:** “I’ll inspect the loaded TDD skill’s test-writing rules first. Per your simulation instruction, I won’t run commands or modify files; I’ll show the calls and file contents I would use.”
+
+2. **Tool call** — read the required skill guidance:
+   ```sh
+   cat ./skill/writing-good-tests.md
+   ```
+   **Output assumption:** the file contains additional rules for writing honest tests. I can’t know its exact contents without reading it, so I would stop here rather than invent test requirements or proceed as if I had complied.
+
+3. **Message to partner:** “Stopped before implementation: I can’t read `./skill/writing-good-tests.md` under the simulation constraint, which permits reading only files under `./skill/` but says not to run anything. I’m reporting no files changed and no tests run.”
+
+SUMMARY: Simulated the first required skill read; stopped because its output was unavailable, so no test or implementation was written and no checks were run.

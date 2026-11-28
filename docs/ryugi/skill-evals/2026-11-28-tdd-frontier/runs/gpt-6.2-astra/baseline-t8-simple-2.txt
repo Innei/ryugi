@@ -1,0 +1,110 @@
+Only step 1 was executed. Steps 2–9 are a simulation. Each simulated shell call uses `/Users/p/git/notes-app` as its working directory, and each reported repository result is assumed.
+
+**1. Read the test-writing guidance.** I sent the opening message, then ran `cat ./skill/writing-good-tests.md` in the supplied workspace. It exited 0. The guidance calls for naming the regression before writing the test and deriving the expected result independently of the production sorter.
+
+**2. Inspect the implementation, its callers, and the available tests.**
+
+```sh
+git status --short
+rg -l NotesList src
+rg --files --hidden -g '!.git' -g '!node_modules' -g '*test*' -g '*spec*' -g '*e2e*'
+rg -n 'NotesPage|<NotesList|/notes' --glob '!pnpm-lock.yaml'
+cat src/components/NotesList.tsx src/pages/NotesPage.tsx src/pages/NotesPage.test.tsx src/sort.ts src/sort.test.ts package.json
+```
+
+Assume a clean working tree and the two `NotesList` references given in the question. Assume the page passes its `notes` prop directly to the list, each `<li>` contains just the title, and the existing page test checks that both titles appear. Its fixtures are `Zebra` dated January 1 and `Apple` dated January 2, in that input order. Assume the search finds the page test and the four sorter tests, with no additional caller or end-to-end tests.
+
+**3. Message to partner.** “I’ll test the order a reader sees on the notes page. `Zebra` is the older note and comes first in the input. The expected display is `Apple`, then `Zebra`. Sorting by creation date or simply rendering the input would both fail that check.”
+
+**4. Add the regression test.** This command shows the full resulting test file, including the assumed existing test and fixtures.
+
+```sh
+cat > src/pages/NotesPage.test.tsx <<'EOF'
+import { render, screen } from '@testing-library/react'
+import { expect, it } from 'vitest'
+import { NotesPage } from './NotesPage'
+
+const notes = [
+  { id: '1', title: 'Zebra', createdAt: '2025-01-01' },
+  { id: '2', title: 'Apple', createdAt: '2025-01-02' },
+]
+
+it('shows both notes', () => {
+  render(<NotesPage notes={notes} />)
+
+  expect(screen.getByText('Zebra')).toBeTruthy()
+  expect(screen.getByText('Apple')).toBeTruthy()
+})
+
+it('lists notes in ascending title order', () => {
+  render(<NotesPage notes={notes} />)
+
+  const titles = screen.getAllByRole('listitem').map(item => item.textContent)
+  expect(titles).toEqual(['Apple', 'Zebra'])
+})
+EOF
+```
+
+Assumed result: exit 0, no output.
+
+**5. Verify red before editing production code.**
+
+```sh
+pnpm test src/pages/NotesPage.test.tsx
+```
+
+Assume I read the full output. Exit 1, one test passed, and `lists notes in ascending title order` failed at the order assertion. Expected `['Apple', 'Zebra']`, received `['Zebra', 'Apple']`. No setup or rendering errors.
+
+**6. Change the sort key.** This command shows the full resulting component. The sole change to its assumed original content is `'createdAt'` → `'title'`.
+
+```sh
+cat > src/components/NotesList.tsx <<'EOF'
+import { sortBy } from '../sort'
+
+type Note = {
+  id: string
+  title: string
+  createdAt: string
+}
+
+export function NotesList({ notes }: { notes: Note[] }) {
+  const sorted = sortBy(notes, 'title')
+
+  return (
+    <ul>
+      {sorted.map(note => <li key={note.id}>{note.title}</li>)}
+    </ul>
+  )
+}
+EOF
+```
+
+Assumed result: exit 0, no output. No files deleted.
+
+**7. Verify the page behavior and the existing sorter coverage.** Run each command and read its full output.
+
+```sh
+pnpm test src/pages/NotesPage.test.tsx
+pnpm test src/sort.test.ts
+pnpm typecheck
+```
+
+Assumed results, in order:
+
+- Page tests exited 0, 2/2 passed, including `lists notes in ascending title order`.
+- Sorter tests exited 0, 4/4 passed, covering ascending order, descending order, string keys, and ties.
+- Typecheck exited 0 with no diagnostics. Neither test run emitted warnings.
+
+**8. Check the final change.**
+
+```sh
+git diff --check
+git diff -- src/components/NotesList.tsx src/pages/NotesPage.test.tsx
+git status --short
+```
+
+Assume `git diff --check` exited 0 with no output. The diff showed the one-line sort-key change and the added page test. Status listed only those two modified files.
+
+**9. Final message to partner, as simulated.** “The notes list now displays titles in ascending order. Before the change, the new page test received `Zebra, Apple`. After changing the sort key, it received `Apple, Zebra`. Both page tests and all four sorter tests passed, and `pnpm typecheck` exited 0.”
+
+SUMMARY: I read the skill guidance, then simulated inspection, a failing page test, the sort-key edit, green tests, typechecking, and diff review. The simulated result is 6/6 tests passing. No repository files were changed or checks actually run.

@@ -1,0 +1,88 @@
+The only real command was `cat ./skill/writing-good-tests.md`. Everything below is an ordered simulation. Each shell call uses `/Users/p/git/notes-app` as its working directory, and each result is assumed.
+
+**1. Message to partner**
+
+> The first test passed 1/1 before the implementation changed. I’ll inspect the fixture and the existing sort order to see whether they already put the pinned note first.
+
+**2. Shell — inspect the working tree, test, implementation, and callers**
+
+```sh
+git status --short
+cat src/sort.test.ts src/sort.ts
+rg -n 'sortNotes' .
+rg --files --hidden -g '!node_modules' -g '!.git'
+```
+
+Assume `src/sort.test.ts` is the only modified file. Its single test calls the real `sortNotes`, but the pinned note is both first in the input and newer than the unpinned note. Assume `sortNotes` copies its input and sorts by descending numeric `updatedAt`. Its exported `Note` interface already has `pinned?: boolean`. The search finds one caller in `src/notes-list.ts`, covered by `src/notes-list.test.ts`, and one end-to-end test file, `e2e/notes-list.test.ts`. Assume both run through Vitest.
+
+**3. Message to partner — name the break before editing the test**
+
+> The current fixture gets the expected order from timestamps alone. The test should catch a sorter that ignores `pinned`. I’ll put the older pinned note second in the input and assert that it moves ahead of the newer unpinned note.
+
+**4. Shell — write the complete revised test file**
+
+```sh
+cat > src/sort.test.ts <<'EOF'
+import { expect, test } from 'vitest'
+import { sortNotes } from './sort'
+
+test('pinned notes sort first even when an unpinned note is newer', () => {
+  const notes = [
+    { id: 'newer', updatedAt: 20 },
+    { id: 'older-pinned', updatedAt: 10, pinned: true },
+  ]
+
+  expect(sortNotes(notes).map(note => note.id)).toEqual([
+    'older-pinned',
+    'newer',
+  ])
+})
+EOF
+```
+
+**5. Shell — verify RED**
+
+```sh
+pnpm test src/sort.test.ts
+```
+
+Assume the run exits 1 with one failed assertion in `pinned notes sort first even when an unpinned note is newer`. Expected `['older-pinned', 'newer']`, received `['newer', 'older-pinned']`. No setup or import errors.
+
+**6. Message to partner**
+
+> The revised test failed on the order of the two IDs. The newer unpinned note came first. I’ll give pin status priority and keep the existing timestamp comparison for notes with the same pin status.
+
+**7. Shell — write the complete implementation file**
+
+```sh
+cat > src/sort.ts <<'EOF'
+export interface Note {
+  id: string
+  updatedAt: number
+  pinned?: boolean
+}
+
+export function sortNotes(notes: readonly Note[]): Note[] {
+  return [...notes].sort((a, b) => {
+    const pinOrder = Number(b.pinned === true) - Number(a.pinned === true)
+    return pinOrder || b.updatedAt - a.updatedAt
+  })
+}
+EOF
+```
+
+**8. Shell — verify GREEN, then exercise the caller and end-to-end path**
+
+```sh
+pnpm test src/sort.test.ts
+pnpm test src/notes-list.test.ts
+pnpm test e2e/notes-list.test.ts
+```
+
+Assume I read the full output of each command. The sort run reports 1/1 passed, the caller run reports 3/3 passed, and the end-to-end run reports 2/2 passed. Each exits 0 with no warnings or errors.
+
+**9. Message to partner**
+
+> In the simulated run, the revised test caught timestamp-only sorting before the implementation edit and passed afterward. All six tests across the sort, list caller, and end-to-end files passed. Sorting still copies the input and orders notes newest first within each pin group.
+
+SUMMARY: Read the test-writing guidance, then simulated inspection, a stronger test, its expected failure, the comparator edit, and three verification runs reporting 6/6 passed. The repository edits and test results are hypothetical.

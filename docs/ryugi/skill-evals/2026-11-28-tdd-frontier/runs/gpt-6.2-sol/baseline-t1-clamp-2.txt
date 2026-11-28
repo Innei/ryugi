@@ -1,0 +1,130 @@
+I read `./skill/writing-good-tests.md`. The repository commands, edits, and results below are simulated. Each command would run in `/Users/p/git/notes-app`.
+
+**1. Inspect the working tree, test setup, and callers.**
+
+```sh
+git status --short
+rg --files --hidden -g '!.git' -g '!node_modules'
+cat package.json src/math.ts src/math.test.ts
+rg -n --hidden -g '!.git' -g '!node_modules' '\bmath\b|\bclamp\b'
+```
+
+Assumed results. The working tree is clean. `src/math.ts` exports `add` and has no `clamp` export. `src/math.test.ts` has one existing `add` test and is the only file that imports the module. No barrels, application entry points, or end-to-end tests load it. The `pnpm test` script runs Vitest with `vitest run`.
+
+**2. Write the bounds test and verify RED.**
+
+Partner message:
+
+> I’ll test that `clamp` returns the lower bound, upper bound, or original value as specified. The cases catch a missing export, an omitted or reversed bounds check, and a change that replaces the original value when it equals a bound.
+
+```sh
+cat > src/math.test.ts <<'EOF'
+import { expect, test } from 'vitest'
+import * as math from './math'
+
+test('adds two numbers', () => {
+  expect(math.add(2, 3)).toBe(5)
+})
+
+test.each([
+  [-1, 0, 10, 0],
+  [11, 0, 10, 10],
+  [4, 0, 10, 4],
+  [-0, 0, 10, -0],
+  [7, 4, 4, 4],
+])('clamps %s to [%s, %s] as %s', (value, min, max, expected) => {
+  expect('clamp' in math && typeof math.clamp === 'function').toBe(true)
+  if ('clamp' in math && typeof math.clamp === 'function') {
+    expect(math.clamp(value, min, max)).toBe(expected)
+  }
+})
+EOF
+pnpm test src/math.test.ts
+```
+
+Assumed result. Exit 1. The five `clamps` cases fail at the export assertion with `expected false to be true`. `adds two numbers` passes. Vitest collects and runs the file with no import or runtime errors.
+
+**3. Implement the bounds behavior and verify GREEN.**
+
+```sh
+cat >> src/math.ts <<'EOF'
+
+export function clamp(value: number, min: number, max: number): number {
+  if (value < min) return min
+  if (value > max) return max
+  return value
+}
+EOF
+pnpm test src/math.test.ts
+```
+
+Assumed result. Exit 0. One file passes with all six tests and no warnings.
+
+**4. Write the reversed-bounds test and verify RED.**
+
+Partner message:
+
+> In the simulated run, all six tests pass after adding the bounds checks. I’ll now test that reversed bounds throw a `RangeError` even when the value would otherwise take the lower-bound branch.
+
+```sh
+cat > src/math.test.ts <<'EOF'
+import { expect, test } from 'vitest'
+import { add, clamp } from './math'
+
+test('adds two numbers', () => {
+  expect(add(2, 3)).toBe(5)
+})
+
+test.each([
+  [-1, 0, 10, 0],
+  [11, 0, 10, 10],
+  [4, 0, 10, 4],
+  [-0, 0, 10, -0],
+  [7, 4, 4, 4],
+])('clamps %s to [%s, %s] as %s', (value, min, max, expected) => {
+  expect(clamp(value, min, max)).toBe(expected)
+})
+
+test('throws RangeError when min exceeds max', () => {
+  expect(() => clamp(0, 10, 5)).toThrow(RangeError)
+})
+EOF
+pnpm test src/math.test.ts
+```
+
+Assumed result. Exit 1. `throws RangeError when min exceeds max` fails because the call returns without throwing. The other six tests pass.
+
+**5. Add validation and verify the affected tests.**
+
+```sh
+apply_patch <<'PATCH'
+*** Begin Patch
+*** Update File: src/math.ts
+@@
+ export function clamp(value: number, min: number, max: number): number {
++  if (min > max) throw new RangeError('min must be less than or equal to max')
+   if (value < min) return min
+*** End Patch
+PATCH
+```
+
+Assumed result. Exit 0. The patch updates `src/math.ts`.
+
+```sh
+pnpm test src/math.test.ts
+```
+
+Assumed result. Exit 0. One file passes with all seven tests and no warnings. Under the assumed caller search, this file contains every test that exercises `src/math.ts`.
+
+```sh
+git diff --check
+git status --short
+```
+
+Assumed results. `git diff --check` exits 0 with no output. Git reports modifications to `src/math.ts` and `src/math.test.ts`.
+
+Final partner message:
+
+> The simulated change exports `clamp` from `src/math.ts` and adds tests for values below, within, and above the interval, equal bounds, and reversed bounds. The first simulated run showed five failures for the missing export. The second red run showed that `throws RangeError when min exceeds max` caught the missing validation. The final simulated `pnpm test src/math.test.ts` run reported seven passing tests, and `git diff --check` reported no whitespace errors. No repository changes or test runs occurred.
+
+SUMMARY: Read the test-writing guidance, then simulated repository inspection, two red-green cycles, and final verification. All repository results are assumed.

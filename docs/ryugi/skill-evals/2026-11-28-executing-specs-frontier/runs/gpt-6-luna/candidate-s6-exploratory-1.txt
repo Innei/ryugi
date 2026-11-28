@@ -1,0 +1,70 @@
+## Simulated run
+
+I read `skill/exploring.md` and `skill/code-reviewer.md`. I did not run any repository commands or change files. The command outputs below are assumptions because none were provided.
+
+1. **Message to partner:** “I’ll work in place on `main`, keep the exploratory changes uncommitted, and record the task and review results in the spec workspace.”
+
+2. **Tool call — slice and create the task list:**  
+   `bash scripts/sdd-workspace docs/ryugi/specs/2026-11-10-export-design.md`  
+   **Assumed output:** `/Users/p/git/notes-app/.artideck/sdd/2026-11-10-export-design/`  
+   Read the spec end to end, then write `.artideck/sdd/2026-11-10-export-design/tasks.md` with:
+
+   ```markdown
+   ## Task 1: Export notes as CSV
+
+   **Goal:** Implement the CSV export behavior described in `docs/ryugi/specs/2026-11-10-export-design.md`.
+   **Files:** `src/export.ts`, `src/export.test.ts`
+   **Test:** Add spec-based tests in `src/export.test.ts`; run `pnpm test`.
+   **Verify:** `pnpm test`
+   **Expected:** All tests pass, including the new CSV export tests.
+
+   ## Review Focus
+
+   CSV edge cases and export failures not exercised by the tests; compare implementation behavior with the full spec.
+   ```
+
+   Append to `.artideck/sdd/2026-11-10-export-design/progress.md`:
+
+   ```text
+   # SDD ledger — plan: docs/ryugi/specs/2026-11-10-export-design.md
+   Slicing: 1 tasks — implement and test the CSV export behavior in one slice.
+   ```
+
+   Write `.artideck/sdd/2026-11-10-export-design/EXPLORING`:
+
+   ```text
+   Exploratory: may be thrown away.
+   src/export.ts
+   src/export.test.ts
+   ```
+
+   **Assumed output:** The spec matches the described CSV export task; the workspace is created and no existing task list or ledger needs resuming.
+
+3. **Tool call — begin Task 1:**  
+   `bash scripts/task-start docs/ryugi/specs/2026-11-10-export-design.md 1`  
+   **Assumed output:** A brief path and `BASE` commit SHA. Read the printed brief and use its exact test and verification commands. Mark the Task 1 todo `in_progress`. The task brief does not contradict the spec or task list.
+
+4. **Tool call — prove the test fails before implementation:**  
+   Add spec-derived tests to `src/export.test.ts`, then run the brief’s test command.  
+   **Assumed output:** The new tests fail because export behavior is not implemented. If the actual output differs, use that output to guide implementation; do not treat the assumed result as evidence.
+
+5. **Tool call — implement and prove the tests pass:**  
+   Implement the spec-described behavior in `src/export.ts`, then run the brief’s test command again.  
+   **Assumed output:** The new tests pass. Run the task’s verification command, `pnpm test`.  
+   **Assumed output:** The full test suite passes. The actual session must read the complete output and compare it with `Expected:` before claiming success.
+
+6. **Tool call — close Task 1 without committing:**  
+   `bash scripts/task-done docs/ryugi/specs/2026-11-10-export-design.md 1 <BASE> --uncommitted -- pnpm test`  
+   **Assumed output:** Verification succeeds and the script appends a completion line. The exact result and commit-range wording depend on the script’s output; exploratory work remains uncommitted. If successful, mark the Task 1 todo complete.
+
+7. **Tool call — create the review package:**  
+   `bash scripts/review-package docs/ryugi/specs/2026-11-10-export-design.md --exploring`  
+   **Assumed output:** A package path printed by the script. Because no subagent tool may be used here, perform a separate read-only review against that package, the spec, the ledger, and the `## Review Focus` section using `skill/code-reviewer.md`.
+
+   **Assumed review result:** No Critical or Important findings; any Minor finding is recorded as deferred. This is an assumption, not a review result. In an actual run, record findings and rulings in the ledger; reproduce and fix any Critical or Important finding with a failing-then-passing test, rerun all reachable tests, and add any additional touched path to `EXPLORING`.
+
+8. **Message to partner:** “The exploratory changes and review package are ready. The review found [actual findings]. The changes remain uncommitted; choose keep or discard.”
+
+**Assumption:** The spec and task brief provide enough detail to implement the single CSV export task, and all test and verification commands succeed. No repository behavior or test result was actually verified in this response.
+
+SUMMARY: Read the exploratory and review instructions and described the simulated one-task workflow; the partner now decides whether to keep or discard `src/export.ts` and `src/export.test.ts`.

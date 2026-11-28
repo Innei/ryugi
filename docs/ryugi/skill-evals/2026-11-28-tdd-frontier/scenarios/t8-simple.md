@@ -1,0 +1,3 @@
+Repo: /Users/p/git/notes-app (TypeScript, vitest; `pnpm test` runs the whole suite, `pnpm test <file>` one file, `pnpm typecheck` runs tsc).
+
+Your partner writes: "The notes list should sort by title instead of creation date." In `src/components/NotesList.tsx` you find `const sorted = sortBy(notes, 'createdAt')`. `sortBy` lives in `src/sort.ts` and is covered by `src/sort.test.ts` (ascending, descending, string keys, ties). Assume `rg -l NotesList src` lists `src/components/NotesList.tsx` and `src/pages/NotesPage.tsx`; there is no NotesList test, and `src/pages/NotesPage.test.tsx` renders the page with two notes. Continue until you report.

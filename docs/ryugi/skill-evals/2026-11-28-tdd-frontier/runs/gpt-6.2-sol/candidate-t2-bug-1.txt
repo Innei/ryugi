@@ -1,0 +1,65 @@
+I read `./skill/writing-good-tests.md`. Every repository command, file edit, and result below is simulated.
+
+1. **Inspect the implementation and find its callers and checks.** Run from `/Users/p/git/notes-app`.
+
+   ```sh
+   git status --short
+   rg --files -g 'AGENTS.md' -g 'package.json' -g 'tsconfig*.json' -g '*test*' -g '*spec*' -g '*vitest*'
+   rg -n '\bpaginat(e|ion)\b|listNotes' .
+   cat package.json src/paginate.ts src/paginate.test.ts src/list-notes.ts src/list-notes.test.ts
+   ```
+
+   Assumed results: the worktree is clean, there are no additional `AGENTS.md` instructions, and `paginate` takes one-based page numbers and caps `end` at `items.length`. The existing pagination test covers empty input. The only caller is `listNotes`, which has two tests. The search finds no end-to-end tests that reach pagination. `package.json` defines `test` as `vitest run` and `typecheck` as `tsc --noEmit`, with no build script.
+
+2. **Add the regression test before editing the implementation.** The fifth item belongs on page 3 when the page size is 2. Subtracting 1 from the capped end index makes that page empty.
+
+   ```sh
+   cat > src/paginate.test.ts <<'EOF'
+   import { expect, it } from 'vitest';
+   import { paginate } from './paginate';
+
+   it('returns an empty array for empty input', () => {
+     expect(paginate([], 1, 2)).toEqual([]);
+   });
+
+   it('includes the last item on a partial final page', () => {
+     expect(paginate([1, 2, 3, 4, 5], 3, 2)).toEqual([5]);
+   });
+   EOF
+   pnpm test src/paginate.test.ts
+   ```
+
+   Assumed result after reading the full output: exit 1, one test passed, and `includes the last item on a partial final page` failed with expected `[5]` and received `[]`.
+
+   **Message to partner:** “The regression test reproduced the bug. Page 3 returned `[]` where it should return `[5]`. I’ll correct the slice endpoint and rerun the pagination and caller tests.”
+
+3. **Make the one-line fix and verify it.** Under the assumed file contents, this is the complete updated `src/paginate.ts`.
+
+   ```sh
+   cat > src/paginate.ts <<'EOF'
+   export function paginate<T>(items: T[], page: number, size: number): T[] {
+     const start = (page - 1) * size;
+     const end = Math.min(start + size, items.length);
+     return items.slice(start, end);
+   }
+   EOF
+   pnpm test src/paginate.test.ts
+   pnpm test src/list-notes.test.ts
+   pnpm typecheck
+   git diff --check
+   git status --short
+   ```
+
+   Assumed results after reading each command’s full output:
+
+   | Command | Result |
+   |---|---|
+   | `pnpm test src/paginate.test.ts` | Exit 0. Both tests passed, including the regression that previously returned `[]`. |
+   | `pnpm test src/list-notes.test.ts` | Exit 0. Both caller tests passed. |
+   | `pnpm typecheck` | Exit 0. No diagnostics. |
+   | `git diff --check` | Exit 0. No output. |
+   | `git status --short` | Only `src/paginate.ts` and `src/paginate.test.ts` are modified. |
+
+   **Final message to partner in the simulation:** “Fixed pagination dropping the last item on the final page. The regression first failed with `[]` instead of `[5]`, then passed after the slice endpoint changed to `end`. Both pagination tests, both caller tests, and typecheck passed.”
+
+SUMMARY: I read the test-writing guide, then simulated repository inspection, a failing regression, the one-line fix, and passing targeted checks. The repository edits and check results are hypothetical.

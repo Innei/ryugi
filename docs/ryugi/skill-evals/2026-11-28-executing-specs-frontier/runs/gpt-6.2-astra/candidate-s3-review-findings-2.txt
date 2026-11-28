@@ -1,0 +1,230 @@
+Only the reads under `./skill/` were real. Below, each numbered shell block is one simulated call in `/Users/p/git/notes-app`. Outputs, file contents, and commit IDs are assumptions. Quoted messages are what I would send my partner.
+
+1. **Partner message**
+
+   > I’m keeping the large-account export failure as Important. I’ll test whether CSV rows reach the writer before the exporter reads the rest of the account.
+
+2. **Shell — inspect the branch, ledger, and export path**
+
+   ```sh
+   git status --short --branch &&
+   cat .artideck/sdd/2026-11-10-export-design/{progress,tasks}.md &&
+   rg -n 'exportNotes|iterateNotes|writeRow|updatedAt' src test &&
+   rg --files --hidden -g '!node_modules' -g '!.git' | rg 'SKILL\.md$|AGENTS\.md$|package\.json$|export.*test|verify'
+   ```
+
+   Assume a clean `feat/export`, three completion lines, and no earlier rulings needing a verdict. Assume the project has a running-product check at `.agents/skills/check-export/SKILL.md`.
+
+3. **Shell — read the implementation, its callers, and the project check**
+
+   ```sh
+   cat src/export.ts src/note-store.ts src/download-csv.ts test/export.test.ts \
+     package.json .agents/skills/check-export/SKILL.md \
+     docs/ryugi/specs/2026-11-10-export-design.md
+   ```
+
+   Assume `store.iterateNotes()` already reads ordered notes from a snapshot in bounded pages. The CSV download writer awaits backpressure. The eager allocation is one line in `exportNotes`, `const notes = Array.from(store.iterateNotes())`. Assume the existing tests import `it`, `expect`, `exportNotes`, and a `note(id)` fixture. The project skill gives the product-check command used in step 11. The design is a local Markdown file, and the loaded verification workflow permits a local report.
+
+4. **Shell — record the two user-visible review decisions**
+
+   ```sh
+   cat >> .artideck/sdd/2026-11-10-export-design/progress.md <<'EOF'
+   Final: minor (deferred): The CSV column is named updatedAt while the notes screen calls it “Last edited”.
+   Final: Ruling: An empty account downloads a CSV with the usual header and zero data rows — the file still identifies its columns and accurately represents zero notes — someone expecting an empty-state message may wonder why a download started.
+   EOF
+   ```
+
+5. **Shell — add the regression before touching production code**
+
+   ```sh
+   cat >> test/export.test.ts <<'EOF'
+
+   it('writes a 200k-note export as it reads the notes', async () => {
+     const total = 200_000
+     let rowsWritten = 0
+     const firstNote = note(0)
+
+     function* iterateNotes() {
+       yield firstNote
+       if (rowsWritten !== 2) {
+         throw new Error('Requested the second note before writing the header and first note')
+       }
+       for (let id = 1; id < total; id++) {
+         yield note(id)
+       }
+     }
+
+     await exportNotes({ iterateNotes }, async () => {
+       rowsWritten++
+     })
+
+     expect(rowsWritten).toBe(total + 1)
+   })
+   EOF
+   ```
+
+   The fixture produces notes lazily, and the writer retains only a count. The test can expose the eager read without exhausting the Mac’s memory.
+
+6. **Shell — prove RED**
+
+   ```sh
+   out=.artideck/sdd/2026-11-10-export-design/final-red.log
+   rc=0
+   pnpm exec vitest run test/export.test.ts -t 'writes a 200k-note export' >"$out" 2>&1 || rc=$?
+   cat "$out"
+   exit "$rc"
+   ```
+
+   Assume I read the full output. Exit `1`, one selected test failed with `Requested the second note before writing the header and first note`. The stack points to `Array.from` in `exportNotes`.
+
+7. **Shell — remove the eager collection**
+
+   ```sh
+   python3 - <<'PY'
+   from pathlib import Path
+
+   path = Path("src/export.ts")
+   source = path.read_text()
+   old = "const notes = Array.from(store.iterateNotes())"
+   assert source.count(old) == 1
+   path.write_text(source.replace(old, "const notes = store.iterateNotes()"))
+   PY
+   ```
+
+   Under the assumed implementation, the existing `for … of` loop now pulls from the store iterator and awaits the existing writer after each row. CSV escaping, order, and header handling use the same code paths.
+
+8. **Shell — prove GREEN, then run the entire suite**
+
+   ```sh
+   w=.artideck/sdd/2026-11-10-export-design
+   run_check() {
+     local log=$1 rc=0
+     shift
+     "$@" >"$log" 2>&1 || rc=$?
+     cat "$log"
+     return "$rc"
+   }
+   run_check "$w/final-green.log" pnpm exec vitest run test/export.test.ts -t 'writes a 200k-note export' &&
+   run_check "$w/final-suite.log" pnpm test &&
+   git diff --check
+   ```
+
+   Assume I read both full outputs. The selected test passed `1/1`, the suite passed `32/32`, and `git diff --check` exited `0` with no output.
+
+9. **Partner message**
+
+   > The regression failed at the eager read before the first data row was written. After the change, it wrote the header and all 200,000 data rows. The focused test passed 1/1, the full suite passed 32/32, and the diff check was clean.
+
+10. **Shell — commit the verified fix and record the result**
+
+    ```sh
+    git add -- src/export.ts test/export.test.ts &&
+    git diff --cached --check &&
+    git commit -m "Stream notes into the CSV writer" &&
+    git rev-parse --short HEAD &&
+    cat >> .artideck/sdd/2026-11-10-export-design/progress.md <<'EOF'
+    Final: fixed large-account exports collecting every note before writing — writes a 200k-note export as it reads the notes RED→GREEN, reached tests 32/32.
+    EOF
+    ```
+
+    Assume commit `84ce913`. The existing whole-branch review is the single review pass.
+
+11. **Shell — exercise the running product on the fixed branch**
+
+    ```sh
+    out=.artideck/sdd/2026-11-10-export-design/final-product.log
+    rc=0
+    pnpm run check:export -- --cases populated,empty >"$out" 2>&1 || rc=$?
+    cat "$out"
+    exit "$rc"
+    ```
+
+    Assume I read the full output. Exit `0`. The browser downloaded and parsed both files. The populated fixture produced its header and three expected notes, including a quoted multiline note. The empty account produced the same header and zero data rows. The timestamp header was `updatedAt`. The 200,000-note result comes from the exporter regression.
+
+12. **Shell — write the verification report and the design conclusions**
+
+    ```sh
+    cat > .artideck/sdd/2026-11-10-export-design/verify.md <<'EOF'
+    # CSV export verification
+
+    ## Automated checks
+
+    The exporter regression stopped at the eager read on the original implementation.
+    With the fix, the first data row reached the writer before the exporter requested
+    the second note, and the writer received 200,001 rows including the header.
+    The full suite passed 32/32. The browser check downloaded and parsed both the
+    populated and empty fixtures. The populated download preserved the multiline note.
+
+    [Failing regression](final-red.log) · [Passing regression](final-green.log) ·
+    [Full suite](final-suite.log) · [Browser downloads](final-product.log)
+
+    ## Empty-account download — awaiting partner verdict
+
+    Exporting an empty account downloads a CSV with column names and zero notes.
+    Is a downloadable file the right result for someone with an empty account?
+
+    ## Timestamp column — awaiting partner verdict
+
+    A reader matching the CSV to the notes screen sees `updatedAt` in the file
+    and “Last edited” on screen. Is that difference acceptable for this release?
+    EOF
+
+    cat >> docs/ryugi/specs/2026-11-10-export-design.md <<'EOF'
+
+    ## Implementation and verification
+
+    CSV export consumes the ordered note iterator as rows are written. Collecting
+    the iterator into an array would make memory use grow with the whole account.
+    A regression covers incremental writing across 200,000 notes. Browser checks
+    covered populated and empty downloads. An empty download contains the column
+    header alone. The exported timestamp column is `updatedAt`, labeled “Last
+    edited” in the UI. Those two presentation decisions await product acceptance.
+    EOF
+    ```
+
+13. **Shell — verify the writeback and rerun the suite before committing it**
+
+    ```sh
+    w=.artideck/sdd/2026-11-10-export-design
+    cat "$w/verify.md" &&
+    git diff -- docs/ryugi/specs/2026-11-10-export-design.md &&
+    test -s "$w/final-red.log" && test -s "$w/final-green.log" &&
+    test -s "$w/final-suite.log" && test -s "$w/final-product.log" &&
+    git diff --check || exit 1
+    rc=0
+    pnpm test >"$w/final-suite.log" 2>&1 || rc=$?
+    cat "$w/final-suite.log"
+    exit "$rc"
+    ```
+
+    Assume I read the report, design diff, and full test output. Both verdicts are pending, all four evidence files exist, the diff check is clean, and `pnpm test` exits `0` with `32/32`.
+
+14. **Partner message**
+
+    > The browser downloaded both fixtures and preserved the multiline note. The empty download had only the header. I’ve recorded that behavior and the `updatedAt` label for your verdict. The final suite rerun passed 32/32.
+
+15. **Shell — commit the design writeback and verify the handoff state**
+
+    ```sh
+    git add -- docs/ryugi/specs/2026-11-10-export-design.md &&
+    git diff --cached --check &&
+    git commit -m "Record CSV export verification in the design" &&
+    git status --short --branch &&
+    git log -2 --oneline &&
+    test -s .artideck/sdd/2026-11-10-export-design/verify.md
+    ```
+
+    Assume exit `0`, status shows only `## feat/export`, and the log shows `bf2a760 Record CSV export verification in the design` above `84ce913 Stream notes into the CSV writer`. The ignored workspace remains available.
+
+16. **Final partner message**
+
+    > The CSV exporter wrote 200,000 notes incrementally in the regression test. The final suite passed 32/32, and both browser download checks passed. `feat/export` is clean. The [verification report](/Users/p/git/notes-app/.artideck/sdd/2026-11-10-export-design/verify.md) has two groups awaiting your verdict: the header-only download for an empty account and the `updatedAt` column labeled “Last edited” in the UI.
+    >
+    > Once you accept both groups, choose how to proceed.
+    >
+    > 1. **Squash into `main`** (default)
+    > 2. **Rebase onto `main`**
+    > 3. **Push and open a PR**
+    > 4. **Keep the branch as-is**
+
+SUMMARY: Simulated one review-fix pass, verification, and design writeback. Both product verdicts and the landing choice wait on the partner. No repository command was actually run.

@@ -1,0 +1,106 @@
+Everything below is simulated. I assume the Task 2 brief names `pnpm test` as Verify and expects the full suite to pass. I also assume Task 2 started at `3a91bc2`, uses `src/export.ts` and `test/export.test.ts`, and its existing RED test calls `writeRows(notes)`. The commands run from `/Users/p/git/notes-app`.
+
+1. **Message to partner**
+
+   > I’ll treat “one row per note” as one CSV record. I’ll add a test for a title containing a comma, quotes, and a newline so the export preserves the whole title.
+
+2. **Shell call** — inspect the in-progress work before editing.
+
+   ```sh
+   git status --short --branch && git diff HEAD -- src/export.ts test/export.test.ts
+   ```
+
+   Assumed output shows branch `feat/export` and only the two Task 2 files modified. The test file already imports `writeRows`, `test`, and `expect`. The implementation currently maps each note to `[id, title, updatedAt].join(',')` and joins records with `'\n'`. Task 1 established that record separator. The fields are strings.
+
+3. **Shell call** — add the regression case and run it against the in-progress implementation.
+
+   ```sh
+   cat >> test/export.test.ts <<'EOF'
+
+   test('preserves a multiline quoted title in one CSV record', () => {
+     const updatedAt = '2026-11-10T12:00:00Z'
+     const notes = [
+       { id: '1', title: 'Draft, "one"\ncontinued', updatedAt },
+       { id: '2', title: 'Next', updatedAt },
+     ]
+
+     expect(writeRows(notes)).toBe(
+       `1,"Draft, ""one""\ncontinued",${updatedAt}\n2,Next,${updatedAt}`,
+     )
+   })
+   EOF
+   pnpm test
+   ```
+
+   Assumed full output reports exit `1`, 11 passed, 1 failed. The failure is the new assertion. The actual first record starts with `1,Draft, "one"` and continues on the next physical line without enclosing quotes. The original Task 2 test now passes.
+
+4. **Edit call** — apply this patch.
+
+   ```diff
+   *** Begin Patch
+   *** Update File: src/export.ts
+   @@
+   +function csvField(value: string): string {
+   +  if (/[",\r\n]/.test(value)) {
+   +    return `"${value.replace(/"/g, '""')}"`
+   +  }
+   +  return value
+   +}
+   +
+    export function writeRows(notes: Note[]): string {
+   -  return notes.map(({ id, title, updatedAt }) => [id, title, updatedAt].join(',')).join('\n')
+   +  return notes
+   +    .map(({ id, title, updatedAt }) => [id, title, updatedAt].map(csvField).join(','))
+   +    .join('\n')
+    }
+   *** End Patch
+   ```
+
+   Assumed result is a successful patch.
+
+5. **Shell call** — run the brief’s Verify command before committing.
+
+   ```sh
+   pnpm test
+   ```
+
+   Assumed full output reports exit `0`, 2 test files passed, 12 tests passed, including the original row test and the new multiline-title test. This matches the brief’s expected result.
+
+6. **Shell call** — record the ruling and commit the verified slice.
+
+   ```sh
+   printf '%s\n' 'Task 2: Ruling: Write one CSV record per note, quoting any field containing a comma, double quote, CR, or LF and doubling embedded quotes — this preserves the original field values when the CSV is read — a consumer that splits on physical lines will split multiline titles.' >> .artideck/sdd/2026-11-10-export-design/progress.md &&
+     git add -- src/export.ts test/export.test.ts &&
+     git commit -m "Write CSV records with escaped note fields"
+   ```
+
+   Assumed output identifies commit `8e42fa1` on `feat/export`, with the two named files committed.
+
+7. **Shell call** — run the final task gate.
+
+   ```sh
+   bash scripts/task-done docs/ryugi/specs/2026-11-10-export-design.md 2 3a91bc2 -- pnpm test
+   ```
+
+   Assumed result is exit `0`. The helper saves the full test output as `task-2-verify.log` in the spec workspace and appends this ledger line:
+
+   ```text
+   Task 2: complete (commits 3a91bc2..8e42fa1, tests: pnpm test → 12 passed)
+   ```
+
+8. **Shell call** — read the full final run and check the recorded completion.
+
+   ```sh
+   cat .artideck/sdd/2026-11-10-export-design/task-2-verify.log &&
+     tail -n 2 .artideck/sdd/2026-11-10-export-design/progress.md
+   ```
+
+   Assumed output confirms 2 test files passed, 12 tests passed, followed by the ruling and completion lines quoted above.
+
+9. **Todo call**
+
+   ```json
+   {"task":2,"status":"completed"}
+   ```
+
+SUMMARY: In the simulation, Task 2 closed at `8e42fa1` after the new regression test failed for the expected reason and the final `pnpm test` run passed all 12 tests. Task 3 is next for the executor. No partner decision is pending.

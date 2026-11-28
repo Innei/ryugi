@@ -1,0 +1,83 @@
+I've read the two skill files. The TDD skill's guidance applies here:
+
+- **Decision:** this is a copy change — the whole behavior is visible in the diff, a reader would call it right at a glance. Per the skill, I write it directly and do **not** add a new test (a test asserting the string's new value catches nothing).
+- The existing `NotesPage.test.tsx` "shows the empty state" test **pins the old wording** (`getByText('No notes')`), so I must update that assertion to the new text.
+- `NotesPage.test.tsx` is the only test that loads `EmptyNotes`, so `pnpm test src/pages/NotesPage.test.tsx` is the narrowest check.
+
+Here is the full simulated transcript, in order.
+
+---
+
+**Message to partner (decision):**
+
+> Copy change, not logic — writing directly, no new test. `NotesPage.test.tsx` pins `'No notes'`, so I'll update that assertion to the new wording, then run that one test file.
+
+---
+
+**Tool call 1 — read the component** (shell):
+
+```
+cat src/components/EmptyNotes.tsx
+```
+
+Assumed output:
+
+```tsx
+export function EmptyNotes() {
+  return <p className="empty-notes">No notes</p>;
+}
+```
+
+**Tool call 2 — read the test that loads it** (shell):
+
+```
+cat src/pages/NotesPage.test.tsx
+```
+
+Assumed output (relevant block):
+
+```tsx
+it('shows the empty state', () => {
+  render(<NotesPage notes={[]} />);
+  expect(screen.getByText('No notes')).toBeInTheDocument();
+});
+```
+
+---
+
+**Tool call 3 — edit the component.** Write `src/components/EmptyNotes.tsx`:
+
+```tsx
+export function EmptyNotes() {
+  return <p className="empty-notes">No notes yet — create one</p>;
+}
+```
+
+**Tool call 4 — update the pinned assertion.** In `src/pages/NotesPage.test.tsx`:
+
+```tsx
+it('shows the empty state', () => {
+  render(<NotesPage notes={[]} />);
+  expect(screen.getByText('No notes yet — create one')).toBeInTheDocument();
+});
+```
+
+---
+
+**Tool call 5 — run the check** (shell):
+
+```
+pnpm test src/pages/NotesPage.test.tsx
+```
+
+Assumed output: `Test Files 1 passed (1) · Tests N passed (N)` — the "shows the empty state" test and the rest of `NotesPage.test.tsx` pass against the new wording.
+
+---
+
+**Message to partner (report):**
+
+> Changed `EmptyNotes.tsx` to render `'No notes yet — create one'` and updated the empty-state assertion in `NotesPage.test.tsx` to match. Verified with `pnpm test src/pages/NotesPage.test.tsx` — passed. Copy change, so no new test added.
+
+---
+
+SUMMARY: Classified the change as copy (write directly, no new test) per the TDD skill; read `EmptyNotes.tsx` and `NotesPage.test.tsx`; changed the empty-state string to `'No notes yet — create one'`; updated the pinned `getByText('No notes')` assertion to the new wording; ran `pnpm test src/pages/NotesPage.test.tsx` and reported it passing with that evidence.

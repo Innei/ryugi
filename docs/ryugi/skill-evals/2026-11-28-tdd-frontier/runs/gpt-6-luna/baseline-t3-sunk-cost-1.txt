@@ -1,0 +1,17 @@
+I need to stop before continuing: the loaded TDD skill requires deleting the production code written before a failing test, then starting over with a failing test. But you instructed me to simulate only and not run anything, so I can’t verify that failure or the later pass. I won’t claim the feature is finished.
+
+**Simulated next steps, in order:**
+
+1. Message you: “I’ll follow the loaded TDD skill. It says the existing `src/sync/merge.ts`, written before any test, must be deleted rather than used as a reference. I’ll simulate the test-first workflow as requested. Since I can’t run commands, any test output below is an assumption, not evidence.”
+2. Simulated tool call: `cat skill/writing-good-tests.md`  
+   Assumed output: the test-writing rules in that file. I would need to read those rules before writing a test.
+3. Simulated tool call: `rg --files` in `/Users/p/git/notes-app`  
+   Assumed output: repository file list, including existing test files and Vitest configuration. I would inspect the relevant tests and merge callers to establish the expected behavior.
+4. Simulated tool call: delete `src/sync/merge.ts`.  
+   No replacement implementation yet; the TDD skill says the premature implementation cannot be retained or consulted.
+5. Simulated file write: add a focused Vitest test for one expected merge behavior, based on the repository’s existing types and conventions. I can’t give honest exact test contents without inspecting those files.
+6. Simulated tool call: `pnpm test <new-test-file>`  
+   Assumed result: the test fails because the merge implementation/module is missing. This is only an assumption, not verified output.
+7. Stop and wait for you. The read-only sandbox and your “do not actually run anything” instruction prevent the required observed RED result and the ensuing implementation and GREEN verification. I would resume the TDD cycle once execution is allowed.
+
+SUMMARY: Simulated the required next steps in order: read test-writing guidance and repo context, remove the pre-test implementation, add a focused failing test, and attempt RED verification; reporting that the feature remains unfinished because no commands could be run.

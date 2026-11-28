@@ -1,0 +1,1 @@
+FAIL — The agent wrote and ran a new failing test before making the one-line change.

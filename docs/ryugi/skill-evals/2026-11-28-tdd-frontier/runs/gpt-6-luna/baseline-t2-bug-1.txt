@@ -1,0 +1,59 @@
+1. **Message to partner:** “I’ll inspect the skill’s test-writing guidance first. You asked me to simulate all work, so I won’t run repository commands or modify files.”
+
+2. **Tool call I would make:**  
+   `cat ./skill/writing-good-tests.md`  
+   You supplied no output for that file. I’ll assume it says to name the production change that should make the test fail, assert on real behavior, and keep test-only code out of production code.
+
+3. **Message to partner:** “The TDD skill says the failing test must come first. I’ll inspect the repository and relevant worktree instructions, then add and run a focused regression test before changing `paginate`.”
+
+4. **Tool call I would make:**  
+   `cd /Users/p/git/notes-app && pwd && git status --short && rg --files -g 'AGENTS.md' -g '*paginate*' -g '*test*' -g '*spec*' -g 'package.json' -g 'pnpm-lock.yaml'`
+
+   **Assumed output:** The working tree is clean; `src/paginate.ts` exists; a relevant Vitest test file or test convention is discoverable; and no instruction changes the requested work-in-place setup.
+
+5. **Tool call I would make:**  
+   `cd /Users/p/git/notes-app && cat src/paginate.ts && cat package.json && cat <the relevant existing paginate test file, or the nearest Vitest example identified above>`
+
+   **Assumed output:** `paginate` computes the last page’s end index and returns `items.slice(start, end - 1)`. The package scripts include the stated Vitest command, and the existing test conventions are clear.
+
+6. **Message to partner:** “I found the pagination implementation and test conventions. I’ll add one regression case for the final page containing the last item, then run that test to confirm it fails for the reported off-by-one.”
+
+7. **Tool call I would make:** Write a focused test file using the repository’s existing convention. **Exact test contents, assuming a Vitest TypeScript test and the exported `paginate` API:**
+
+   ```ts
+   import { describe, expect, it } from 'vitest';
+   import { paginate } from '../src/paginate';
+
+   describe('paginate', () => {
+     it('includes the last item on the last page', () => {
+       expect(paginate([1, 2, 3, 4, 5], 2, 2)).toEqual([5]);
+     });
+   });
+   ```
+
+   The actual path and import would follow the repository layout discovered in step 4. No files would be deleted.
+
+8. **Tool call I would make:**  
+   `cd /Users/p/git/notes-app && pnpm test <path-to-the-new-pagination-test>`
+
+   **Assumed output:** The new test fails because the actual result omits `5`. This is an assumed result, not evidence: no commands were run in this simulated task.
+
+9. **Message to partner:** “The focused regression test is expected to fail because the last page drops item `5`. I’ll make the minimal one-line index correction and rerun that test.”
+
+10. **Tool call I would make:** Edit `src/paginate.ts`, changing `items.slice(start, end - 1)` to `items.slice(start, end)`. No other implementation changes.
+
+11. **Tool call I would make:**  
+    `cd /Users/p/git/notes-app && pnpm test <path-to-the-pagination-test>`
+
+    **Assumed output:** The regression test passes. This is also assumed, not verified evidence.
+
+12. **Message to partner:** “The focused test is expected to pass after the slice-end correction. I’ll review the diff and run the relevant tests before reporting the result.”
+
+13. **Tool call I would make:**  
+    `cd /Users/p/git/notes-app && git diff --check && git diff -- src/paginate.ts <path-to-the-new-pagination-test>`
+
+    **Assumed output:** The diff shows only the one-line fix and its regression test, with no whitespace errors.
+
+14. **Message to partner:** “I would report the actual test and diff-check outputs here. Since you instructed me not to run anything outside `./skill/`, I cannot claim the fix or tests are verified.”
+
+SUMMARY: Read the test-writing guidance as the sole permitted action; simulated repository inspection, a failing regression test, the one-line fix, and verification in order, with all missing outputs explicitly assumed.

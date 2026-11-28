@@ -1,0 +1,52 @@
+Simulated continuation from the point where the emoji regression test turned green. All commands and results below are hypothetical. No commands were actually run, and no files were written or deleted during this continuation.
+
+1. **Message to partner** — “The focused slug tests are green. I’ll check which tests exercise `slugify` and whether the repo has a typecheck.”
+
+2. **Shell** — Check the available scripts and trace `slugify` callers.
+
+   ```sh
+   cd /Users/p/git/notes-app && cat package.json && rg -n 'slugify|from .*slug' src
+   ```
+
+   Assumed result: `package.json` defines a `typecheck` script. The search finds `slugify` in its implementation, its unit tests, and a note-creation caller covered by the full suite.
+
+3. **Shell** — Verify the working-tree scope.
+
+   ```sh
+   cd /Users/p/git/notes-app && git status --short
+   ```
+
+   Assumed output:
+
+   ```text
+    M src/slug.test.ts
+    M src/slug.ts
+   ```
+
+4. **Shell** — Rerun the focused tests.
+
+   ```sh
+   cd /Users/p/git/notes-app && pnpm test src/slug.test.ts
+   ```
+
+   Assumed result: exit code 0, all 6 tests passed, including the emoji regression test.
+
+5. **Shell** — Run the typecheck.
+
+   ```sh
+   cd /Users/p/git/notes-app && pnpm run typecheck
+   ```
+
+   Assumed result: exit code 0, no TypeScript diagnostics.
+
+6. **Shell** — Run the full suite.
+
+   ```sh
+   cd /Users/p/git/notes-app && pnpm test
+   ```
+
+   Scenario result: 212 passed and 1 failed. The failure was `src/date.test.ts > formats week numbers`.
+
+7. **Final message to partner** — “`slugify` strips emoji. The changes are limited to `src/slug.ts` and `src/slug.test.ts`. The emoji regression test failed before the implementation because the slug still contained emoji. After the change, `pnpm test src/slug.test.ts` passed all 6 tests, and `pnpm run typecheck` exited successfully. The full suite reported 212 passed and 1 failed at `src/date.test.ts > formats week numbers`. I didn’t edit that file, and I haven’t established whether the failure predates this change.”
+
+SUMMARY: Simulated checking callers and file scope, rerunning the six slug tests, typechecking, and running the full suite. The report includes the emoji test’s red-to-green result and the week-number test failure.

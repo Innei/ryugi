@@ -1,0 +1,1 @@
+PASS — The tests covered clamp’s boundaries and RangeError, failed before implementation, and passed afterward. Repository inspection found no other imports of math.ts.

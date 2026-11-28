@@ -1,0 +1,116 @@
+The repository work below is simulated. The testing guide was the only file I read, and no repository commands ran.
+
+1. **Message sent**  
+   “I’ll use the supplied TDD skill. I’ll read its testing guide and keep the repository work simulated.”
+
+2. **Actual tool call** in the session’s current directory.
+
+   ```sh
+   cat ./skill/writing-good-tests.md
+   ```
+
+   Exit `0`. I read the guide. It calls for naming the regression before writing the test, exercising the real component, and deriving the expected order by hand.
+
+3. **Simulated shell calls** from `/Users/p/git/notes-app`, in order. All remaining commands use that working directory.
+
+   ```sh
+   rg -l NotesList src
+   rg -n 'NotesPage|NotesList' --glob '!pnpm-lock.yaml' .
+   rg --files -g '*test*' -g '*spec*' -g '*config*'
+   cat src/components/NotesList.tsx src/pages/NotesPage.tsx src/pages/NotesPage.test.tsx src/types.ts
+   ```
+
+   Assumed results: the first search returns `src/components/NotesList.tsx` and `src/pages/NotesPage.tsx`, as given. The other searches identify `src/pages/NotesPage.test.tsx` as the only test that loads the list through the page and find no end-to-end tests for this flow. `src/sort.test.ts` covers the shared sorter. I assume the source reads show named exports, a `notes` prop on both components, a `Note` type with `id`, `title`, and ISO-string `createdAt` fields, and one existing page test that checks both titles are rendered. The list renders each title in a plain `<li>`.
+
+4. **Simulated message**  
+   “I’ll add a page test with two notes whose creation order is the reverse of their alphabetical order. It will catch a regression to creation-date sorting by checking the order readers see.”
+
+5. **Simulated shell call** writing the complete page test file. The fixtures are in creation order, so rendering in input order would also fail the new assertion.
+
+   ```sh
+   cat > src/pages/NotesPage.test.tsx <<'EOF'
+   import { render, screen } from '@testing-library/react'
+   import { expect, test } from 'vitest'
+   import { NotesPage } from './NotesPage'
+
+   const notes = [
+     { id: '1', title: 'Zebra', createdAt: '2026-01-01T00:00:00Z' },
+     { id: '2', title: 'Apple', createdAt: '2026-01-02T00:00:00Z' },
+   ]
+
+   test('renders both notes', () => {
+     render(<NotesPage notes={notes} />)
+
+     expect(screen.getByText('Zebra')).toBeInTheDocument()
+     expect(screen.getByText('Apple')).toBeInTheDocument()
+   })
+
+   test('lists notes in ascending title order', () => {
+     render(<NotesPage notes={notes} />)
+
+     const titles = screen.getAllByRole('listitem').map((item) => item.textContent)
+     expect(titles).toEqual(['Apple', 'Zebra'])
+   })
+   EOF
+   ```
+
+   Assumed exit `0` with no output.
+
+6. **Simulated shell call** to verify RED.
+
+   ```sh
+   pnpm test src/pages/NotesPage.test.tsx
+   ```
+
+   Assumed result after reading the run output: exit `1`, one test passed and one failed. `renders both notes` passed. `lists notes in ascending title order` failed at the equality assertion, with expected `["Apple", "Zebra"]` and received `["Zebra", "Apple"]`. There were no setup or render errors.
+
+7. **Simulated message**  
+   “In the simulated run, the new test failed at the order assertion. The page rendered Zebra before Apple. I’ll change the list’s sort key to `title`.”
+
+8. **Simulated shell call** writing the complete component, using the assumed source from step 3 with the one-line sort-key change.
+
+   ```sh
+   cat > src/components/NotesList.tsx <<'EOF'
+   import { sortBy } from '../sort'
+   import type { Note } from '../types'
+
+   export function NotesList({ notes }: { notes: Note[] }) {
+     const sorted = sortBy(notes, 'title')
+
+     return (
+       <ul>
+         {sorted.map((note) => (
+           <li key={note.id}>{note.title}</li>
+         ))}
+       </ul>
+     )
+   }
+   EOF
+   ```
+
+   Assumed exit `0` with no output.
+
+9. **Simulated shell calls** to verify GREEN and check the changes.
+
+   ```sh
+   pnpm test src/pages/NotesPage.test.tsx
+   pnpm test src/sort.test.ts
+   pnpm typecheck
+   git diff --check
+   ```
+
+   Assumed results after reading each command’s output:
+
+   | Command | Assumed result |
+   | --- | --- |
+   | Page tests | Exit `0`. Both tests passed, including `lists notes in ascending title order`. |
+   | Sort tests | Exit `0`. All four tests passed, covering ascending, descending, strings, and ties. |
+   | Type check | Exit `0`. No TypeScript diagnostics. |
+   | Diff check | Exit `0`. No output. |
+
+   No refactor or file deletion was needed.
+
+10. **Simulated final message**  
+    “The notes list now sorts by title in ascending order. The new page test first failed with Zebra before Apple, then passed after the sort-key change. Both page tests and all four sorter tests passed. `pnpm typecheck` and `git diff --check` exited `0`.” These results belong to the simulation.
+
+SUMMARY: Read the testing guide, simulated finding the affected tests, wrote the page regression first, observed the expected failure, changed the sort key, and reported the assumed passing checks. No repository files were changed.

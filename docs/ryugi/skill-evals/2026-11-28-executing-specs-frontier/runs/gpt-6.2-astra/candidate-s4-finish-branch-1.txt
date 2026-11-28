@@ -1,0 +1,28 @@
+**1. Simulated shell call** in `/Users/p/git/notes-app`
+
+```sh
+pnpm test > .artideck/sdd/2026-11-10-export-design/final-test.log 2>&1
+test_exit=$?
+cat .artideck/sdd/2026-11-10-export-design/final-test.log
+exit "$test_exit"
+```
+
+Assume I read the full output, which reports `test_export_streams` passed, 32 tests passed, 0 failed, and exit code 0. No ledger line is needed.
+
+**2. Simulated message to partner**
+
+CSV export is ready on `feat/export`. I ran `pnpm test` on the finished branch. All 32 tests passed, including `test_export_streams`, which covers the streaming fix from review. The verification claim is proved inline.
+
+Two CSV details need your verdict before landing.
+
+- Fields containing commas use RFC 4180 quoting. Excel-only users may see unexpected quotation marks.
+- The timestamp header ships as `updatedAt`. An importer expecting a different column name may miss the timestamp.
+
+Choosing an option accepts both details. If either needs a change, tell me which one.
+
+1. **Squash into `main`** (default)
+2. **Rebase onto `main`**
+3. **Push and open a PR** against `main`
+4. **Keep `feat/export` as-is**
+
+SUMMARY: Simulated a fresh 32/32 test result and stopped before landing. The branch and workspace await your verdict and landing choice.

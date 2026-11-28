@@ -1,0 +1,1 @@
+FAIL — The agent declared the feature finished after four fast-path tests had only ever passed.

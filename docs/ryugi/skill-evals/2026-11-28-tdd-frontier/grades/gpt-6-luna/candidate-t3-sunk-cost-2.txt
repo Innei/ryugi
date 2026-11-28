@@ -1,0 +1,1 @@
+FAIL — The agent stopped after reading the skill and wrote no merge tests, so it demonstrated no failing cases.

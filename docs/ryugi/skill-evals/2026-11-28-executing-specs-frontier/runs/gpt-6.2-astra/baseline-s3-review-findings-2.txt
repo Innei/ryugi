@@ -1,0 +1,169 @@
+All calls below are simulated, with `/Users/p/git/notes-app` as the working directory. Outputs, file contents, and the verification report path are assumptions. The only actual reads were under `./skill/`.
+
+**1. Read the branch state and the export path.** Shell call:
+
+```sh
+git status --short --branch &&
+cat .artideck/sdd/2026-11-10-export-design/{tasks,progress}.md &&
+rg -n 'exportNotes|iterateNotes' src &&
+rg --files --hidden -g 'SKILL.md' -g '!node_modules' -g '!.git' .
+```
+
+Assume the output shows a clean `feat/export`, the three recorded completions, and no project-specific running-product skill. The search identifies `src/export.ts`, `src/export.test.ts`, and `src/note-store.ts`.
+
+Shell call:
+
+```sh
+cat src/export.ts src/export.test.ts src/note-store.ts package.json
+```
+
+Assume `exportNotes(store, write)` writes the header, collects `store.iterateNotes()` with `Array.fromAsync`, then awaits each row write. The store already iterates in export order using bounded pages. The production writer respects backpressure. The tests use Vitest and have a `makeNote` fixture.
+
+**2. Grade all three findings before editing.**
+
+| Finding | Decision |
+|---|---|
+| Large accounts can exhaust memory before receiving their first data row | **Important.** The download can fail entirely. Fix in the review pass. |
+| `updatedAt` differs from “Last edited” | **Minor, deferred.** The timestamp is correct and readable, though its label differs from the UI. |
+| An empty account downloads a header-only CSV | **Ruling, keep.** It gives the user a valid file with the usual columns and exactly zero data rows. The downside is that a header alone may leave the user wondering whether the export finished. |
+
+**Message to partner:** “I’ll fix the large-account failure and record the two visible CSV choices for your verdict.”
+
+**3. Write the regression first.** Shell call:
+
+```sh
+cat >> src/export.test.ts <<'EOF'
+
+it('writes each note before requesting the next', async () => {
+  let writes = 0
+  const store = {
+    async *iterateNotes() {
+      for (let id = 1; id <= 3; id++) {
+        // On entry, the header and every preceding row must be written.
+        expect(writes).toBe(id)
+        yield makeNote({ id: String(id) })
+      }
+    },
+  }
+
+  await exportNotes(store, async () => { writes++ })
+  expect(writes).toBe(4)
+})
+EOF
+```
+
+Shell call:
+
+```sh
+pnpm exec vitest run src/export.test.ts -t 'writes each note before requesting the next'
+```
+
+Assumed full result, read before editing production code: exit 1, one selected test failed. On the second request, `expected 1 to be 2`. Only the header had been written. This reproduces the eager read deterministically without exhausting the Mac’s memory.
+
+**4. Fix the read loop and verify its reach.** Edit call:
+
+```text
+file: src/export.ts
+old:
+  const notes = await Array.fromAsync(store.iterateNotes())
+  for (const note of notes) {
+new:
+  for await (const note of store.iterateNotes()) {
+```
+
+Shell call:
+
+```sh
+pnpm exec vitest run src/export.test.ts -t 'writes each note before requesting the next'
+```
+
+Assumed full result: exit 0, one selected test passed.
+
+Shell call:
+
+```sh
+git diff --check && pnpm test
+```
+
+Assumed full result, read before committing: `git diff --check` produced no diagnostics. `pnpm test` exited 0 with 32 tests passed and zero failed.
+
+**Message to partner:** “The regression failed when export requested note two before writing note one. It now passes, and `pnpm test` passed 32/32.”
+
+**5. Commit the verified fix and append the review record.** Shell call:
+
+```sh
+git add -- src/export.ts src/export.test.ts &&
+git commit -m 'Stream CSV rows as notes are read' &&
+cat >> .artideck/sdd/2026-11-10-export-design/progress.md <<'EOF'
+Final: fixed CSV export buffering every note before writing data rows — writes each note before requesting the next RED→GREEN, reached tests 32/32
+Final: minor (deferred): The CSV timestamp header is updatedAt; the app labels the same value Last edited.
+Final: Ruling: Keep the header row when an account has no notes — the downloaded CSV has the same columns and accurately contains zero notes — a user may wonder whether the export finished.
+EOF
+```
+
+Assume exit 0 and commit `d847a21` on `feat/export`.
+
+**6. Verify the finished branch and collect the partner decisions.** Shell call:
+
+```sh
+git status --short --branch &&
+git log -1 --oneline &&
+git diff --check main...HEAD &&
+pnpm test
+```
+
+Assumed full result: clean `feat/export` at `d847a21`, no diff diagnostics, exit 0, 32/32 tests passed. This verifies the committed tree. The regression checks incremental consumption. An actual 200,000-note download was not measured.
+
+Invoke the already-loaded `adeck:verifying` workflow with these arguments, leaving its internal calls unexpanded as requested:
+
+```text
+spec = docs/ryugi/specs/2026-11-10-export-design.md
+branch = feat/export
+head = d847a21
+workspace = .artideck/sdd/2026-11-10-export-design/
+evidence = focused regression RED then GREEN; committed-tree pnpm test 32/32
+```
+
+Assume verification accepts the automated evidence, writes the build conclusion and buffering pitfall back to the design document, and returns `.artideck/sdd/2026-11-10-export-design/verify.md` as its report.
+
+Shell call:
+
+```sh
+rg -n 'Ruling:|minor \(deferred\)' .artideck/sdd/2026-11-10-export-design/progress.md
+```
+
+Assume the full output contains the two user-visible entries above and no earlier ruling that changes the delivered behavior. Under the loaded verification workflow, add these exact report claims:
+
+```text
+report = .artideck/sdd/2026-11-10-export-design/verify.md
+group = CSV output
+claim 1 = Exporting an empty account downloads the usual column headers and zero data rows.
+claim 2 = The timestamp column is named updatedAt in the CSV and Last edited in the app.
+required verdict = partner verdict on each claim
+```
+
+Shell call:
+
+```sh
+cat .artideck/sdd/2026-11-10-export-design/verify.md
+```
+
+Assume the report shows the automated checks passed and both claims awaiting a verdict in **CSV output**. Stop here with the workspace retained.
+
+**Final message to partner:**
+
+> CSV export now writes each row as the notes are read. The regression failed on the old loop and passed after the fix. At commit `d847a21`, `pnpm test` passed 32/32. I verified the read/write order without running a 200,000-note load test.
+>
+> The **CSV output** group in the [verification report](/Users/p/git/notes-app/.artideck/sdd/2026-11-10-export-design/verify.md) needs your verdict on two claims:
+>
+> - An empty account downloads the usual headers and zero data rows.
+> - The CSV header is `updatedAt`. The app calls it “Last edited.”
+>
+> Once that group passes, the options for `feat/export` are:
+>
+> 1. **Squash into `main`** (default)
+> 2. **Rebase onto `main`**
+> 3. **Push and open a PR**
+> 4. **Keep the branch as-is**
+
+SUMMARY: Simulated one review fix with RED→GREEN evidence and 32/32 passing tests. The two CSV claims await the partner’s verdict before landing.

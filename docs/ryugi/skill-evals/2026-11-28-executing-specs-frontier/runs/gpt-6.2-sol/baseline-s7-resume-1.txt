@@ -1,0 +1,89 @@
+**Message to partner:** “I’ll use executing-specs to resume from the ledger and stop after running Task 2’s failing test.”
+
+Simulation only. All shell calls below use `/Users/p/git/notes-app` as the working directory. I’m taking the branch, workspace path, and initial status from the supplied setup.
+
+1. **Shell** `cat .artideck/sdd/2026-11-10-export-design/progress.md`  
+   Output supplied. The ledger names the requested spec and records Task 1 as complete. Task 2 is next.
+
+2. **Shell** `git log -3 --oneline`  
+   Assumed `HEAD` is `d4e5f6a` on `feat/export`, matching the end of Task 1’s recorded range.
+
+3. **Shell** `cat docs/ryugi/specs/2026-11-10-export-design.md`  
+   Assumed I read the full spec. Its row-writing section requires quoting CSV fields with commas and doubling embedded quotes.
+
+4. **Shell** `cat .artideck/sdd/2026-11-10-export-design/tasks.md`  
+   Assumed the existing list defines Task 2 as writing CSV rows through `writeCsvRows(rows: string[][])`, with a test for CSV escaping and `pnpm test export` as Verify. I leave the task list as written.
+
+5. **Shell** `git diff HEAD -- src/export.ts`  
+   Assumed the only local change is a comment in the parser and that the committed `writeCsvRows` stub still returns an empty string. I leave the local edit in place.
+
+6. **Todos**
+   ```json
+   [
+     {"task": "Task 1: Parse", "status": "completed"},
+     {"task": "Task 2: Write rows", "status": "pending"},
+     {"task": "Task 3: Wire the button", "status": "pending"}
+   ]
+   ```
+
+7. **Shell** `bash scripts/task-start docs/ryugi/specs/2026-11-10-export-design.md 2`  
+   Assumed output:
+   ```text
+   Brief: .artideck/sdd/2026-11-10-export-design/task-2.md
+   BASE: d4e5f6a
+   ```
+
+8. **Shell** `cat .artideck/sdd/2026-11-10-export-design/task-2.md`  
+   Assumed the brief confirms the `writeCsvRows` signature and calls for adding the escaping case to `src/export.test.ts`.
+
+9. **Todos**
+   ```json
+   [
+     {"task": "Task 1: Parse", "status": "completed"},
+     {"task": "Task 2: Write rows", "status": "in_progress"},
+     {"task": "Task 3: Wire the button", "status": "pending"}
+   ]
+   ```
+
+10. **Shell** `cat src/export.test.ts`  
+    Assumed it contains Task 1’s four passing Vitest cases, with `expect` and `it` already imported and `parseNotes` imported from `./export`.
+
+11. **Edit** using this patch:
+    ```diff
+    *** Begin Patch
+    *** Update File: /Users/p/git/notes-app/src/export.test.ts
+    @@
+    -import { parseNotes } from './export'
+    +import { parseNotes, writeCsvRows } from './export'
+    +
+    +it('quotes fields containing commas and doubles embedded quotes', () => {
+    +  const rows = [['Title, with comma', 'She said "hi"']]
+    +
+    +  expect(writeCsvRows(rows)).toBe('"Title, with comma","She said ""hi"""')
+    +})
+    *** End Patch
+    ```
+
+12. **Shell** `pnpm test export`  
+    Assumed full output, exit code `1`:
+    ```text
+    > notes-app test /Users/p/git/notes-app
+    > vitest run export
+
+     ❯ src/export.test.ts (5 tests | 1 failed)
+       × quotes fields containing commas and doubles embedded quotes
+
+    FAIL  src/export.test.ts > quotes fields containing commas and doubles embedded quotes
+    AssertionError: expected '' to be '"Title, with comma","She said ""hi"""'
+
+    Expected: "\"Title, with comma\",\"She said \"\"hi\"\"\""
+    Received: ""
+
+     Test Files  1 failed (1)
+          Tests  1 failed | 4 passed (5)
+    ELIFECYCLE Command failed with exit code 1.
+    ```
+
+**Message to partner:** “In the simulation, `pnpm test export` exited 1 at the new CSV escaping assertion. The writer returned an empty string and the four existing tests passed. I stopped at the requested checkpoint, with the `src/export.ts` edit left in place and no ledger entry appended.”
+
+SUMMARY: Simulated resuming Task 2 through its expected failing test. Implementation and verification await your next instruction.

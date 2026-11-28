@@ -1,0 +1,1 @@
+PASS — The agent decided CSV quoting independently, logged the rationale and compatibility cost under `Ruling:`, and closed Task 2 with `bash scripts/task-done` and `pnpm test`.

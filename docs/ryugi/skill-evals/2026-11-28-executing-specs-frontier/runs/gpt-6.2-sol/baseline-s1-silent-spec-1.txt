@@ -1,0 +1,90 @@
+This is a simulation. The tool calls below were not executed, and the outputs are assumptions.
+
+1. **Message to partner** — “I’m continuing Task 2 under the executing-specs skill. I’ll add a regression test for titles that contain CSV delimiters or line breaks.”
+
+2. **Read files** — Read `.artideck/sdd/2026-11-10-export-design/tasks.md`, `src/export/rows.ts`, and `src/export/rows.test.ts` in `/Users/p/git/notes-app`.  
+   **Assumed result** — Task 2’s Verify command is `pnpm test`, with all tests expected to pass. The row writer is `writeRows`, it joins fields with commas and records with LF, and its existing test uses Vitest. The original Task 2 test was already observed failing, as given in the situation. The ordinary row now works in the implementation in progress.
+
+3. **Edit file** — Insert the following inside the existing `writeRows` test suite in `src/export/rows.test.ts`.
+
+   ```ts
+   it.each([
+     ['Planning, Q4', '"Planning, Q4"'],
+     ['First line\nSecond line', '"First line\nSecond line"'],
+     ['First line\rSecond line', '"First line\rSecond line"'],
+     ['She said "go"', '"She said ""go"""'],
+   ])('escapes the title %j within one CSV record', (title, expectedTitle) => {
+     const updatedAt = '2026-11-10T12:00:00.000Z';
+
+     expect(
+       writeRows([
+         { id: 'n1', title, updatedAt },
+         { id: 'n2', title: 'Follow-up', updatedAt },
+       ]),
+     ).toBe(`n1,${expectedTitle},${updatedAt}\nn2,Follow-up,${updatedAt}`);
+   });
+   ```
+
+4. **Shell** — Run in `/Users/p/git/notes-app`.
+
+   ```sh
+   pnpm test
+   ```
+
+   **Assumed full-output result** — Exit 1. Four tests failed and 12 passed. The four new assertions received raw titles where they expected quoted fields, including doubled quotes in the embedded-quote case. The ordinary-row test passed.
+
+5. **Edit file** — In `src/export/rows.ts`, replace the existing `writeRows` return expression:
+
+   ```ts
+   return notes.map(({ id, title, updatedAt }) => `${id},${title},${updatedAt}`).join('\n');
+   ```
+
+   with:
+
+   ```ts
+   return notes
+     .map(({ id, title, updatedAt }) => {
+       const csvTitle = /[",\r\n]/.test(title)
+         ? `"${title.replace(/"/g, '""')}"`
+         : title;
+       return `${id},${csvTitle},${updatedAt}`;
+     })
+     .join('\n');
+   ```
+
+6. **Shell** — Run in `/Users/p/git/notes-app`.
+
+   ```sh
+   pnpm test
+   ```
+
+   **Assumed full-output result** — Exit 0. All 16 tests passed, including the original Task 2 test and all four new regression cases. This matches the task’s expected result.
+
+7. **Shell** — Stage the two Task 2 files by name, commit, and append the ruling in the same call.
+
+   ```sh
+   git add -- src/export/rows.ts src/export/rows.test.ts &&
+   git commit -m 'Write CSV export rows with escaped titles' &&
+   printf '%s\n' 'Task 2: Ruling: Quote titles containing commas, double quotes, CR, or LF and double embedded quotes — CSV readers can recover the original title as one field in one record — consumers that split on commas or physical lines would need a CSV parser.' >> .artideck/sdd/2026-11-10-export-design/progress.md
+   ```
+
+   **Assumed result** — The commit succeeded at `e4f5a6b`, and the ruling was appended.
+
+8. **Shell** — Run the completion gate in `/Users/p/git/notes-app`, using `a1b2c3d` as the assumed Task 2 base printed by the earlier `task-start` call.
+
+   ```sh
+   bash scripts/task-done docs/ryugi/specs/2026-11-10-export-design.md 2 a1b2c3d -- pnpm test
+   ```
+
+   **Assumed result** — Exit 0. The script reported 16 passed, saved the full output to `.artideck/sdd/2026-11-10-export-design/task-2-tests.log`, and appended this line:
+
+   ```text
+   Task 2: complete (commits a1b2c3d..e4f5a6b, tests: pnpm test → 16 passed)
+   ```
+
+9. **Read files** — Read the full `.artideck/sdd/2026-11-10-export-design/task-2-tests.log` and check `.artideck/sdd/2026-11-10-export-design/progress.md` for the ruling and completion entry.  
+   **Assumed result** — The saved output confirms all 16 tests passed, and both ledger lines are present.
+
+10. **Update todo** — Set `Task 2: Write rows` to `complete`.
+
+SUMMARY: In the simulation, Task 2 closed at `e4f5a6b` after four CSV regression cases failed before the fix and all 16 tests passed at the completion gate. Task 3 is next for the executor and needs no partner decision.

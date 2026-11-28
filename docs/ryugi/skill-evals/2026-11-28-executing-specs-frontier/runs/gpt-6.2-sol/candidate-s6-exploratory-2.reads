@@ -1,0 +1,2 @@
+"command":"/bin/zsh -lc 'cat ./skill/exploring.md'"
+"command":"/bin/zsh -lc 'rg --files ./skill/'"

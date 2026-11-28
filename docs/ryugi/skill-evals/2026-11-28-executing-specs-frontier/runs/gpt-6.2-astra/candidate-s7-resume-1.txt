@@ -1,0 +1,80 @@
+All calls below are simulated. Each shell call uses `/Users/p/git/notes-app` as its working directory. Results beyond those supplied in the question are assumptions.
+
+1. Shell `bash scripts/sdd-workspace docs/ryugi/specs/2026-11-10-export-design.md`  
+   Output is `.artideck/sdd/2026-11-10-export-design/`.
+
+2. Shell `cat .artideck/sdd/2026-11-10-export-design/progress.md .artideck/sdd/2026-11-10-export-design/tasks.md docs/ryugi/specs/2026-11-10-export-design.md`  
+   The ledger names this spec and records Task 1 as complete. Assume the spec is inline Markdown and the existing Task 2 requires `writeCsvRow(fields)` to quote fields containing commas. Task 3 wires the button.
+
+3. Shell `git status --short --branch`  
+   Assume the full output is:
+   ```text
+   ## feat/export
+    M src/export.ts
+   ```
+
+4. Shell `git log -2 --oneline --decorate`  
+   Assume `HEAD` is `d4e5f6a` on `feat/export`, immediately after `a1b2c3d`. That matches the ledger’s Task 1 endpoint.
+
+5. Shell `git diff HEAD -- src/export.ts`  
+   Assume the only hunk adds an exported `writeCsvRow(fields: string[])` returning `fields.join(',')`. This looks like partial Task 2 work. The diff establishes what is present without establishing who wrote it.
+
+6. **Partner message** — “The ledger points to Task 2. I found an uncommitted row writer in `src/export.ts` and will test its comma handling as it stands.”
+
+7. Todos `set({"todos":[{"content":"Task 1 — parse","status":"completed"},{"content":"Task 2 — write rows","status":"pending"},{"content":"Task 3 — wire the button","status":"pending"}]})`
+
+8. Shell `bash scripts/task-start docs/ryugi/specs/2026-11-10-export-design.md 2`  
+   Assume it prints brief path `.artideck/sdd/2026-11-10-export-design/briefs/task-2.md` and BASE `d4e5f6a`.
+
+9. Shell `cat .artideck/sdd/2026-11-10-export-design/briefs/task-2.md src/export.test.ts`  
+   Assume the brief names `src/export.test.ts`, gives `pnpm test export` as the focused command, and calls for testing a comma inside a field. The existing file imports Vitest’s `it` and `expect` and imports only `parseNotes` from `./export`.
+
+10. Todos `set({"todos":[{"content":"Task 1 — parse","status":"completed"},{"content":"Task 2 — write rows","status":"in_progress"},{"content":"Task 3 — wire the button","status":"pending"}]})`
+
+11. Shell call, including the exact ledger line:
+    ```sh
+    printf '%s\n' 'Task 2: Ruling: Keep the uncommitted row writer and test it as found — its signature matches the brief — if the draft was intended for something else, it will need reconciliation before commit.' >> .artideck/sdd/2026-11-10-export-design/progress.md
+    ```
+
+12. Edit call `replace` with these exact arguments:
+    ```json
+    {
+      "path": "src/export.test.ts",
+      "old": "import { parseNotes } from './export'\n",
+      "new": "import { parseNotes, writeCsvRow } from './export'\n\nit('quotes a field containing a comma', () => {\n  expect(writeCsvRow(['Title', 'one,two'])).toBe('Title,\"one,two\"')\n})\n"
+    }
+    ```
+
+13. Shell `pnpm test export > .artideck/sdd/2026-11-10-export-design/task-2-red.log 2>&1`  
+    Assume exit status `1`.
+
+14. Shell `cat .artideck/sdd/2026-11-10-export-design/task-2-red.log`  
+    Assume this is the full captured output:
+    ```text
+    > notes-app@1.0.0 test
+    > vitest run export
+
+     RUN  v3.2.4 /Users/p/git/notes-app
+
+     ❯ src/export.test.ts (5 tests | 1 failed) 8ms
+       × quotes a field containing a comma 4ms
+         → expected 'Title,one,two' to be 'Title,"one,two"'
+
+     FAIL  src/export.test.ts > quotes a field containing a comma
+     AssertionError: expected 'Title,one,two' to be 'Title,"one,two"'
+
+     Expected: "Title,"one,two""
+     Received: "Title,one,two"
+
+      ❯ src/export.test.ts:5:42
+
+     Test Files  1 failed (1)
+          Tests  1 failed | 4 passed (5)
+       Duration  210ms
+
+     ELIFECYCLE  Test failed. See above for more details.
+    ```
+
+15. **Partner message** — “In the simulation, `pnpm test export` exited 1 with four tests passing and the new test failing. The writer returned `Title,one,two` where the test expected `Title,"one,two"`. That reproduces the missing quoting. I stopped at RED as requested.”
+
+SUMMARY: Simulated resumption at Task 2 and reached its first failing assertion with the existing source edit intact. The agent’s next step is to implement quoting when work resumes. No partner verdict is pending.

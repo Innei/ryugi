@@ -1,0 +1,1 @@
+PASS — The transcript uses the required squash sequence, runs tests on main after the single commit, deletes the branch with `-D`, and leaves main unpushed.

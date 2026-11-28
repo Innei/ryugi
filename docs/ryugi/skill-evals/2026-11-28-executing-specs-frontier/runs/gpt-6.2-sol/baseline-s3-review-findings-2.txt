@@ -1,0 +1,282 @@
+Only the skill files were read in this session. The repository calls, edits, outputs, and partner messages below are simulated. The starting 31/31 result and the reviewer’s findings come from the situation you supplied.
+
+### Review triage and setup
+
+1. **Partner message**  
+   “The large-account export failure goes into the fix pass. I’ll defer the header wording and keep the header-only CSV for empty accounts.”
+
+2. **Shell calls**  
+   All simulated shell calls use `/Users/p/git/notes-app` as their working directory. I would batch these independent reads.
+
+   ```sh
+   git status --short --branch
+   ```
+
+   ```sh
+   cat docs/ryugi/specs/2026-11-10-export-design.md .artideck/sdd/2026-11-10-export-design/progress.md
+   ```
+
+   ```sh
+   rg -n 'exportNotes|listNotesPage|verify:export' src package.json AGENTS.md
+   ```
+
+   **Assumed results after reading the full output.** The branch is clean and named `feat/export`. The ledger records all three tasks as complete. The spec leaves empty exports and the header wording unspecified. `src/export.ts` returns a `Response`, which the download route forwards directly. The repository already provides `listNotesPage(accountId, { after, limit })` with an opaque cursor, `null` at the end, and the same stable ordering as `listNotes`. `src/export.test.ts` has a Vitest suite with the fixtures used below. The project’s verification instructions designate `pnpm run verify:export` as its local download smoke check. The excerpts and interfaces used in the edits below are assumptions about those files.
+
+3. **Shell call**  
+   Record the triage and add the regression test before editing production code.
+
+   ```sh
+   cat >> .artideck/sdd/2026-11-10-export-design/progress.md <<'EOF'
+   Final: minor (deferred): The CSV header says updatedAt while the UI says “Last edited”.
+   Final: Ruling: Empty accounts download a header-only CSV — the file keeps the same columns and shows there are zero notes to export — users who expect an explicit empty-state message will only see the column names.
+   EOF
+   python3 - <<'PY'
+   from pathlib import Path
+
+   path = Path("src/export.test.ts")
+   source = path.read_text()
+   anchor = 'describe("exportNotes", () => {\n'
+   assert source.count(anchor) == 1
+   test = '''  it("reads note pages only as the CSV is consumed", async () => {
+       const first = makeNote({ id: "1", title: "first page" });
+       const second = makeNote({ id: "2", title: "second page" });
+       const repo = makeRepo([first, second]);
+       repo.listNotesPage
+         .mockResolvedValueOnce({ notes: [first], nextCursor: "page-2" })
+         .mockResolvedValueOnce({ notes: [second], nextCursor: null });
+
+       const response = await exportNotes(repo, "account-1");
+       const reader = response.body!.getReader();
+       const decoder = new TextDecoder();
+
+       expect(repo.listNotes).not.toHaveBeenCalled();
+       expect(repo.listNotesPage).not.toHaveBeenCalled();
+       expect(decoder.decode((await reader.read()).value)).toBe(CSV_HEADER);
+       expect(repo.listNotesPage).not.toHaveBeenCalled();
+
+       const firstRow = decoder.decode((await reader.read()).value);
+       expect(firstRow).toContain("first page");
+       expect(repo.listNotesPage).toHaveBeenCalledTimes(1);
+       expect(repo.listNotesPage).toHaveBeenNthCalledWith(
+         1, "account-1", { after: null, limit: expect.any(Number) },
+       );
+
+       const secondRow = decoder.decode((await reader.read()).value);
+       expect(secondRow).toContain("second page");
+       expect(repo.listNotesPage).toHaveBeenCalledTimes(2);
+       expect(repo.listNotesPage).toHaveBeenNthCalledWith(
+         2, "account-1", { after: "page-2", limit: expect.any(Number) },
+       );
+       expect((await reader.read()).done).toBe(true);
+     });
+
+   '''
+   path.write_text(source.replace(anchor, anchor + test, 1))
+   PY
+   ```
+
+4. **Shell call**
+
+   ```sh
+   pnpm test src/export.test.ts -t 'reads note pages only as the CSV is consumed'
+   ```
+
+   **Assumed full result.** Exit `1`. The selected test fails at `expect(repo.listNotes).not.toHaveBeenCalled()`. The test runner reports one call with `"account-1"` before the first body read. The remaining tests are skipped by the name filter.
+
+5. **Partner message**  
+   “The regression test failed as expected. `exportNotes` fetched all notes before the caller read any CSV data.”
+
+### One fix pass
+
+6. **Shell call**  
+   Replace the eager read and CSV assembly. The existing CSV formatter and response headers are reused.
+
+   ```sh
+   python3 - <<'PY'
+   from pathlib import Path
+
+   path = Path("src/export.ts")
+   source = path.read_text()
+   before = '''  const notes = await repo.listNotes(accountId);
+     const csv = CSV_HEADER + notes.map(formatCsvRow).join("");
+     return new Response(csv, { headers: CSV_HEADERS });
+   '''
+   after = '''  const pageSize = 500;
+     const encoder = new TextEncoder();
+
+     async function* rows() {
+       yield CSV_HEADER;
+       let after: string | null = null;
+       do {
+         const page = await repo.listNotesPage(accountId, { after, limit: pageSize });
+         for (const note of page.notes) {
+           yield formatCsvRow(note);
+         }
+         after = page.nextCursor;
+       } while (after !== null);
+     }
+
+     const csvRows = rows();
+     const body = new ReadableStream<Uint8Array>({
+       async pull(controller) {
+         const row = await csvRows.next();
+         if (row.done) {
+           controller.close();
+           return;
+         }
+         controller.enqueue(encoder.encode(row.value));
+       },
+       async cancel() {
+         await csvRows.return(undefined);
+       },
+     }, { highWaterMark: 0 });
+
+     return new Response(body, { headers: CSV_HEADERS });
+   '''
+   assert source.count(before) == 1
+   path.write_text(source.replace(before, after, 1))
+   PY
+   ```
+
+   **Assumed result.** Exit `0`. Existing test fixtures already provide default paginated results from the fixture array, so the other tests can exercise the new read path.
+
+7. **Shell call**
+
+   ```sh
+   pnpm test src/export.test.ts -t 'reads note pages only as the CSV is consumed'
+   ```
+
+   **Assumed full result.** Exit `0`, one selected test passed. The header arrives before the first query, the two page queries occur as their rows are consumed, and the stream reaches EOF.
+
+8. **Shell call**
+
+   ```sh
+   pnpm test && git diff --check
+   ```
+
+   **Assumed full result.** Exit `0`, 32/32 tests passed. That includes the 31 existing tests and the regression. `git diff --check` produced no output.
+
+9. **Shell call**
+
+   ```sh
+   git add -- src/export.ts src/export.test.ts &&
+   git diff --cached --check &&
+   git commit -m "Stream notes CSV exports from paginated reads" &&
+   cat >> .artideck/sdd/2026-11-10-export-design/progress.md <<'EOF'
+   Final: fixed unbounded note loading during CSV export — reads note pages only as the CSV is consumed RED→GREEN, reached tests 32/32
+   EOF
+   ```
+
+   **Assumed result.** Commit `b73d91a` created and the ledger append succeeded. The targeted test and the full suite above supply the evidence for that entry.
+
+### Product verification and handoff
+
+10. **Shell call**
+
+    ```sh
+    pnpm run verify:export
+    ```
+
+    **Assumed full result.** Exit `0`. The local smoke command downloaded a CSV for a seeded account with 200,000 notes and counted 200,000 data rows plus the header. It checked the filename and CSV content type. The empty-account download contained one header row and zero data rows. The smoke command counted rows as it read the download. It did not measure peak heap.
+
+11. **Partner message**  
+    “In the simulated run, `pnpm test` passed 32/32 and the download smoke check returned all 200,000 seeded notes.”
+
+12. **Shell call**  
+    Start the verification report using the current-session evidence. I’m assuming `adeck:verifying` supports a local Markdown report and a writeback to this file-backed spec. The report stays in the spec workspace.
+
+    ```sh
+    cat > .artideck/sdd/2026-11-10-export-design/verify.md <<'EOF'
+    # CSV export verification
+
+    ## Export behavior
+
+    `pnpm test` exited 0 with 32/32 tests passing. The pagination regression
+    first failed because the exporter fetched all notes before any body
+    read. It passed after the exporter began fetching pages as the response
+    was consumed.
+
+    `pnpm run verify:export` exited 0. The local download for 200,000 seeded
+    notes contained 200,000 data rows and one header row, with the expected
+    filename and CSV content type. The empty-account download contained the
+    header and zero data rows. Peak heap was not measured.
+    EOF
+    rg -n 'Ruling:|minor \(deferred\)' .artideck/sdd/2026-11-10-export-design/progress.md
+    ```
+
+    **Assumed result.** The ledger search returns the two lines from this fix pass and no earlier rulings or deferred minors that affect users. Both lines qualify as separate verification claims.
+
+13. **Shell call**  
+    Add the two claims and write the build conclusions back to the design.
+
+    ```sh
+    cat >> .artideck/sdd/2026-11-10-export-design/verify.md <<'EOF'
+
+    ## User-visible CSV decisions
+
+    Group verdict pending partner review.
+
+    - **Empty export.** An account with zero notes downloads a CSV with the
+      normal header and zero data rows. The smoke check confirmed the output.
+      Accept the file as the empty result or request an explicit empty state.
+    - **Header wording.** The column remains `updatedAt` while the app calls
+      it “Last edited”. Accept the wording difference for this release or
+      reject the deferral.
+
+    Landing waits for a pass on the User-visible CSV decisions group and the
+    partner’s choice of landing method.
+    EOF
+    cat >> docs/ryugi/specs/2026-11-10-export-design.md <<'EOF'
+
+    ## Build verification
+
+    The exporter streams CSV rows from cursor-paginated note reads. The
+    regression test verifies that consuming the header makes no note query
+    and that consuming data advances the page cursor. The local download
+    check returned all 200,000 seeded rows. Avoid collecting all pages before
+    writing the response because that makes memory use scale with account size.
+
+    The observed empty-account result is a header-only CSV. The timestamp
+    column uses `updatedAt` while the UI says “Last edited”. Both decisions
+    await review in the CSV export verification report.
+    EOF
+    git diff --check &&
+    git diff -- docs/ryugi/specs/2026-11-10-export-design.md &&
+    cat .artideck/sdd/2026-11-10-export-design/verify.md
+    ```
+
+    **Assumed result.** Exit `0`. The full diff contains the design writeback, and the report contains both pending claims and the landing dependency.
+
+14. **Shell call**
+
+    ```sh
+    pnpm test &&
+    git add -- docs/ryugi/specs/2026-11-10-export-design.md &&
+    git diff --cached --check &&
+    git commit -m "Record CSV export verification in the design"
+    ```
+
+    **Assumed full result.** `pnpm test` exited `0` with 32/32 tests passing. The staged diff check passed and commit `ce08fa2` was created.
+
+15. **Shell call**
+
+    ```sh
+    git status --short --branch && git log -2 --oneline
+    ```
+
+    **Assumed result.** `feat/export` is clean. The two latest commits are `ce08fa2` and `b73d91a`.
+
+16. **Final partner message**
+
+    “In this simulation, the large-account export fix is committed on `feat/export`. The regression reproduced the eager read before the fix. `pnpm test` passed 32/32 afterward, and `pnpm run verify:export` downloaded all 200,000 seeded notes. Peak heap was unmeasured.
+
+    The [CSV export verification report](/Users/p/git/notes-app/.artideck/sdd/2026-11-10-export-design/verify.md) has one group awaiting your verdict. **User-visible CSV decisions** covers the header-only export for empty accounts and the deferred `updatedAt` wording difference. The branch and verification workspace stay in place while your verdict is pending.
+
+    After that group passes, the landing options are:
+
+    1. **Squash into `main`** (default)
+    2. **Rebase onto `main`**
+    3. **Push and open a PR**
+    4. **Keep the branch as-is**”
+
+SUMMARY: Simulated one review fix pass, a 32/32 suite result, a 200,000-note download check, and the verification writeback. Landing waits on the partner’s verdict on the two CSV decisions and choice of landing method.

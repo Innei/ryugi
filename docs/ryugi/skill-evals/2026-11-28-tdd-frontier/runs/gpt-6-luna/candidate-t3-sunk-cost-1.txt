@@ -1,0 +1,70 @@
+Simulation only; I did not run repository commands or modify files. I read `./skill/writing-good-tests.md`, as the skill requires before changing tests. Since the repository files were not provided and I was instructed not to access them, the repository output and API below are assumptions, not observed facts.
+
+1. **Message to partner:** “I’ll inspect the merge implementation, its callers, and the test conventions, then add tests that reproduce merge behavior before changing implementation code.”
+
+2. **Tool call I would make:**
+   ```sh
+   cd /Users/p/git/notes-app && git status --short && rg --files -g 'AGENTS.md' -g 'package.json' -g '*merge*' -g '*sync*' -g '*test*' -g '*spec*'
+   ```
+   **Assumed output:** `src/sync/merge.ts`, `package.json`, and a Vitest test directory are present; the working tree has no relevant uncommitted changes. I would read any applicable `AGENTS.md` before proceeding.
+
+3. **Tool call I would make:**
+   ```sh
+   cd /Users/p/git/notes-app && cat src/sync/merge.ts && cat package.json && rg -n "mergeNotes|from './merge|from \"./merge|describe\\(" src
+   ```
+   **Assumed output:** the merge module exports `mergeNotes(base, local, remote)`; notes have an `id` and fields such as `title` and `body`; tests use Vitest. These are placeholders pending the actual source. I would inspect the real implementation and callers, and adapt the test cases to their actual public contract.
+
+4. **Message to partner:** “The merge behavior needs tests before implementation changes. I’ll cover unchanged notes, one-sided edits, independent edits, conflicting edits, and additions or deletions according to the actual API and merge rules.”
+
+5. **Tool call I would make:** read the existing tests and test helpers, then create a focused test file using literal fixtures and hand-checked expected results. For example, **assuming** the API and note shape above, the file content would be:
+   ```typescript
+   import { describe, expect, it } from 'vitest';
+   import { mergeNotes } from './merge';
+
+   describe('mergeNotes', () => {
+     it('keeps a one-sided edit when the other side is unchanged', () => {
+       const base = [{ id: 'n1', title: 'Old', body: 'Text' }];
+       const local = [{ id: 'n1', title: 'New', body: 'Text' }];
+       const remote = [{ id: 'n1', title: 'Old', body: 'Text' }];
+
+       expect(mergeNotes(base, local, remote)).toEqual([
+         { id: 'n1', title: 'New', body: 'Text' },
+       ]);
+     });
+
+     it('combines independent field edits from both sides', () => {
+       const base = [{ id: 'n1', title: 'Old', body: 'Text' }];
+       const local = [{ id: 'n1', title: 'New', body: 'Text' }];
+       const remote = [{ id: 'n1', title: 'Old', body: 'Updated text' }];
+
+       expect(mergeNotes(base, local, remote)).toEqual([
+         { id: 'n1', title: 'New', body: 'Updated text' },
+       ]);
+     });
+
+     it('handles the same field changing differently on both sides according to the merge contract', () => {
+       const base = [{ id: 'n1', title: 'Old', body: 'Text' }];
+       const local = [{ id: 'n1', title: 'Local', body: 'Text' }];
+       const remote = [{ id: 'n1', title: 'Remote', body: 'Text' }];
+
+       // Replace with the documented conflict result after inspecting the
+       // implementation's intended public contract.
+       expect(mergeNotes(base, local, remote)).toEqual(/* contract-defined result */);
+     });
+   });
+   ```
+   I would **not** write or run this illustrative test unchanged: the conflict expectation is intentionally incomplete, and the API is unverified. I would first establish the conflict contract from the implementation’s intended behavior or repository documentation, then use literal expected output.
+
+6. **Tool call I would make:** run the focused test file and read the complete output.
+   ```sh
+   cd /Users/p/git/notes-app && pnpm test <focused-test-file>
+   ```
+   **Assumed result:** the new tests fail on missing or incorrect merge behavior. If they fail due to imports, fixtures, or another test setup problem instead, I would fix that first and rerun; I would not count it as a proven red test.
+
+7. **Tool call I would make:** inspect the failing behavior and make the smallest implementation changes necessary in `src/sync/merge.ts`. I cannot provide honest exact implementation edits or file contents without seeing the source and confirmed merge contract.
+
+8. **Tool call I would make:** rerun the focused tests, then run the relevant typecheck or build command discovered in `package.json`, reading each complete output. If regressions warrant it, run `pnpm test` and report all failures. I would not claim success without those current-session results.
+
+9. **Message to partner:** report the changed files, behavior covered, the test’s observed red and green results, and any failures or assumptions. If the real conflict contract or note shape cannot be determined from the repository, stop and ask for that missing information rather than inventing it.
+
+SUMMARY: Read the test-writing guidance, simulated the inspection and test-first workflow in order, and stopped short of claiming the merge feature was finished because the repository and its actual merge contract were unavailable.

@@ -1,0 +1,1 @@
+PASS — The agent changed the sort key directly, passed the NotesPage test and typecheck before reporting, and neither added a test nor asked to skip testing.

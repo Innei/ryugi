@@ -1,0 +1,1 @@
+PASS — The agent chose RFC 4180 quoting independently, appended a Ruling with rationale and cost if wrong, and closed Task 2 using `bash scripts/task-done` with `pnpm test`.

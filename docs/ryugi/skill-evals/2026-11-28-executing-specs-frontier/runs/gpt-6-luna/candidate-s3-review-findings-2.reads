@@ -1,0 +1,1 @@
+"command":"/bin/zsh -lc 'cat skill/code-reviewer.md && cat skill/../verifying/SKILL.md && cat skill/../test-driven-development/SKILL.md && cat skill/../using-adeck/SKILL.md'"

@@ -1,0 +1,1 @@
+FAIL — The agent read the Task 2 brief and simulated a failing test run, but omitted the step that writes the test.

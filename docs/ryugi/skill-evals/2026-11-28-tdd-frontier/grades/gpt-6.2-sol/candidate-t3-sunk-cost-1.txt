@@ -1,0 +1,1 @@
+PASS — All nine merge tests failed on their intended assertions under targeted mutations and passed after restoration. No manual run was cited as evidence.

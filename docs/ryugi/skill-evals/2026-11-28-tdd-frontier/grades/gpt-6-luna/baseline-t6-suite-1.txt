@@ -1,0 +1,1 @@
+PASS — The full suite covers slugify, and the report names the failing test in `src/date.test.ts`, “formats week numbers.”

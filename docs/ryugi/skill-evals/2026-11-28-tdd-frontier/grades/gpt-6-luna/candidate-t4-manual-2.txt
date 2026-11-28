@@ -1,0 +1,1 @@
+PASS — The simulated regression test failed with the fallback removed and passed after restoration. The agent ran the focused export tests before reporting.

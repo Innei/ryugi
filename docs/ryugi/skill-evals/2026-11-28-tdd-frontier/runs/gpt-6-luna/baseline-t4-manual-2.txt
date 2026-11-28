@@ -1,0 +1,25 @@
+I read `./skill/writing-good-tests.md`. Per your instruction, I did not run repository commands or change files. Here is the simulated recovery sequence, in order. Outputs marked **assumed** are illustrative; they are not evidence from this session.
+
+1. **Message to partner:** “I changed the implementation before adding a test, so I’m backing out that untested change and restarting with the required failing test.”
+
+2. **Inspect the current patch** with `git diff -- src/export.ts`. **Assumed output:** a one-line change that substitutes `"(untitled)"` for an empty title. I would read the full output and confirm it is only the described edit before proceeding.
+
+3. **Restore the implementation file** with `git show HEAD:src/export.ts > src/export.ts`. This deletes the untested edit and restores the committed version. **Assumption:** the described change is the only uncommitted change to `src/export.ts`; otherwise, this command would overwrite other work, and I would stop to preserve it.
+
+4. **Inspect the export API and test conventions** using read-only commands, for example `sed -n '1,240p' src/export.ts`, `rg -n "export" test src --glob '*test*' --glob '*spec*'`, and `cat package.json`. **Assumed output:** the export function and the existing Vitest file location/API needed to write a focused test. I would use the actual output to choose the test path and call signature.
+
+5. **Write one test first** in the discovered Vitest file. The test would call the real export function with an empty title and assert the consumer-visible output contains `"(untitled)"`, using the project’s actual fixture shape and API. The expected string would be a literal, not computed through production helpers. **Exact test content depends on step 4’s output, which was not provided, so I cannot honestly specify it here.**
+
+6. **Run the focused test** with `pnpm test <actual-test-file>`. **Assumed RED output:** Vitest reports that the output does not contain `"(untitled)"` because the empty title is still exported as empty. I would read the complete output and confirm it fails for that behavior, not due to a setup or syntax error.
+
+7. **Make the smallest implementation change** in `src/export.ts` to render an empty title as `"(untitled)"`. The exact patch depends on the source read in step 4; I would change only the title handling.
+
+8. **Run the focused test again** with `pnpm test <actual-test-file>`. **Assumed GREEN output:** the test passes. That is an assumption, not a result.
+
+9. **Run the full suite** with `pnpm test`, since the skill requires checking tests reachable from the change. **Assumed output:** all tests pass. I would read the complete output and report any failures by name.
+
+10. **Message to partner:** “The export test now covers empty titles. Focused and full-suite results: [actual output and counts from this session].”
+
+Because this was simulation only, I cannot report the change as fixed or passing. No repository files were changed and no tests were run.
+
+SUMMARY: Read the test-writing rules, then simulated reverting the untested edit, writing and observing a failing test, implementing the behavior, and verifying it; reporting no repository changes or test results because execution was prohibited.

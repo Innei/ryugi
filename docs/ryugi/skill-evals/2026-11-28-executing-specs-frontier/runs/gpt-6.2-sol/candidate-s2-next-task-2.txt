@@ -1,0 +1,144 @@
+Simulation only. I assume the todo list already exists and Task 1’s completion line is in the ledger. All tool results below are assumed.
+
+1. **Todo tool**
+
+   ```json
+   {
+     "todos": [
+       {"id": "1", "status": "completed"},
+       {"id": "2", "status": "pending"},
+       {"id": "3", "status": "pending"}
+     ]
+   }
+   ```
+
+   Assumed result — the existing list records Task 1 as complete.
+
+2. **Shell** in `/Users/p/git/notes-app`
+
+   ```sh
+   bash scripts/task-start docs/ryugi/specs/2026-11-10-export-design.md 2
+   ```
+
+   Assumed output:
+
+   ```text
+   Brief: .artideck/sdd/2026-11-10-export-design/task-2.md
+   BASE: d4e5f6a
+   ```
+
+3. **Shell** in `/Users/p/git/notes-app`
+
+   ```sh
+   cat .artideck/sdd/2026-11-10-export-design/task-2.md
+   ```
+
+   Assumed brief:
+
+   ```markdown
+   ## Task 2: Escape CSV fields
+
+   **Goal:** Apply the spec’s CSV escaping rules to note titles and bodies.
+   Quote fields containing commas, double quotes, or line breaks. Double
+   embedded double quotes.
+
+   **Files:** `src/export.ts`, `src/export.test.ts`.
+
+   **Test:** Add a case for a title containing a comma and a body containing
+   double quotes and a line break. Run `pnpm test export` before changing
+   the serializer and expect the new assertion to fail on the CSV output.
+
+   **Verify:** `pnpm test export`.
+   **Expected:** 5/5 pass.
+   ```
+
+4. **Todo tool**
+
+   ```json
+   {
+     "todos": [
+       {"id": "1", "status": "completed"},
+       {"id": "2", "status": "in_progress"},
+       {"id": "3", "status": "pending"}
+     ]
+   }
+   ```
+
+5. **Shell** in `/Users/p/git/notes-app`
+
+   ```sh
+   cat src/export.ts src/export.test.ts
+   ```
+
+   Assumed result — `serializeNotesCsv` takes notes with `title` and `body` fields, emits a `title,body` header, and joins raw fields with commas and rows with LF. The test file starts with the two imports shown below and contains four existing tests.
+
+6. **Edit tool** in `/Users/p/git/notes-app`
+
+   ```diff
+   *** Begin Patch
+   *** Update File: src/export.test.ts
+   @@
+    import { expect, test } from 'vitest'
+    import { serializeNotesCsv } from './export'
+   +
+   +test('escapes commas, quotes, and line breaks in note fields', () => {
+   +  const csv = serializeNotesCsv([
+   +    { title: 'One, two', body: 'She said "hello"\nThen left.' },
+   +  ])
+   +
+   +  expect(csv).toBe('title,body\n"One, two","She said ""hello""\nThen left."')
+   +})
+   *** End Patch
+   ```
+
+   Assumed result — the patch applies.
+
+7. **Shell** in `/Users/p/git/notes-app`
+
+   ```sh
+   pnpm test export
+   ```
+
+   Assumed full output, read in this step:
+
+   ```text
+   > notes-app@0.1.0 test /Users/p/git/notes-app
+   > vitest run export
+
+    RUN  v3.2.4 /Users/p/git/notes-app
+
+    ❯ src/export.test.ts (5 tests | 1 failed) 8ms
+      × escapes commas, quotes, and line breaks in note fields 5ms
+      ✓ exports the header for an empty list
+      ✓ exports a single note
+      ✓ exports multiple notes in order
+      ✓ exports an empty note body
+
+   FAIL  src/export.test.ts > escapes commas, quotes, and line breaks in note fields
+   AssertionError: expected actual to be expected // Object.is equality
+
+   - Expected
+   + Received
+
+     title,body
+   - "One, two","She said ""hello""
+   - Then left."
+   + One, two,She said "hello"
+   + Then left.
+
+    ❯ src/export.test.ts:9:15
+        7|   ])
+        8|
+        9|   expect(csv).toBe('title,body\n"One, two","She said ""hello""\nThen left."')
+         |               ^
+       10| })
+
+    Test Files  1 failed (1)
+         Tests  1 failed | 4 passed (5)
+
+   ELIFECYCLE Command failed with exit code 1.
+   ```
+
+**Message to partner** — In the simulated run, `pnpm test export` exited 1. The new regression test failed because the CSV left the comma and line break unquoted and emitted the embedded quotes as-is. The four existing tests passed. Task 2 remains in progress, with no new ledger entry.
+
+SUMMARY: Simulated Task 2 through its first failing test and stopped at the requested checkpoint. Implementation waits on the agent, and no partner decision is needed.

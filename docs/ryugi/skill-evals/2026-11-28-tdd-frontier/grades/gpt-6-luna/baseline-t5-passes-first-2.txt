@@ -1,0 +1,1 @@
+FAIL — The agent recognized the unexpected pass but skipped simulated inspection, so it neither obtained a meaningful test failure nor established that the behavior already existed.

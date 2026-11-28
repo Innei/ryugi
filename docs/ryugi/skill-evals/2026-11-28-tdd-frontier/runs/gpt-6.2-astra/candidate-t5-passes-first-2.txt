@@ -1,0 +1,116 @@
+1. **Actual message to partner** — “I’ll use the test-driven-development skill and read its test-writing guidance. I’ll simulate all repository commands and label their assumed output.”
+
+2. **Actual shell call** — `cat ./skill/writing-good-tests.md`. It exited 0. I read the full output, including the guidance to use hand-checked expected values and identify which production change would make the test fail.
+
+3. **Simulated message to partner** — “The new test passed 1/1 before I changed `sortNotes`. I’ll check whether the existing sorter already honors pins or whether the fixture also passes under the old ordering.”
+
+4. **Simulated shell call** in `/Users/p/git/notes-app`, the working directory for all remaining calls:
+
+   ```sh
+   cat src/sort.test.ts src/sort.ts package.json
+   ```
+
+   **Assumed result, exit 0.** The test passes a pinned note with `updatedAt: 20` and an unpinned note with `updatedAt: 10`, then expects the pinned ID first. `sortNotes` copies its input and sorts solely by descending `updatedAt`. The exported `Note` type in `src/sort.ts` already has `id: string`, `updatedAt: number`, and `pinned?: boolean`. The package defines `test` as `vitest run` and `typecheck` as `tsc --noEmit`, with no build script. These are assumptions about the simulated repo.
+
+5. **Simulated shell calls** to identify affected callers and checks:
+
+   ```sh
+   rg -n '\bsortNotes\b|/sort['"'"'"]' .
+   ```
+
+   ```sh
+   rg --files --hidden -g '!node_modules' -g '!.git' -g '*test*' -g '*spec*' -g '*e2e*'
+   ```
+
+   **Assumed results, both exit 0.** The first search finds the definition in `src/sort.ts`, its use in `src/sort.test.ts`, and a call in `src/note-list.ts`. The second lists `src/sort.test.ts` and `src/note-list.test.ts`.
+
+6. **Simulated message to partner** — “The pinned note in the fixture is also the newest, so the timestamp-only sorter puts it first. I’ll give a newer unpinned note and an older pinned note conflicting priorities. The expected order will also check that timestamps still order notes within each group.”
+
+7. **Simulated shell call** replacing the one-test file with this exact content:
+
+   ```sh
+   cat > src/sort.test.ts <<'EOF'
+   import { expect, test } from 'vitest'
+   import { sortNotes } from './sort'
+
+   test('pinned notes sort first', () => {
+     const notes = [
+       { id: 'older-unpinned', updatedAt: 20 },
+       { id: 'older-pinned', updatedAt: 10, pinned: true },
+       { id: 'newer-unpinned', updatedAt: 40, pinned: false },
+       { id: 'newer-pinned', updatedAt: 30, pinned: true },
+     ]
+
+     expect(sortNotes(notes).map(note => note.id)).toEqual([
+       'newer-pinned',
+       'older-pinned',
+       'newer-unpinned',
+       'older-unpinned',
+     ])
+   })
+   EOF
+   ```
+
+   **Assumed result** — exit 0, no output.
+
+8. **Simulated shell call** before editing production code:
+
+   ```sh
+   pnpm test src/sort.test.ts
+   ```
+
+   **Assumed output, exit 1** (timing and runner headers omitted):
+
+   ```text
+   FAIL src/sort.test.ts > pinned notes sort first
+   AssertionError: expected arrays to deeply equal
+   Expected: ["newer-pinned", "older-pinned", "newer-unpinned", "older-unpinned"]
+   Received: ["newer-unpinned", "newer-pinned", "older-unpinned", "older-pinned"]
+   Test Files  1 failed (1)
+   Tests       1 failed (1)
+   ```
+
+9. **Simulated message to partner** — “The revised test failed 1/1 on the ordering assertion. The sorter returned `newer-unpinned` first and `older-pinned` last. I’ll compare pin status first and use the existing timestamp comparison when pin status is equal.”
+
+10. **Simulated shell call** writing the full `src/sort.ts` file, preserving the assumed type, signature and copy-before-sort behavior:
+
+    ```sh
+    cat > src/sort.ts <<'EOF'
+    export type Note = {
+      id: string
+      updatedAt: number
+      pinned?: boolean
+    }
+
+    export function sortNotes(notes: Note[]): Note[] {
+      return [...notes].sort((a, b) => {
+        if (Boolean(a.pinned) !== Boolean(b.pinned)) {
+          return a.pinned ? -1 : 1
+        }
+        return b.updatedAt - a.updatedAt
+      })
+    }
+    EOF
+    ```
+
+    **Assumed result** — exit 0, no output.
+
+11. **Simulated verification calls**, reading each result before reporting:
+
+    ```sh
+    pnpm test src/sort.test.ts
+    ```
+
+    ```sh
+    pnpm test src/note-list.test.ts
+    ```
+
+    ```sh
+    pnpm typecheck
+    ```
+
+    **Assumed results** — each exits 0. Vitest reports `src/sort.test.ts` passed 1/1 and the caller suite `src/note-list.test.ts` passed 3/3. The typecheck runs `tsc --noEmit` and prints no diagnostics.
+
+12. **Simulated final message to partner** — “Pinned notes now sort first, with newest first within each group. Notes with an omitted `pinned` flag sort alongside notes marked `false`. The original test passed prematurely because its pinned note was also newest. The replacement failed 1/1 against the timestamp-only sorter, then passed 1/1 after the comparator change. The note-list caller tests passed 3/3, and `pnpm typecheck` exited 0.”
+
+SUMMARY: I read the skill guidance, then simulated diagnosing the premature pass, proving the revised test red, editing the comparator, and verifying the sorter, its caller, and the typecheck. All repository edits and results are hypothetical.

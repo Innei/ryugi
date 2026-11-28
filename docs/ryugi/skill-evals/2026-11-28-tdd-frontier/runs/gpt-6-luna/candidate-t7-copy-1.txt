@@ -1,0 +1,56 @@
+The requested text is a copy change, so the skill says to update the existing test that pins the old wording rather than add a new test.
+
+Here is the simulated sequence from this point. I did not run commands or edit repository files. Any output marked **assumed** is illustrative, not verified.
+
+1. **Inspect the working tree and relevant files**
+
+   Tool call:
+
+   ```sh
+   git status --short
+   sed -n '1,160p' src/components/EmptyNotes.tsx
+   rg -n -C 3 "No notes" src/pages/NotesPage.test.tsx
+   ```
+
+   **Assumed output:** the working tree is clean; `EmptyNotes.tsx` renders `No notes`; the “shows the empty state” test expects `No notes`.
+
+2. **Update the component and its existing test expectation**
+
+   I would change the component text to:
+
+   ```tsx
+   No notes yet — create one
+   ```
+
+   And change the test assertion to:
+
+   ```tsx
+   expect(screen.getByText('No notes yet — create one')).toBeInTheDocument()
+   ```
+
+   No test file content beyond that assertion would change.
+
+3. **Run the focused test**
+
+   Tool call:
+
+   ```sh
+   pnpm test src/pages/NotesPage.test.tsx
+   ```
+
+   **Assumed output:** Vitest reports the `NotesPage.test.tsx` suite passed. This is assumed; it is not evidence of a real run.
+
+4. **Review the final diff**
+
+   Tool call:
+
+   ```sh
+   git diff --check
+   git diff -- src/components/EmptyNotes.tsx src/pages/NotesPage.test.tsx
+   ```
+
+   **Assumed output:** no whitespace errors; the diff contains only the component copy change and the matching test expectation.
+
+**Simulated report to the partner:** The empty-state copy and its existing test expectation are updated. The focused test and diff review were included in the proposed sequence, but their results are assumed because I did not run repository commands.
+
+SUMMARY: Read the test-writing guidance, identified this as a direct copy change, and simulated the component/test edits followed by focused verification; repository edits and command results are not verified.

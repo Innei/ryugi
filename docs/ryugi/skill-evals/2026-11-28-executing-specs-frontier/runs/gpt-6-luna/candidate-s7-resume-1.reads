@@ -1,0 +1,1 @@
+"command":"/bin/zsh -lc 'cat skill/SKILL.md && cat skill/../using-git-worktrees/SKILL.md && cat skill/../test-driven-development/SKILL.md'"

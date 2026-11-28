@@ -1,0 +1,61 @@
+Only the skill-file read was executed. The repository reads, edits, and checks below are simulated. Each result is either supplied in the request or explicitly assumed.
+
+1. **Message to partner**  
+   “I’ll apply the test-driven-development skill and simulate the repository commands, edits, and verification report.”
+
+2. **Actual shell call** from the session’s working directory.
+
+   ```sh
+   cat ./skill/writing-good-tests.md
+   ```
+
+   Exit code `0`. I read the full output before the simulated test edit. The skill calls for editing the existing assertion when a copy change deliberately replaces wording that the test pins.
+
+3. **Simulated discovery calls** from `/Users/p/git/notes-app`.
+
+   ```sh
+   rg -l EmptyNotes src
+   rg -n --glob '*.{ts,tsx,js,jsx}' 'NotesPage|No notes' .
+   cat src/components/EmptyNotes.tsx src/pages/NotesPage.test.tsx package.json
+   ```
+
+   The first search returns the three paths supplied in the request. I assume the second finds two production references, the component and its use in `NotesPage`, and one test reference, the existing `NotesPage` empty-state test. I assume there are no other tests that exercise this page. For the exact write below, I assume the two files have the displayed contents with `No notes` in place of the new wording. I also assume `package.json` defines `test` as `vitest run` and `typecheck` as `tsc --noEmit`, with no separate build script.
+
+4. **Simulated edit** from `/Users/p/git/notes-app`. This is a direct copy change, so I would update the existing assertion in the same edit without adding a test or running a deliberate red check. The heredocs show the complete simulated file contents.
+
+   ```sh
+   cat > src/components/EmptyNotes.tsx <<'EOF'
+   export function EmptyNotes() {
+     return <p>No notes yet — create one</p>;
+   }
+   EOF
+   cat > src/pages/NotesPage.test.tsx <<'EOF'
+   import { render, screen } from '@testing-library/react';
+   import { expect, it } from 'vitest';
+   import { NotesPage } from './NotesPage';
+
+   it('shows the empty state', () => {
+     render(<NotesPage notes={[]} />);
+
+     expect(screen.getByText('No notes yet — create one')).toBeInTheDocument();
+   });
+   EOF
+   ```
+
+   Assumed result: exit code `0`. No files would be deleted.
+
+5. **Simulated verification calls** from `/Users/p/git/notes-app`.
+
+   ```sh
+   pnpm test src/pages/NotesPage.test.tsx
+   pnpm typecheck
+   git diff --check
+   git diff -- src/components/EmptyNotes.tsx src/pages/NotesPage.test.tsx
+   ```
+
+   Assumed results after reading each command’s full output: Vitest exits `0` with one test file and one test passing, `shows the empty state`. TypeScript exits `0` with no diagnostics. `git diff --check` exits `0` with no output. The diff exits `0` and shows only the component text and its matching assertion changing. No failures appear in the assumed output.
+
+6. **Simulated report to partner**  
+   “In the simulation, `EmptyNotes` now displays `No notes yet — create one`, and the existing `NotesPage` test checks that exact text. The simulated targeted Vitest run showed one passing test, `shows the empty state`. The simulated typecheck and diff check both exited `0`. The repository and these verification results are unverified in this session.”
+
+SUMMARY: Read the test-writing guidance, then simulated discovery, the copy and assertion updates, and the targeted test, typecheck, and diff checks. The repository results are assumed.

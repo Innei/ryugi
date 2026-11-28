@@ -1,0 +1,34 @@
+**Message to partner:** I’ll resume at Task 2, preserve the existing uncommitted `src/export.ts` change, and stop once Task 2’s test has run and failed.
+
+**Simulated tool calls, in order**  
+*Assumption: the command outputs below are plausible examples; I have not run these commands.*
+
+1. `bash scripts/sdd-workspace docs/ryugi/specs/2026-11-10-export-design.md`  
+   Assumed output identifies `.artideck/sdd/2026-11-10-export-design/`.
+
+2. `cat .artideck/sdd/2026-11-10-export-design/progress.md`  
+   Assumed output matches the ledger in the prompt: Task 1 is complete.
+
+3. `cat .artideck/sdd/2026-11-10-export-design/tasks.md`  
+   Assumed Task 2 is “write rows”; read its Goal, Files, Test, and Verify instructions. Record the `## Review Focus` section for the eventual final review.
+
+4. `bash scripts/task-start docs/ryugi/specs/2026-11-10-export-design.md 2`  
+   Assumed output gives Task 2’s brief path and BASE commit.
+
+5. `cat <printed Task 2 brief path>`  
+   Assumed it confirms the task’s files and test command.
+
+6. `git status --short`  
+   Assumed output confirms `src/export.ts` is modified and uncommitted.
+
+7. `git diff -- src/export.ts`  
+   Assumed output shows the existing change. Treat it as pre-existing work to preserve; do not stage, reset, or overwrite it.
+
+8. **Ledger append:** no content appended. Task 2 has not passed, and the supplied ledger already contains the slicing entry.
+
+9. **Run Task 2’s test first**, using the exact command from its brief.  
+   Assumed output shows the new row-writing test fails for the expected missing or incorrect behavior. Read the full output.
+
+**Stop here.** Task 2 has started, but it is not complete. No implementation, commit, or `task-done` call has occurred.
+
+SUMMARY: Simulated resuming the export spec through Task 2’s failing test; the next action waits on no one, and implementation would follow after that red result.

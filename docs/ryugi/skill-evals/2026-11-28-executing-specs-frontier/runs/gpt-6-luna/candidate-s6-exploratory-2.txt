@@ -1,0 +1,103 @@
+### Simulation
+
+I read `./skill/SKILL.md`. Per your instruction, I did not run repository commands, inspect repo files, edit files, or execute tests. I assumed plausible successful outputs for commands whose results were not supplied.
+
+1. **Send to partner:** “This is exploratory work, so I’ll read the skill’s `exploring.md` instructions before slicing. I’ll simulate the workflow and treat command results as assumptions.”
+
+2. **Tool call:** `cat ./skill/exploring.md`  
+   **Assumed output:** exploratory completion instructions say to skip commits, retain a record of the experiment, and report what remains for the partner to decide.
+
+3. **Tool call:** `cat ./skill/code-reviewer.md`  
+   **Assumed output:** reviewer instructions ask for findings prioritized by severity, with file and line references, and a concise overall assessment.
+
+4. **Tool call:** `cat docs/ryugi/specs/2026-11-10-export-design.md`  
+   **Assumed output:** the spec describes CSV export for notes, including a stable column order and correct CSV escaping. The task is small enough to implement in one slice.
+
+5. **Tool call:** `cat <adeck:test-driven-development instructions>`  
+   **Assumed output:** write a focused failing test first, implement until it passes, then run the task verification command.
+
+6. **Tool call:** `cat .artideck/sdd/2026-11-10-export-design/progress.md`  
+   **Assumed output:** no ledger exists.
+
+7. **Tool call:** write `.artideck/sdd/2026-11-10-export-design/tasks.md` with:
+
+   ```markdown
+   ## Task 1: Export notes as CSV
+
+   **Goal:** Implement CSV export of notes with the specified fields and escaping, as described in the spec’s CSV format and export behavior sections.
+   **Files:** `src/export.ts`, `src/export.test.ts`
+   **Test:** Add focused CSV serialization tests; run them red before implementation and green afterward.
+   **Verify:** `pnpm test`
+   **Expected:** All tests pass, including CSV field order and escaping cases.
+
+   ## Review Focus
+
+   Check empty note collections, delimiters, quotes, and newlines in values; the focused tests may not cover all combinations.
+   ```
+
+8. **Tool call:** write `.artideck/sdd/2026-11-10-export-design/progress.md`:
+
+   ```markdown
+   # SDD ledger — plan: docs/ryugi/specs/2026-11-10-export-design.md
+   Slicing: 1 task — one committable slice covers CSV serialization, escaping, and its tests.
+   ```
+
+   **Assumed result:** both workspace files were written successfully.
+
+9. **Create todo:** `Task 1: Export notes as CSV`  
+   **Assumed result:** todo created.
+
+10. **Tool call:** `bash scripts/task-start docs/ryugi/specs/2026-11-10-export-design.md 1`  
+    **Assumed output:** brief path `.artideck/sdd/2026-11-10-export-design/brief-1.md`; BASE `abc1234`.
+
+11. **Tool call:** `cat .artideck/sdd/2026-11-10-export-design/brief-1.md`  
+    **Assumed output:** task brief confirms the test file, implementation file, focused test command, and `pnpm test` verification.
+
+12. **Mark todo:** `Task 1: Export notes as CSV` → `in_progress`.
+
+13. **Send to partner:** “The slice is one task: CSV serialization and focused tests. I’m proceeding with test-first implementation and will record the whole-suite result as assumed in this simulation.”
+
+14. **Tool call:** edit `src/export.test.ts` to cover column order, CSV escaping for commas/quotes/newlines, and an empty collection.  
+    **Assumed result:** test file edited.
+
+15. **Tool call:** run the focused test command from the brief.  
+    **Assumed output:** tests fail because the export module is missing or does not yet implement the expected behavior.
+
+16. **Tool call:** edit `src/export.ts` to implement the specified CSV serializer and escaping.  
+    **Assumed result:** implementation edited.
+
+17. **Tool call:** run the focused test command from the brief.  
+    **Assumed output:** all focused export tests pass.
+
+18. **Tool call:** `git add src/export.ts src/export.test.ts && git commit -m "Add CSV export for notes"`  
+    **Assumed output:** commit created with SHA `def5678`. This simulated commit is only an assumed result; no actual repository changes or commit occurred.
+
+19. **Tool call:** `bash scripts/task-done docs/ryugi/specs/2026-11-10-export-design.md 1 abc1234 -- pnpm test`  
+    **Assumed output:** `pnpm test` passes; task completion is appended to the ledger:
+
+    ```text
+    Task 1: complete (commits abc1234..def5678, tests: pnpm test → passed)
+    ```
+
+    **Assumed result:** task-done succeeds and records the completion line.
+
+20. **Mark todo:** `Task 1: Export notes as CSV` → `complete`.
+
+21. **Tool call:** `bash scripts/review-package docs/ryugi/specs/2026-11-10-export-design.md --commits def5678`  
+    **Assumed output:** review package created at `.artideck/sdd/2026-11-10-export-design/review/`.
+
+22. **Fresh-context review:** no subagent tool is available under the simulation constraint, so review `./skill/code-reviewer.md` against the assumed review package as a separate pass.  
+    **Assumed review result:** no Critical or Important findings; one Minor concern that combinations of unusual Unicode line separators are not explicitly tested.
+
+23. **Append ledger line:**
+
+    ```text
+    Final: self-review (no subagent tool)
+    Final: minor (deferred): Unicode line separator coverage is not explicit in focused tests.
+    ```
+
+    **Assumed result:** ledger updated.
+
+24. **No further tool call:** this simulation ends after producing the review package; it does not perform the final verification workflow because the stated task is to close the task and produce that package. The assumed review result and repository state are not evidence of actual implementation or passing tests.
+
+SUMMARY: Simulated the one-task exploratory CSV export workflow through a review package; no repository commands or edits were performed, and all unspecified outputs were assumed. The actual implementation and verification now wait on a real execution.

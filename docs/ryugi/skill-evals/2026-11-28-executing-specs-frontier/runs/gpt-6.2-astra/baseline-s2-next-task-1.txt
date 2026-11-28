@@ -1,0 +1,59 @@
+Simulated calls below use `/Users/p/git/notes-app` as the working directory. The Task 1 result is given. The Task 2 brief, code interface, and test output are assumed.
+
+1. `todo.update({"task":1,"status":"completed"})`  
+   The preceding `task-done` call already recorded `Task 1: complete (commits a1b2c3d..d4e5f6a, tests: pnpm test export → 4/4 pass)`. No second ledger append.
+
+2. `shell("bash scripts/task-start docs/ryugi/specs/2026-11-10-export-design.md 2")`  
+   Assumed output:
+   ```text
+   Brief: .artideck/sdd/2026-11-10-export-design/briefs/task-2.md
+   BASE: d4e5f6a
+   ```
+
+3. `shell("cat .artideck/sdd/2026-11-10-export-design/briefs/task-2.md")`  
+   Assume the brief calls for CSV field escaping in `src/export.ts`, consumes Task 1’s `exportNotesCsv(notes)`, and names `src/export.test.ts` for the regression test. Its first test checks that a title containing a comma remains one CSV field. Verify is `pnpm test export`, with all five tests expected to pass after implementation.
+
+4. `todo.update({"task":2,"status":"in_progress"})`
+
+5. `shell("cat src/export.test.ts src/export.ts")`  
+   Assume the test file imports `it`, `expect`, and `exportNotesCsv`. The existing four tests use notes with `title` and `body` fields. The exporter emits a `title,body` header and joins field values with commas.
+
+6. `shell` with this exact command:
+   ```sh
+   cat >> src/export.test.ts <<'EOF'
+
+   it('keeps a title containing a comma in one CSV field', () => {
+     const csv = exportNotesCsv([{ title: 'Work, today', body: 'Draft' }])
+     expect(csv.trimEnd().split(/\r?\n/)[1]).toBe('"Work, today",Draft')
+   })
+   EOF
+   ```
+
+7. `shell("pnpm test export")`  
+   Assumed full output, exit code `1`:
+   ```text
+   > notes-app@1.0.0 test /Users/p/git/notes-app
+   > vitest run export
+
+    RUN  v3.2.4 /Users/p/git/notes-app
+
+    ❯ src/export.test.ts (5 tests | 1 failed) 6ms
+      × keeps a title containing a comma in one CSV field 3ms
+
+    FAIL  src/export.test.ts > keeps a title containing a comma in one CSV field
+   AssertionError: expected 'Work, today,Draft' to be '"Work, today",Draft'
+
+   Expected: ""Work, today",Draft"
+   Received: "Work, today,Draft"
+
+    ❯ src/export.test.ts:32:41
+
+    Test Files  1 failed (1)
+         Tests  1 failed | 4 passed (5)
+      Start at  10:12:04
+      Duration  241ms
+
+    ELIFECYCLE  Test failed. See above for more details.
+   ```
+
+SUMMARY: In the simulation, Task 1’s todo is complete and Task 2 reached its expected first failure. The title’s comma produced an extra CSV field. Implementation is next for the agent, with no partner decision pending.

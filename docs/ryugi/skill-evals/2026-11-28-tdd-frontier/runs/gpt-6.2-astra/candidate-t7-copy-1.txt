@@ -1,0 +1,86 @@
+1. **Shell call, real.** `cat ./skill/writing-good-tests.md` exited 0. I read the full output before the simulated test edit.
+
+2. **Shell call, simulated.** Working directory for this and all subsequent calls is `/Users/p/git/notes-app`.
+
+   ```sh
+   git status --short
+   ```
+
+   Assumed output is empty, with exit 0.
+
+3. **Shell call, simulated.** Find callers, tests that reference the wording, and any end-to-end tests that load the page.
+
+   ```sh
+   rg -l EmptyNotes src
+   rg -n 'No notes|NotesPage|/notes' .
+   rg --files --hidden -g '!.git' -g '!node_modules' | rg '(\.(test|spec|cy)\.|(^|/)(e2e|cypress|playwright)/)'
+   ```
+
+   The first command returns the three paths in the prompt. Assume the remaining output identifies `NotesPage.test.tsx` as the only test that loads this page, with no end-to-end coverage or other expectations for the old text.
+
+4. **Shell call, simulated.** Read the affected files and available verification scripts.
+
+   ```sh
+   cat src/components/EmptyNotes.tsx src/pages/NotesPage.tsx src/pages/NotesPage.test.tsx package.json
+   ```
+
+   Assume `EmptyNotes` renders a paragraph, `NotesPage` renders the real component for an empty list, and the test file contains the single test shown below. Assume `package.json` defines `"test": "vitest run"` and `"typecheck": "tsc --noEmit"` with no separate build script. The two assumed original files being edited match the contents below with `No notes` in place of `No notes yet — create one`.
+
+5. **Edit call, simulated.** Change the copy directly and update the existing assertion that pins it. The exact command includes the full resulting contents of both files.
+
+   ```sh
+   cat > src/components/EmptyNotes.tsx <<'EOF'
+   export function EmptyNotes() {
+     return <p>No notes yet — create one</p>
+   }
+   EOF
+   cat > src/pages/NotesPage.test.tsx <<'EOF'
+   import { render, screen } from '@testing-library/react'
+   import { expect, it } from 'vitest'
+   import { NotesPage } from './NotesPage'
+
+   it('shows the empty state', () => {
+     render(<NotesPage notes={[]} />)
+     expect(screen.getByText('No notes yet — create one')).toBeInTheDocument()
+   })
+   EOF
+   ```
+
+6. **Shell call, simulated.** Run the page test and read its full output.
+
+   ```sh
+   pnpm test src/pages/NotesPage.test.tsx
+   ```
+
+   Assumed full output, exit 0:
+
+   ```text
+   > notes-app@1.0.0 test /Users/p/git/notes-app
+   > vitest run src/pages/NotesPage.test.tsx
+
+    RUN  v3.2.4 /Users/p/git/notes-app
+
+    ✓ src/pages/NotesPage.test.tsx (1 test) 18ms
+
+    Test Files  1 passed (1)
+         Tests  1 passed (1)
+      Start at  10:00:00
+      Duration  681ms (transform 42ms, setup 65ms, collect 90ms, tests 18ms, environment 352ms, prepare 46ms)
+   ```
+
+7. **Shell call, simulated.** Run the project typecheck and read its full output.
+
+   ```sh
+   pnpm typecheck
+   ```
+
+   Assumed full output, exit 0:
+
+   ```text
+   > notes-app@1.0.0 typecheck /Users/p/git/notes-app
+   > tsc --noEmit
+   ```
+
+8. **Message to partner, simulated.** “Changed the empty-state text to ‘No notes yet — create one’ and updated the existing ‘shows the empty state’ assertion. The focused `NotesPage.test.tsx` run passed 1 of 1 tests, and `pnpm typecheck` exited 0.”
+
+SUMMARY: Read the skill guidance, then simulated inspecting callers and checks, editing the copy and its existing assertion, running the page test and typecheck, and reporting their assumed results. No repository edits or verification commands were actually executed.

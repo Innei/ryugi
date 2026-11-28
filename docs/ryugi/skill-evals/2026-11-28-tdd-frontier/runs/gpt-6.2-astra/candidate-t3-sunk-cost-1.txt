@@ -1,0 +1,201 @@
+The only command I actually ran was `cat ./skill/writing-good-tests.md`. It exited 0, and I read the full guide. Everything below is a simulation. The repository contents, command outputs, and timings are assumptions.
+
+### 1. Inspect the existing work and find its contract
+
+**Shell** — working directory `/Users/p/git/notes-app` for this and every subsequent simulated call.
+
+```sh
+pwd
+git status --short --branch
+rg --files --hidden -g '!.git' -g '!node_modules' -g '!dist'
+rg -n 'mergeNotes|three-way|three way|conflict' src docs README.md
+cat package.json tsconfig.json src/sync/merge.ts
+```
+
+Assume I read the full output. The branch is `feature/note-merge`, and `?? src/sync/merge.ts` is the only status entry. The search finds a sync contract, a caller, and its tests. The package defines `test`, `typecheck`, and `build` scripts.
+
+**Shell**
+
+```sh
+cat docs/sync.md src/sync/applyRemote.ts src/sync/applyRemote.test.ts
+rg -n 'applyRemote|src/sync|sync/merge' --hidden -g '!.git' -g '!node_modules' -g '!dist'
+```
+
+Assume the documented contract is `mergeNotes(base, local, remote)` for notes with string fields `id`, `title`, and `body`. All three inputs represent the same ID. Independent title and body edits combine. The body is a single field, and clearing it is an edit. Incompatible edits to the same field return `{ kind: 'conflict', fields: [...] }`, listing `title` before `body`. Success returns `{ kind: 'merged', note }`. The inputs must remain unchanged. Assume `applyRemote` already calls this export, its three tests exercise persistence and conflict handling, and the search finds no additional caller or end-to-end tests.
+
+**Message to partner**
+
+> I found the merge contract and its sync caller. I’ll keep the existing implementation, test the documented outcomes with hand-checked examples, and deliberately break the merge to verify that each test catches a wrong result.
+
+### 2. Add tests against the public function
+
+**Shell** — this is the complete new test file.
+
+```sh
+cat > src/sync/merge.test.ts <<'EOF'
+import { describe, expect, it } from 'vitest'
+import { mergeNotes } from './merge'
+
+const base = { id: 'n1', title: 'Plan', body: 'Draft' }
+
+describe('mergeNotes', () => {
+  it.each([
+    {
+      name: 'unchanged copies',
+      local: {},
+      remote: {},
+      wantTitle: 'Plan',
+      wantBody: 'Draft',
+    },
+    {
+      name: 'a local-only edit',
+      local: { title: 'Today' },
+      remote: {},
+      wantTitle: 'Today',
+      wantBody: 'Draft',
+    },
+    {
+      name: 'a remote-only edit',
+      local: {},
+      remote: { body: 'Published' },
+      wantTitle: 'Plan',
+      wantBody: 'Published',
+    },
+    {
+      name: 'a local rename and remote body clear',
+      local: { title: 'Today' },
+      remote: { body: '' },
+      wantTitle: 'Today',
+      wantBody: '',
+    },
+    {
+      name: 'a remote rename and local body clear',
+      local: { body: '' },
+      remote: { title: 'Today' },
+      wantTitle: 'Today',
+      wantBody: '',
+    },
+    {
+      name: 'identical concurrent edits',
+      local: { title: 'Today', body: '' },
+      remote: { title: 'Today', body: '' },
+      wantTitle: 'Today',
+      wantBody: '',
+    },
+  ])('merges $name', ({ local, remote, wantTitle, wantBody }) => {
+    const result = mergeNotes(
+      Object.freeze({ ...base }),
+      Object.freeze({ ...base, ...local }),
+      Object.freeze({ ...base, ...remote }),
+    )
+
+    expect(result).toEqual({
+      kind: 'merged',
+      note: { id: 'n1', title: wantTitle, body: wantBody },
+    })
+  })
+
+  it.each([
+    {
+      name: 'title',
+      local: { title: 'Today', body: 'Shared' },
+      remote: { title: 'Tomorrow', body: 'Shared' },
+      fields: ['title'],
+    },
+    {
+      name: 'body',
+      local: { body: '' },
+      remote: { body: 'Published' },
+      fields: ['body'],
+    },
+    {
+      name: 'title and body',
+      local: { title: 'Today', body: 'First' },
+      remote: { title: 'Tomorrow', body: 'Second' },
+      fields: ['title', 'body'],
+    },
+  ])('reports conflicting fields for $name', ({ local, remote, fields }) => {
+    const result = mergeNotes(
+      Object.freeze({ ...base }),
+      Object.freeze({ ...base, ...local }),
+      Object.freeze({ ...base, ...remote }),
+    )
+
+    expect(result).toEqual({ kind: 'conflict', fields })
+  })
+})
+EOF
+pnpm test src/sync/merge.test.ts
+```
+
+Assume exit 0, one file and nine tests passed. That establishes the baseline. The tests still need to demonstrate failures.
+
+### 3. Prove the tests red without overwriting the uncommitted implementation
+
+I would run the mutations in a disposable copy of the current source tree. This matters because an untracked file has no `HEAD` version to restore. The following is one shell call. Both replacement files are shown in full. `rsync` copies existing files byte-for-byte. The exit trap deletes only the temporary copy, its dependency symlink, and test-runner artifacts created there.
+
+**Shell**
+
+```sh
+set -eu
+repo=$PWD
+scratch=$(mktemp -d "${TMPDIR:-/tmp}/notes-merge.XXXXXXXX")
+trap 'rm -rf -- "$scratch"' EXIT
+rsync -a --exclude=.git --exclude=node_modules --exclude=dist ./ "$scratch/"
+ln -s "$repo/node_modules" "$scratch/node_modules"
+cd "$scratch"
+cmp "$repo/src/sync/merge.ts" src/sync/merge.ts
+pnpm test src/sync/merge.test.ts
+
+cat > src/sync/merge.ts <<'EOF'
+export function mergeNotes() {
+  return { kind: 'conflict', fields: ['title', 'body'] }
+}
+EOF
+if pnpm test src/sync/merge.test.ts; then
+  exit 1
+fi
+
+cat > src/sync/merge.ts <<'EOF'
+type Note = { id: string; title: string; body: string }
+
+export function mergeNotes(_base: Note, local: Note, _remote: Note) {
+  return { kind: 'merged', note: local }
+}
+EOF
+if pnpm test src/sync/merge.test.ts; then
+  exit 1
+fi
+
+cp "$repo/src/sync/merge.ts" src/sync/merge.ts
+cmp "$repo/src/sync/merge.ts" src/sync/merge.ts
+pnpm test src/sync/merge.test.ts
+```
+
+Assume I read all four Vitest outputs, including each assertion diff. The copied baseline passed 9/9. Both mutant runs exited 1 on result assertions. The restored copy passed 9/9. The outer shell exited 0.
+
+| Deliberate break | Tests observed failing | Assertion evidence |
+|---|---|---|
+| Always report both fields in conflict | `merges unchanged copies`, `merges a local-only edit`, `merges a remote-only edit`, `merges a local rename and remote body clear`, `merges a remote rename and local body clear`, `merges identical concurrent edits`, `reports conflicting fields for title`, `reports conflicting fields for body` | The six success cases received `conflict`. Each single-field conflict received an extra field. **8 failed, 1 passed.** |
+| Always return the local note | `merges a remote-only edit`, `merges a local rename and remote body clear`, `merges a remote rename and local body clear`, `reports conflicting fields for title`, `reports conflicting fields for body`, `reports conflicting fields for title and body` | The first three lost a remote edit. The last three received `merged` for incompatible edits. **6 failed, 3 passed.** |
+
+### 4. Verify the actual working tree
+
+**Shell**
+
+```sh
+set -e
+pnpm test src/sync/merge.test.ts
+pnpm test src/sync/applyRemote.test.ts
+pnpm run typecheck
+pnpm run build
+git status --short --branch
+```
+
+Assume I read the full output. The merge file passed 9/9, the caller file passed 3/3, `tsc --noEmit` exited 0, and the build exited 0. Final status showed the branch and two untracked files, `src/sync/merge.ts` and `src/sync/merge.test.ts`.
+
+**Message to partner, simulated**
+
+> The merge feature passes all nine contract cases and all three sync caller tests. Typecheck and build both exited 0. Every new test failed on a wrong merge result during mutation checking, and all nine passed again with the original implementation. The independent-edit cases also verify that clearing the body survives a concurrent rename in either direction. The existing merge code needed no changes. Both files are uncommitted. The full repository suite has not run.
+
+SUMMARY: Read the test-writing guide, then simulated inspecting the contract and callers, adding nine merge tests, proving each red in an isolated copy, and verifying the original implementation, caller, typecheck, and build. All repository results are assumed.

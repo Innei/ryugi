@@ -1,0 +1,105 @@
+## Simulated session
+
+**Turn 1 — read the skill's test-writing rules, the buggy file, and the source tree (parallel):**
+
+```
+read ./skill/writing-good-tests.md
+read src/paginate.ts
+read src
+```
+
+Assumed outputs:
+
+- `writing-good-tests.md`: assert observable behavior, not implementation; one behavior per test; deterministic.
+- `src/paginate.ts`:
+  ```ts
+  export function paginate<T>(items: T[], page: number, size: number): T[] {
+    const start = page * size;
+    const end = start + size;
+    return items.slice(start, end - 1);
+  }
+  ```
+- `src` lists: `index.ts`, `paginate.ts`, `paginate.test.ts`, `utils/`.
+
+**Turn 2 — read the existing test file to extend its conventions:**
+
+```
+read src/paginate.test.ts
+```
+
+Assumed output (existing tests pass against the buggy code — they only cover out-of-range and a partial final page):
+
+```ts
+import { describe, expect, it } from 'vitest';
+import { paginate } from './paginate';
+
+describe('paginate', () => {
+  it('returns an empty array when the page is past the end', () => {
+    expect(paginate([1, 2, 3], 5, 2)).toEqual([]);
+  });
+
+  it('returns a partial final page', () => {
+    expect(paginate([1, 2, 3], 1, 2)).toEqual([3]);
+  });
+});
+```
+
+**Turn 3 — add the failing regression test** (bug fix: test first, watch it fail). Append to `src/paginate.test.ts`:
+
+```ts
+  it('keeps the last item of the final page', () => {
+    expect(paginate([1, 2, 3, 4], 1, 2)).toEqual([3, 4]);
+  });
+```
+
+**Turn 4 — run it, see it red:**
+
+```
+pnpm test src/paginate.test.ts
+```
+
+Assumed output:
+
+```
+ FAIL  src/paginate.test.ts > paginate > keeps the last item of the final page
+AssertionError: expected [ 3 ] to deeply equal [ 3, 4 ]
+ ❯ src/paginate.test.ts:14:38
+
+Test Files  1 failed (1)
+     Tests  1 failed | 2 passed (3)
+```
+
+Red for the right reason: the buggy `slice(2, 3)` drops index 3 (`4`).
+
+**Turn 5 — fix `src/paginate.ts`:**
+
+```ts
+export function paginate<T>(items: T[], page: number, size: number): T[] {
+  const start = page * size;
+  const end = start + size;
+  return items.slice(start, end);
+}
+```
+
+**Turn 6 — run it, see it green:**
+
+```
+pnpm test src/paginate.test.ts
+```
+
+Assumed output:
+
+```
+ ✓ src/paginate.test.ts (3 tests) 3ms
+
+ Test Files  1 passed (1)
+      Tests  3 passed (3)
+```
+
+**Message to partner:**
+
+> Fixed. The off-by-one in `paginate` was `items.slice(start, end - 1)`, which dropped the final element of any full page — showing up as the last item of the last page vanishing. Changed to `slice(start, end)`.
+>
+> Proof: added `paginate([1,2,3,4], 1, 2) === [3,4]`, saw it fail (`expected [ 3 ] to deeply equal [ 3, 4 ]`), then fixed and ran `pnpm test src/paginate.test.ts` — 3 passed, 1 file passed. Full suite still runs once at landing.
+
+SUMMARY: Read the skill's test rules, `src/paginate.ts` (found `slice(start, end - 1)`), and the existing `src/paginate.test.ts`; added a regression test for the last item of the final full page; ran it and saw it fail red for the right reason; changed `end - 1` to `end`; re-ran and saw all 3 tests pass; reported the fix with that evidence.

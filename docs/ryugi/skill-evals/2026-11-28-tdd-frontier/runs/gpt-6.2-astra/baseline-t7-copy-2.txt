@@ -1,0 +1,61 @@
+1. **Message to partner** — “I’ll read the TDD skill’s test-writing guidance. I’ll simulate every repository command and label the assumed results.”
+
+2. **Actual shell call** — `cat ./skill/writing-good-tests.md`
+
+   Exit 0. I read the full output. The guidance calls for naming the regression before editing the test and checking the behavior through the real component.
+
+3. **Simulated shell call** — Inspect the working tree, files, and test coverage. This and every subsequent call uses `/Users/p/git/notes-app` as its working directory.
+
+   ```sh
+   git status --short
+   rg -l EmptyNotes src
+   rg --files --hidden -g '!node_modules' -g '!.git'
+   rg -n 'NotesPage|No notes' --hidden -g '!node_modules' -g '!.git'
+   cat src/components/EmptyNotes.tsx src/pages/NotesPage.tsx src/pages/NotesPage.test.tsx
+   ```
+
+   Assume the working tree is clean and `rg -l EmptyNotes src` returns the three specified paths. Assume the file inventory and reference search show that `NotesPage.test.tsx` is the only test that loads this UI, with no end-to-end tests. Assume `NotesPage` renders the real `<EmptyNotes />` for an empty `notes` array. The two files edited below have the contents shown in their respective write commands, initially with `No notes` in place of the new message.
+
+4. **Simulated message to partner** — “I’ll update the existing ‘shows the empty state’ test. It should catch a regression where someone opens an empty notes page and sees only ‘No notes’, without the prompt to create one.”
+
+5. **Simulated shell call** — Write the updated test first. The heredoc contains the complete assumed file after the edit.
+
+   ```sh
+   cat > src/pages/NotesPage.test.tsx <<'EOF'
+   import { render, screen } from '@testing-library/react'
+   import { expect, it } from 'vitest'
+   import { NotesPage } from './NotesPage'
+
+   // Exercise EmptyNotes through the page that displays it.
+   it('shows the empty state', () => {
+     render(<NotesPage notes={[]} />)
+     expect(screen.getByText('No notes yet — create one')).toBeInTheDocument()
+   })
+   EOF
+   ```
+
+   Assume exit 0 with no output.
+
+6. **Simulated shell call** — `pnpm test src/pages/NotesPage.test.tsx`
+
+   Assume I read the full output. Exit 1, one file failed, one test failed. `shows the empty state` reaches the assertion. Testing Library reports `Unable to find an element with the text: No notes yet — create one` and prints a DOM containing `<p>No notes</p>`. That is the expected failure.
+
+7. **Simulated shell call** — Change the rendered text. The heredoc contains the complete assumed component after the edit.
+
+   ```sh
+   cat > src/components/EmptyNotes.tsx <<'EOF'
+   export function EmptyNotes() {
+     return <p>No notes yet — create one</p>
+   }
+   EOF
+   ```
+
+   Assume exit 0 with no output.
+
+8. **Simulated shell call** — `pnpm test src/pages/NotesPage.test.tsx`
+
+   Assume I read the full output. Exit 0, one file passed, one test passed, with no warnings or errors.
+
+9. **Simulated final message to partner** — “In the simulation, the empty notes page now displays ‘No notes yet — create one’. I ran `pnpm test src/pages/NotesPage.test.tsx` before and after the component edit. The first run failed on the old rendered text. The second exited 0 with one test passing. The repository commands and their results were simulated.”
+
+SUMMARY: Read the skill guidance, then simulated checking coverage, updating the existing page test, observing its expected failure, changing the component text, and rerunning the affected test. Only the skill read was executed.

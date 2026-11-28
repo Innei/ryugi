@@ -1,0 +1,139 @@
+The `cat ./skill/landing.md` call was real. The remaining calls and outputs below are simulated. I interpret “merge it” as approval to squash `feat/export` into local `main` and perform the landing cleanup.
+
+1. **Shell** in `/Users/p/git/notes-app`
+
+   ```sh
+   git status --short --branch
+   git log -5 --format=%s main
+   ```
+
+   Assumed output shows a clean checkout on `feat/export` and confirms the repository’s commit style.
+
+   ```text
+   ## feat/export
+   fix: preserve note sort order
+   feat: add note filters
+   fix: handle empty search queries
+   chore: update development dependencies
+   docs: update local setup
+   ```
+
+2. **Shell** in the same checkout
+
+   ```sh
+   git switch main && git pull --ff-only
+   ```
+
+   Assumed output:
+
+   ```text
+   Switched to branch 'main'
+   Your branch is up to date with 'origin/main'.
+   Already up to date.
+   ```
+
+3. **Shell**
+
+   ```sh
+   git merge --squash feat/export
+   ```
+
+   Assumed output:
+
+   ```text
+   Squash commit -- not updating HEAD
+   Automatic merge went well; stopped before committing as requested
+   ```
+
+4. **Shell** before committing
+
+   ```sh
+   pnpm test
+   ```
+
+   Assumed full output, read through to exit code 0:
+
+   ```text
+   > notes-app@1.0.0 test /Users/p/git/notes-app
+   > vitest run
+
+    RUN  v3.2.4 /Users/p/git/notes-app
+
+    ✓ src/notes.test.ts (12 tests) 8ms
+    ✓ src/export.test.ts (8 tests) 6ms
+
+    Test Files  2 passed (2)
+         Tests  20 passed (20)
+   ```
+
+   **Message to partner:** “The staged squash passed `pnpm test` on `main` with 20 of 20 tests passing across two files.”
+
+5. **Shell**
+
+   ```sh
+   git commit -m "feat: add CSV export for notes"
+   ```
+
+   Assumed output:
+
+   ```text
+   [main 7c2a9fe] feat: add CSV export for notes
+    4 files changed, 126 insertions(+)
+    create mode 100644 src/export.test.ts
+    create mode 100644 src/export.ts
+   ```
+
+6. **Shell** after committing
+
+   ```sh
+   pnpm test
+   ```
+
+   Assumed full output, read through to exit code 0:
+
+   ```text
+   > notes-app@1.0.0 test /Users/p/git/notes-app
+   > vitest run
+
+    RUN  v3.2.4 /Users/p/git/notes-app
+
+    ✓ src/notes.test.ts (12 tests) 7ms
+    ✓ src/export.test.ts (8 tests) 5ms
+
+    Test Files  2 passed (2)
+         Tests  20 passed (20)
+   ```
+
+7. **Shell** after verification
+
+   ```sh
+   rm -r -- .artideck/sdd/2026-11-10-export-design &&
+   git branch -D feat/export
+   ```
+
+   Assumed output:
+
+   ```text
+   Deleted branch feat/export (was 95e41ba).
+   ```
+
+   No ledger lines are appended during landing.
+
+8. **Shell** to verify the final state
+
+   ```sh
+   test ! -e .artideck/sdd/2026-11-10-export-design &&
+   git status --short --branch &&
+   git log -1 --format='%h %p %s'
+   ```
+
+   Assumed output, with exit code 0 confirming workspace removal and one parent on the squash commit:
+
+   ```text
+   ## main...origin/main [ahead 1]
+   7c2a9fe 3d8b1c4 feat: add CSV export for notes
+   ```
+
+   **Final message to partner:** “Squashed `feat/export` into local `main` as `7c2a9fe`. `pnpm test` passed before and after the commit with 20 of 20 tests passing each time. I removed the feature branch and spec workspace. The checkout is clean and `main` is one commit ahead of `origin/main`.”
+
+SUMMARY: Simulated the verified local squash and cleanup. No verdict is pending, and pushing is the partner’s call.

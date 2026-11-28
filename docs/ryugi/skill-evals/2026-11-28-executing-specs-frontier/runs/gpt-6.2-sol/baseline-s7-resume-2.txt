@@ -1,0 +1,86 @@
+**Simulated message to partner:** I’m using `executing-specs` to resume the export spec. I’ll inspect the uncommitted change before adding the next test.
+
+All calls and outputs below are simulated. The working directory for each shell call is `/Users/p/git/notes-app`.
+
+1. **Shell**
+   ```sh
+   bash scripts/sdd-workspace docs/ryugi/specs/2026-11-10-export-design.md
+   ```
+   Given output: `.artideck/sdd/2026-11-10-export-design/`.
+
+2. **Shell**
+   ```sh
+   cat .artideck/sdd/2026-11-10-export-design/progress.md
+   ```
+   Given output: the ledger identifies this spec and records Task 1 as complete. Task 2 is the first task without a completion entry.
+
+3. **Shell batch**
+   ```sh
+   cat docs/ryugi/specs/2026-11-10-export-design.md
+   cat .artideck/sdd/2026-11-10-export-design/tasks.md
+   git status --short --branch
+   git log -5 --oneline
+   git diff HEAD -- src/export.ts
+   ```
+   Assume the spec and task list are read in full, the spec has no `Read:` pointer, and Task 2 covers CSV row serialization. Assume `feat/export` is at `d4e5f6a` and the only working-tree change is the unstaged edit to `src/export.ts`. Assume the diff adds a `notesToCsv` stub that returns only the `title,body` header.
+
+4. **Todo tool**
+   ```json
+   [
+     {"task": "Task 1: Parse", "status": "completed"},
+     {"task": "Task 2: Write rows", "status": "pending"},
+     {"task": "Task 3: Wire the button", "status": "pending"}
+   ]
+   ```
+   Task 1’s status comes from the ledger.
+
+5. **Shell**
+   ```sh
+   bash scripts/task-start docs/ryugi/specs/2026-11-10-export-design.md 2
+   ```
+   Assume it prints `BASE=d4e5f6a` and the brief path `.artideck/sdd/2026-11-10-export-design/task-2-brief.md`.
+
+6. **Shell**
+   ```sh
+   cat .artideck/sdd/2026-11-10-export-design/task-2-brief.md
+   ```
+   Assume the brief calls for a test in `src/export.test.ts` asserting that `notesToCsv` emits a note row, quotes a title containing a comma, and doubles quotes inside the body. Its Verify command is `pnpm test export`, with five passing tests expected after implementation.
+
+7. **Todo tool**
+   ```json
+   [
+     {"task": "Task 1: Parse", "status": "completed"},
+     {"task": "Task 2: Write rows", "status": "in_progress"},
+     {"task": "Task 3: Wire the button", "status": "pending"}
+   ]
+   ```
+
+8. **Shell**
+   ```sh
+   cat src/export.test.ts
+   ```
+   Assume the file imports `describe`, `expect`, and `it` from Vitest, imports `escapeCsvField` from `./export`, and contains four tests.
+
+9. **Edit tool** — apply this patch in `/Users/p/git/notes-app`.
+   ```diff
+   *** Begin Patch
+   *** Update File: src/export.test.ts
+   @@
+   -import { escapeCsvField } from './export'
+   +import { escapeCsvField, notesToCsv } from './export'
+   +
+   +it('writes a note row with escaped CSV fields', () => {
+   +  expect(
+   +    notesToCsv([{ title: 'Groceries, weekly', body: 'Buy "oats"' }]),
+   +  ).toBe('title,body\r\n"Groceries, weekly","Buy ""oats"""')
+   +})
+   *** End Patch
+   ```
+
+10. **Shell**
+    ```sh
+    pnpm test export
+    ```
+    Assume the full output is read and the command exits `1`. Vitest reports four passing tests and one failing test, `writes a note row with escaped CSV fields`. The expected value includes the escaped note row and the received value is `title,body`. That is the failure the brief called for. No ledger line is appended.
+
+SUMMARY: In the simulation, `pnpm test export` reached the expected Task 2 failure with four passing tests and one failing test. The existing `src/export.ts` edit was preserved. Task 2 implementation and a passing verification run remain for me when you resume.

@@ -1,0 +1,134 @@
+Simulated transcript. The calls and results below describe what I would do and expect to see.
+
+**Message to partner:** “I’m continuing with the executing-specs skill through Task 2’s first test run.”
+
+1. **Todo tool**
+
+   ```json
+   {"task": 1, "status": "completed"}
+   ```
+
+   This records the supplied `task-done` result for Task 1. Its completion line is already in the ledger.
+
+2. **Shell** in `/Users/p/git/notes-app`
+
+   ```bash
+   bash scripts/task-start docs/ryugi/specs/2026-11-10-export-design.md 2
+   ```
+
+   Assumed successful output:
+
+   ```text
+   Brief: .artideck/sdd/2026-11-10-export-design/task-2-brief.md
+   BASE: d4e5f6a
+   ```
+
+3. **Shell** in `/Users/p/git/notes-app`
+
+   ```bash
+   cat .artideck/sdd/2026-11-10-export-design/task-2-brief.md
+   ```
+
+   Assumed brief contents:
+
+   ```markdown
+   ## Task 2: Add the CSV export action to the notes toolbar
+
+   **Goal:** Let users start CSV export from the notes toolbar, per the spec’s export flow.
+   **Files:** `src/notes/NotesToolbar.tsx`, `src/notes/NotesToolbar.export.test.tsx`.
+   **Interfaces:** Produces: `NotesToolbar.onExport`. Consumes: none.
+   **Failing test:** Clicking the accessible “Export CSV” button calls `onExport` once.
+   **Verify:** `pnpm test export`
+   **Expected:** 5/5 tests pass.
+   ```
+
+4. **Todo tool**
+
+   ```json
+   {"task": 2, "status": "in_progress"}
+   ```
+
+5. **Shell** in `/Users/p/git/notes-app`
+
+   ```bash
+   cat src/notes/NotesToolbar.tsx
+   ```
+
+   Assumed the read shows a named `NotesToolbar` export with a required `onCreate` prop and a “New note” button. I assume the project’s Vitest setup already supports React Testing Library.
+
+6. **Edit tool** with this patch:
+
+   ```diff
+   *** Begin Patch
+   *** Add File: /Users/p/git/notes-app/src/notes/NotesToolbar.export.test.tsx
+   +import { fireEvent, render, screen } from '@testing-library/react'
+   +import { expect, it, vi } from 'vitest'
+   +import { NotesToolbar } from './NotesToolbar'
+   +
+   +it('calls onExport once when the user clicks Export CSV', () => {
+   +  const onExport = vi.fn()
+   +  render(<NotesToolbar onCreate={vi.fn()} onExport={onExport} />)
+   +
+   +  fireEvent.click(screen.getByRole('button', { name: 'Export CSV' }))
+   +
+   +  expect(onExport).toHaveBeenCalledTimes(1)
+   +})
+   *** End Patch
+   ```
+
+   Assumed the edit succeeds.
+
+7. **Shell** in `/Users/p/git/notes-app`
+
+   ```bash
+   pnpm test export
+   ```
+
+   Assumed full output:
+
+   ```text
+   > notes-app@1.0.0 test /Users/p/git/notes-app
+   > vitest run export
+
+    RUN  v3.2.4 /Users/p/git/notes-app
+
+    ✓ src/notes/export.test.ts (4 tests)
+    ❯ src/notes/NotesToolbar.export.test.tsx (1 test | 1 failed)
+      × calls onExport once when the user clicks Export CSV
+
+   FAIL  src/notes/NotesToolbar.export.test.tsx > calls onExport once when the user clicks Export CSV
+   TestingLibraryElementError: Unable to find an accessible element with the role "button" and name "Export CSV"
+
+   Here are the accessible roles:
+
+     button:
+
+     Name "New note":
+     <button type="button" />
+
+   Ignored nodes: comments, script, style
+   <body>
+     <div>
+       <button type="button">
+         New note
+       </button>
+     </div>
+   </body>
+
+    ❯ src/notes/NotesToolbar.export.test.tsx:9:26
+        7|   render(<NotesToolbar onCreate={vi.fn()} onExport={onExport} />)
+        8|
+        9|   fireEvent.click(screen.getByRole('button', { name: 'Export CSV' }))
+         |                          ^
+       10|
+       11|   expect(onExport).toHaveBeenCalledTimes(1)
+
+    Test Files  1 failed | 1 passed (2)
+         Tests  1 failed | 4 passed (5)
+
+    ELIFECYCLE  Test failed. See above for more details.
+   ```
+
+   Assumed exit status `1`. The simulated output reaches the intended failure: the toolbar renders, and the “Export CSV” button is missing. No ledger line is appended at this checkpoint.
+
+SUMMARY: In the simulation, `pnpm test export` produced the expected Task 2 failure, with four tests passing and one failing. Task 2 remains in progress. Implementation and the green run are the agent’s next steps after this requested checkpoint, with no decision needed from the partner.

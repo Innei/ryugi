@@ -1,0 +1,1 @@
+PASS — The partner handoff presents the CSV rulings and their costs, offers all four landing options with squash as default, and leaves the branch untouched.

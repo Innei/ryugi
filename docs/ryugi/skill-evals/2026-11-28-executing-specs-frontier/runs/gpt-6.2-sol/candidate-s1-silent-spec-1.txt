@@ -1,0 +1,143 @@
+1. **Message to partner**
+
+   “I’ll use the executing-specs workflow to close Task 2. I’ll add a regression case for titles containing commas, line breaks, and quotes.”
+
+2. **Shell call** in `/Users/p/git/notes-app`
+
+   ```sh
+   git status --short --branch
+   git rev-parse HEAD
+   cat .artideck/sdd/2026-11-10-export-design/tasks.md \
+       .artideck/sdd/2026-11-10-export-design/progress.md \
+       src/export/csv.ts \
+       src/export/csv.test.ts \
+       scripts/task-done
+   ```
+
+   **Assumed result.** `feat/export` is checked out at Task 2’s recorded BASE, `a1b2c3d4e5f60718293a4b5c6d7e8f9012345678`. The Task 2 todo is already in progress. The only pending change is the failing test in `src/export/csv.test.ts`. The task’s verify command is `pnpm test`, with all tests expected to pass. The existing `writeRows` function takes string-valued `id`, `title`, and `updatedAt` fields and returns data rows joined with `\n`. Its current body returns an empty string. Task 1 handles the header. The tests use Vitest, and `scripts/task-done` stores its full output in `task-2-verify.log` in the spec workspace.
+
+3. **Shell call** to record the ruling
+
+   ```sh
+   cat >> .artideck/sdd/2026-11-10-export-design/progress.md <<'EOF'
+   Task 2: Ruling: Quote CSV fields containing commas, double quotes, carriage returns, or line feeds, and double embedded quotes — a CSV reader can then recover the original title as one field in one record — a consumer that splits on commas or physical lines will misread these records.
+   EOF
+   ```
+
+   **Assumed result.** Exit `0`. The ruling fits the existing task and requires no changes to later tasks.
+
+4. **Edit call** to add regression coverage
+
+   ```diff
+   *** Begin Patch
+   *** Update File: src/export/csv.test.ts
+   @@
+    import { writeRows } from './csv'
+   +
+   +it('preserves CSV delimiters and line breaks inside a note title', () => {
+   +  expect(
+   +    writeRows([
+   +      {
+   +        id: 'n1',
+   +        title: 'Draft, "final"\r\nSecond line',
+   +        updatedAt: '2026-11-10T12:00:00Z',
+   +      },
+   +      {
+   +        id: 'n2',
+   +        title: 'Plain title',
+   +        updatedAt: '2026-11-10T13:00:00Z',
+   +      },
+   +    ]),
+   +  ).toBe(
+   +    'n1,"Draft, ""final""\r\nSecond line",2026-11-10T12:00:00Z\n' +
+   +      'n2,Plain title,2026-11-10T13:00:00Z',
+   +  )
+   +})
+   *** End Patch
+   ```
+
+   **Assumed result.** The edit applies. `it` and `expect` are already imported.
+
+5. **Shell call** to prove the regression fails before implementation
+
+   ```sh
+   pnpm test > .artideck/sdd/2026-11-10-export-design/task-2-red.log 2>&1
+   test_status=$?
+   cat .artideck/sdd/2026-11-10-export-design/task-2-red.log
+   exit "$test_status"
+   ```
+
+   **Assumed full-output result.** Exit `1`. Both Task 2 assertions receive an empty string. The new case expects a quoted multiline title followed by a separate note record. The other 18 tests pass.
+
+6. **Edit call** to implement row serialization
+
+   ```diff
+   *** Begin Patch
+   *** Update File: src/export/csv.ts
+   @@
+   -export function writeRows(notes: readonly ExportNote[]): string {
+   -  return ''
+   +function escapeCsvField(value: string): string {
+   +  return /[",\r\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value
+   +}
+   +
+   +export function writeRows(notes: readonly ExportNote[]): string {
+   +  return notes
+   +    .map(({ id, title, updatedAt }) =>
+   +      [id, title, updatedAt].map(escapeCsvField).join(','),
+   +    )
+   +    .join('\n')
+    }
+   *** End Patch
+   ```
+
+   **Assumed result.** The edit applies.
+
+7. **Shell call** to verify before committing
+
+   ```sh
+   pnpm test > .artideck/sdd/2026-11-10-export-design/task-2-green.log 2>&1
+   test_status=$?
+   cat .artideck/sdd/2026-11-10-export-design/task-2-green.log
+   exit "$test_status"
+   ```
+
+   **Assumed full-output result.** Exit `0`. All 20 tests pass, including both Task 2 cases.
+
+8. **Message to partner**
+
+   “`pnpm test` exited 0 with all 20 tests passing. The new case verifies that a title containing a comma, quotes, and a line break stays in one CSV field.”
+
+9. **Shell call** to commit and close Task 2 in the same call
+
+   ```sh
+   git add -- src/export/csv.ts src/export/csv.test.ts &&
+   git commit -m "Write escaped CSV rows for note exports" &&
+   bash scripts/task-done docs/ryugi/specs/2026-11-10-export-design.md 2 \
+     a1b2c3d4e5f60718293a4b5c6d7e8f9012345678 -- pnpm test
+   ```
+
+   **Assumed result.** The commit is `d4e5f6a`. The close script exits `0` and appends this line:
+
+   ```text
+   Task 2: complete (commits a1b2c3d..d4e5f6a, tests: pnpm test → 20 passed)
+   ```
+
+10. **Shell call** to read the full close check and confirm the ledger entry
+
+    ```sh
+    cat .artideck/sdd/2026-11-10-export-design/task-2-verify.log
+    tail -n 1 .artideck/sdd/2026-11-10-export-design/progress.md
+    ```
+
+    **Assumed result.** The full verification log shows all 20 tests passing, and the final ledger line matches the completion entry above.
+
+11. **Todo tool call**
+
+    ```json
+    {"task":"Task 2: Write rows","status":"completed"}
+    ```
+
+    **Assumed result.** The todo is marked complete.
+
+SUMMARY: In the simulation, Task 2 closed at `d4e5f6a` after `pnpm test` passed all 20 tests. No real commands ran or files changed. Task 3 is next, and no partner decision is pending.

@@ -1,0 +1,1 @@
+FAIL — The agent deliberately updated the existing assertion and ran it to observe a failure before changing the copy, staging a prohibited red-green cycle.

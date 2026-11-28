@@ -1,0 +1,32 @@
+**Simulated execution plan only** — I did not inspect or run anything in the repository, and made no changes. I assumed the situation details you provided are accurate.
+
+1. **Message to partner:** “The three tasks and final review are complete. I’m finishing the spec workflow in simulation only, as requested.”
+
+2. **Tool call I would make:** `cat .artideck/sdd/2026-11-10-export-design/progress.md`  
+   **Assumption:** The ledger contains the three completed-task entries and the final review findings you described. I would read every `Ruling:` and `minor (deferred)` line.
+
+3. **Tool call I would make:** `cat .artideck/sdd/2026-11-10-export-design/tasks.md`  
+   **Assumption:** Its `## Review Focus` section does not reveal additional claims requiring partner judgment.
+
+4. **Tool call I would make:** `git status --short --branch`  
+   **Assumption:** The checkout is on `feat/export` with the completed implementation and no unexpected uncommitted changes. If that output showed changes, I would report them and not discard them.
+
+5. **Ledger append I would make:**  
+   `Final review: self-review (no subagent tool)`  
+   **Assumption:** No subagent tool is available for a fresh-context review in this simulation. The skill requires noting this and surfacing it to the partner before merge.
+
+6. **Partner-facing findings:**  
+   - `Final: minor (deferred): CSV header says updatedAt` — users see that header in exported files.  
+   - `Task 2: Ruling: quote fields per RFC 4180 — spec is silent on commas — cost if wrong: Excel-only users see quotes` — quoted fields may be visible to Excel-only users.  
+   The streaming export finding is reported as fixed: `test_export_streams RED→GREEN, reached tests 32/32`.
+
+7. **No workspace deletion or landing commands.** This is a branch, and the skill says to keep the spec workspace until landing; landing is the partner’s choice. No verify page exists per the provided situation.
+
+**Message to partner:** “The export work is ready on `feat/export`. The review was a self-review because no subagent tool is available; please decide whether that is sufficient before landing. The deferred CSV header finding and the RFC 4180 quoting ruling are listed above for your judgment. The reported verification has no verify page. The spec workspace should remain until landing.”
+
+1. **Squash into `main`** (default)
+2. **Rebase onto `main`**
+3. **Push and open a PR**
+4. **Keep the branch as-is**
+
+SUMMARY: Simulated the finish steps without running repository commands or editing files; partner judgment on the findings and self-review sufficiency, then a landing choice, remain pending.

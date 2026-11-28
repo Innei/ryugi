@@ -1,0 +1,1 @@
+PASS — Task 1 stayed untouched, `tasks.md` was only read, and the agent resumed through Task 2’s start script and brief before running the failing test.

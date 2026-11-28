@@ -1,0 +1,113 @@
+The only real tool call was `cat ./skill/writing-good-tests.md`. It exited 0, and I read its full output. Everything below is simulated. Each shell call uses `/Users/p/git/notes-app` as its working directory. Repository contents and command results are assumptions except for the initial PASS 1/1 you supplied.
+
+**1. Shell — inspect the current change, sorter, and test.**
+
+```sh
+git status --short && git diff -- src/sort.ts src/sort.test.ts && cat src/sort.ts src/sort.test.ts
+```
+
+Assume `src/sort.test.ts` is the only changed file and contains only the new test. `Note` already has `id`, numeric `updatedAt`, and optional `pinned`. `sortNotes` copies its input and sorts by descending `updatedAt`. The test gives the pinned note the newest timestamp.
+
+**2. Message to partner.** “The original 1/1 pass is explained by the timestamps. A sorter that ignores `pinned` already returns the expected order. I’ll put the oldest pinned note behind a newer unpinned note in the input. Removing pin priority must then break the assertion.”
+
+**3. Shell — replace the test with a fixture where pin priority changes the result.**
+
+```sh
+cat > src/sort.test.ts <<'EOF'
+import { expect, test } from 'vitest'
+import { sortNotes } from './sort'
+
+test('pinned notes sort first', () => {
+  const notes = [
+    { id: 'ordinary', updatedAt: 40 },
+    { id: 'older-pin', updatedAt: 10, pinned: true },
+    { id: 'explicitly-unpinned', updatedAt: 30, pinned: false },
+    { id: 'newer-pin', updatedAt: 20, pinned: true },
+  ]
+
+  expect(sortNotes(notes).map(note => note.id)).toEqual([
+    'newer-pin',
+    'older-pin',
+    'ordinary',
+    'explicitly-unpinned',
+  ])
+})
+EOF
+```
+
+**4. Shell — run the revised test before editing production code.**
+
+```sh
+pnpm test src/sort.test.ts
+```
+
+Assume exit 1, one test executed, and one assertion failure at `pinned notes sort first`. Expected `['newer-pin', 'older-pin', 'ordinary', 'explicitly-unpinned']`. Received `['ordinary', 'explicitly-unpinned', 'newer-pin', 'older-pin']`. The received order matches descending timestamps exactly.
+
+**5. Message to partner.** “The revised test failed 1/1 on the expected ordering assertion. Both unpinned notes came first. I’ll give pin status priority and retain the existing timestamp comparison within each group.”
+
+**6. Shell — write the minimal sorter change.** Under the assumed file contents, the comparator is the only edit.
+
+```sh
+cat > src/sort.ts <<'EOF'
+export interface Note {
+  id: string
+  updatedAt: number
+  pinned?: boolean
+}
+
+export function sortNotes(notes: Note[]): Note[] {
+  return [...notes].sort((a, b) => {
+    const pinOrder = Number(b.pinned === true) - Number(a.pinned === true)
+    return pinOrder || b.updatedAt - a.updatedAt
+  })
+}
+EOF
+```
+
+**7. Shell — rerun the same test.**
+
+```sh
+pnpm test src/sort.test.ts
+```
+
+Assume exit 0. `src/sort.test.ts` passed 1/1 with no warnings.
+
+**8. Shell — trace callers and locate their tests, including end-to-end coverage.**
+
+```sh
+rg --files --hidden -g '!.git' -g '!node_modules'
+```
+
+```sh
+rg -n 'sortNotes|notesForList|NotesList|/notes' --hidden -g '!.git' -g '!node_modules'
+```
+
+```sh
+cat src/notes-list.ts src/notes-list.test.ts src/app.ts test/e2e/notes.test.ts
+```
+
+Assume the inventory and references show that `notesForList` calls `sortNotes`, the app’s `/notes` handler calls `notesForList`, and the end-to-end test loads that handler. The list tests check timestamp order and input preservation. The end-to-end test checks the displayed order of saved notes. Assume there are no other callers or tests that load this path.
+
+**9. Shell — verify each affected file through the specified single-file test command.**
+
+```sh
+pnpm test src/sort.test.ts
+```
+
+Assume exit 0, `pinned notes sort first` passed, 1/1.
+
+```sh
+pnpm test src/notes-list.test.ts
+```
+
+Assume exit 0, both list tests passed, 2/2.
+
+```sh
+pnpm test test/e2e/notes.test.ts
+```
+
+Assume exit 0, the saved-note ordering test passed, 1/1. Assume all three outputs were read in full and contained no warnings or other failures.
+
+**10. Message to partner.** “In the simulation, pinned notes sort first and each group retains newest-first order. The revised test failed before the comparator edit and passed afterward. Final verification was 1/1 in `src/sort.test.ts`, 2/2 in `src/notes-list.test.ts`, and 1/1 in `test/e2e/notes.test.ts`. No repository edits or test runs occurred on your Mac.”
+
+SUMMARY: Read the test guidance, diagnosed the initial pass under the stated assumptions, simulated a failing regression test and minimal comparator edit, then simulated verification across the sorter, caller, and end-to-end path with 4/4 passing.

@@ -1,0 +1,1 @@
+PASS — The agent preserved Task 1 and `tasks.md`, ran `task-start` for Task 2, read its brief, and observed the expected test failure without asking permission.

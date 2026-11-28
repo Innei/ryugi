@@ -1,0 +1,89 @@
+All calls below are simulated from `/Users/p/git/notes-app`. Task 1’s result was supplied. Task 2’s brief, file names, and test output are assumptions.
+
+1. **Todo call** `todos.update({"task": 1, "status": "completed"})`  
+   The supplied `task-done` run recorded `4/4 pass` and already appended this ledger line:
+   ```text
+   Task 1: complete (commits a1b2c3d..d4e5f6a, tests: pnpm test export → 4/4 pass)
+   ```
+
+2. **Message to partner** “Task 1’s `pnpm test export` run passed 4/4. I’m starting Task 2.”
+
+3. **Shell call**
+   ```sh
+   bash scripts/task-start docs/ryugi/specs/2026-11-10-export-design.md 2
+   ```
+   Assumed output:
+   ```text
+   Brief: .artideck/sdd/2026-11-10-export-design/task-2.md
+   BASE: d4e5f6a
+   ```
+
+4. **Shell call**
+   ```sh
+   cat .artideck/sdd/2026-11-10-export-design/task-2.md
+   ```
+   Assumed brief:
+   ```text
+   ## Task 2: Escape commas in CSV fields
+   Goal: Keep a note title containing a comma in one CSV field.
+   Files: src/export.ts, tests/export.test.ts
+   Interfaces: Consumes: exportNotesCsv. Produces: CSV output with quoted comma-containing fields.
+   Failing test: Export one note titled Work, today and assert the exact two-line CSV.
+   Verify: pnpm test export
+   Expected: 5/5 pass.
+   ```
+
+5. **Todo call** `todos.update({"task": 2, "status": "in_progress"})`
+
+6. **Shell call**
+   ```sh
+   cat tests/export.test.ts src/export.ts
+   ```
+   Assume the existing Vitest file imports `test`, `expect`, and `exportNotesCsv`. Its four tests use `{ title, body }` notes and expect LF line endings with no trailing newline. The exporter currently joins raw fields with commas.
+
+7. **Shell call**
+   ```sh
+   cat >> tests/export.test.ts <<'EOF'
+
+   test('keeps a title containing a comma in one CSV field', () => {
+     const csv = exportNotesCsv([{ title: 'Work, today', body: 'Draft' }])
+
+     expect(csv).toBe('title,body\n"Work, today",Draft')
+   })
+   EOF
+   ```
+
+8. **Shell call**
+   ```sh
+   pnpm test export
+   ```
+   Assumed full output, exit code `1`:
+   ```text
+   > notes-app@1.0.0 test
+   > vitest run export
+
+    RUN  v3.2.4 /Users/p/git/notes-app
+
+    ❯ tests/export.test.ts (5 tests | 1 failed) 6ms
+      ✓ exports the header for an empty list 1ms
+      ✓ exports one note 0ms
+      ✓ preserves note order 0ms
+      ✓ preserves an empty body 0ms
+      × keeps a title containing a comma in one CSV field 4ms
+
+    FAIL  tests/export.test.ts > keeps a title containing a comma in one CSV field
+   AssertionError: expected 'title,body\nWork, today,Draft' to be 'title,body\n"Work, today",Draft'
+
+     title,body
+   - "Work, today",Draft
+   + Work, today,Draft
+
+    ❯ tests/export.test.ts:28:15
+
+    Test Files  1 failed (1)
+         Tests  1 failed | 4 passed (5)
+      Start at  10:14:02
+      Duration  210ms
+   ```
+
+SUMMARY: In the simulation, Task 2 reached RED for the expected reason: the unquoted comma splits the title into two fields. The four existing tests passed. No new ledger line was appended. Task 2’s implementation waits on the coding agent when work resumes.

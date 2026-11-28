@@ -1,0 +1,247 @@
+# Simulation — final-review phase, `feat/export`
+
+Following `executing-specs` "Final review" from where the reviewer returned. Regrade, then one TDD pass on the Important finding, then project verification, then Finish.
+
+---
+
+**Step 1 — read current state** (ledger SHAs, export impl, notes data layer, existing tests)
+
+```
+[shell] cd /Users/p/git/notes-app
+[shell] cat .artideck/sdd/2026-11-10-export-design/progress.md
+```
+
+*Assumed output (tail):*
+```
+Task 1: complete (commits 1a2b3c4..2b3c4d5, tests: pnpm test → 31 passed)
+Task 2: complete (commits 2b3c4d5..3c4d5e6, tests: pnpm test → 31 passed)
+Task 3: complete (commits 3c4d5e6..4d5e6f7, tests: pnpm test → 31 passed)
+```
+
+```
+[shell] cat src/export.ts
+```
+
+*Assumed output:*
+```ts
+import { getAllNotes } from "./notes";
+import type { Note } from "./notes";
+
+export const CSV_HEADER = "id,title,body,createdAt,updatedAt";
+
+export function noteToCsvRow(note: Note): string {
+  return [note.id, note.title, note.body, note.createdAt, note.updatedAt]
+    .map(escapeCsv)
+    .join(",");
+}
+
+function escapeCsv(v: string): string {
+  return /[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
+}
+
+export async function exportNotes(): Promise<string> {
+  const notes = await getAllNotes(); // loads every note into memory
+  return [CSV_HEADER, ...notes.map(noteToCsvRow)].join("\n");
+}
+```
+
+```
+[shell] cat src/notes.ts && ls src/**/*.test.ts
+```
+
+*Assumed output:* `src/notes.ts` exposes `getAllNotes()` and an underlying paged accessor `listNotesPage(limit, cursor)`. Tests live in `src/export.test.ts` (formatting + the old string-returning `exportNotes()`), and `src/cli/export.ts` is the caller.
+
+---
+
+**Step 2 — regrade + rulings** (append to ledger)
+
+Append to `.artideck/sdd/2026-11-10-export-design/progress.md`:
+
+```
+Final: regrade — Important (exportNotes loads every note into memory) confirmed Important; Minor (header `updatedAt` vs UI "Last edited") confirmed Minor.
+
+Final: Ruling: empty accounts produce a CSV containing only the header row — export always emits the schema header, so an empty dataset is a valid, self-describing empty CSV rather than a zero-byte file — cost if wrong: a consumer expecting a zero-byte file for an empty account gets a one-line header instead; negligible, and the header is the more defensible default.
+
+Final: minor (deferred): CSV header column is `updatedAt` while the UI labels that field "Last edited".
+```
+
+---
+
+**Step 3 — Important finding: TDD fix**
+
+Add the failing test to `src/export.test.ts`:
+
+```ts
+test("streams notes without loading all into memory", async () => {
+  const TOTAL = 200_000;
+  const lines: string[] = [];
+  let assertedIncremental = false;
+
+  async function* notes() {
+    for (let i = 0; i < TOTAL; i++) {
+      yield note({ id: `n${i}`, title: `t${i}` });
+      if (i === 0) {
+        assertedIncremental = true;
+        // Export must have written header + first row before asking for note 2.
+        expect(lines.length).toBe(2);
+      }
+    }
+  }
+
+  const count = await exportNotes(notes(), { write: (l) => lines.push(l) });
+
+  expect(count).toBe(TOTAL);
+  expect(assertedIncremental).toBe(true);
+  expect(lines.length).toBe(TOTAL + 1);
+  expect(lines[0]).toBe(CSV_HEADER);
+});
+```
+
+Also keep an explicit empty-account test (matches the ruling above):
+
+```ts
+test("empty account emits header only", async () => {
+  const lines: string[] = [];
+  const count = await exportNotes((async function* () {})(), { write: (l) => lines.push(l) });
+  expect(count).toBe(0);
+  expect(lines).toEqual([CSV_HEADER]);
+});
+```
+
+```
+[shell] pnpm vitest run src/export.test.ts
+```
+
+*Assumed output — RED:*
+```
+FAIL  src/export.test.ts > streams notes without loading all into memory
+  AssertionError: expected 200000 to be [got a string / assertion on lines failed]
+```
+
+Proven red against the current buffering `exportNotes`.
+
+Fix — `src/export.ts` (drop `getAllNotes`, stream through a sink):
+
+```ts
+export interface NoteSink {
+  write(line: string): void;
+}
+
+export async function exportNotes(
+  notes: AsyncIterable<Note>,
+  sink: NoteSink,
+): Promise<number> {
+  sink.write(CSV_HEADER);
+  let count = 0;
+  for await (const note of notes) {
+    sink.write(noteToCsvRow(note));
+    count += 1;
+  }
+  return count;
+}
+```
+
+Add the streaming primitive to `src/notes.ts`:
+
+```ts
+export const NOTES_PAGE_SIZE = 500;
+
+export async function* iterateNotes(): AsyncGenerator<Note> {
+  let cursor: string | undefined;
+  do {
+    const page = await listNotesPage(NOTES_PAGE_SIZE, cursor);
+    for (const note of page.notes) yield note;
+    cursor = page.nextCursor ?? undefined;
+  } while (cursor !== undefined);
+}
+```
+
+Migrate the caller `src/cli/export.ts` to stream to the file:
+
+```ts
+const out = fs.createWriteStream(outPath);
+const sink: NoteSink = { write: (line) => out.write(line + "\n") };
+const count = await exportNotes(iterateNotes(), sink);
+await new Promise<void>((res, rej) => out.end((e) => (e ? rej(e) : res())));
+```
+
+```
+[shell] pnpm test
+```
+
+*Assumed output — GREEN:* full suite passes, `32 passed` (was 31; +1 streaming test; the old string-return test was replaced).
+
+Commit:
+
+```
+[shell] git add src/export.ts src/notes.ts src/cli/export.ts src/export.test.ts
+[shell] git commit -m "fix(export): stream notes instead of loading all into memory"
+```
+
+*Assumed output:* `[feat/export d3ad4b5] fix(export): stream notes instead of loading all into memory`.
+
+Append to ledger:
+
+```
+Final: fixed exportNotes loads every note into memory (src/export.ts:40) — test "streams notes without loading all into memory" RED→GREEN, reached tests 32/32 (pnpm test).
+```
+
+---
+
+**Step 4 — project verification**
+
+No product-run skill exists under `./skill/`; the running-product check for a library change is the suite plus a visual CSV smoke.
+
+```
+[shell] cat > scripts/export-smoke.ts <<'EOF'
+import { exportNotes } from "../src/export";
+import type { Note } from "../src/notes";
+const sample = (async function* () {
+  const n: Note = { id: "a", title: "x", body: "b\nq", createdAt: "2026-01-01", updatedAt: "2026-01-02" };
+  yield n; yield { ...n, id: "b", title: `comma,quote"`, body: "" };
+})();
+const lines: string[] = [];
+const count = await exportNotes(sample, { write: (l) => lines.push(l) });
+console.log("rows:", count); console.log(lines.join("\n"));
+EOF
+[shell] pnpm exec tsx scripts/export-smoke.ts
+```
+
+*Assumed output:*
+```
+rows: 2
+id,title,body,createdAt,updatedAt
+a,x,"b
+q",2026-01-01,2026-01-02
+b,"comma,quote""",,2026-01-01,2026-01-02
+```
+
+Header + escaping + row count visually confirmed; cleanup:
+
+```
+[shell] rm scripts/export-smoke.ts
+```
+
+---
+
+**Step 5 — Finish**
+
+Run `adeck:verifying` (already loaded, not expanded here): writes the build's conclusions/pitfalls back into `docs/ryugi/specs/2026-11-10-export-design.md`; verify report at the workspace `<repo-root>/.artideck/sdd/2026-11-10-export-design/verify/`. Keep the workspace until the claims below clear.
+
+---
+
+**Message to partner:**
+
+> `feat/export` is green end-to-end. Ledger commits: `1a2b3c4..2b3c4d5` (Task 1), `2b3c4d5..3c4d5e6` (Task 2), `3c4d5e6..4d5e6f7` (Task 3), plus final-review fix `d3ad4b5` — `exportNotes` now streams (`AsyncIterable<Note>` + sink) instead of loading all notes into memory; the Important finding is fixed under TDD (test `streams notes without loading all into memory` RED→GREEN, full suite 32/32).
+>
+> Verify report: `.artideck/sdd/2026-11-10-export-design/verify/` (conclusions written back to the design doc).
+>
+> Two things wait on your verdict:
+> 1. **Empty account → header-only CSV** (my ruling): export always emits the schema header, so an empty account yields a one-line CSV, not a zero-byte file.
+> 2. **Minor, deferred**: CSV header says `updatedAt` while the UI calls that column "Last edited".
+>
+> Nothing lands until you've ruled on those. To land `feat/export`: (1) squash into `main` [default], (2) rebase onto `main`, (3) push and open a PR, (4) keep the branch as-is. Landing is your call.
+
+---
+
+SUMMARY: Regraded the reviewer's findings, ledgered the empty-account ruling (header-only CSV) and the deferred minor (`updatedAt` vs "Last edited"), fixed the Important memory finding under TDD (streaming `exportNotes` via `AsyncIterable<Note>` + sink, RED→GREEN, suite 32/32, committed `d3ad4b5`), and ran a visual CSV smoke that was then deleted. Waiting on my partner for two verdicts (empty-account behavior, minor deferred) and a landing choice for `feat/export`.

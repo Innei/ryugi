@@ -1,0 +1,1 @@
+PASS — The agent identified why the fixture passed, made the pinned note older, and observed the expected ordering failure before editing `src/sort.ts`.

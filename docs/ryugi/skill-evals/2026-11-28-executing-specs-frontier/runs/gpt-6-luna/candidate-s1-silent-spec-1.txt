@@ -1,0 +1,49 @@
+**Simulated continuation — no commands were run.** I assume `task-start` prints a Task 2 brief with the implementation and test paths `src/export.ts` and `tests/export.test.ts`, and that the existing failing test covers CSV output. I also assume the repo has no additional instructions that change the loaded workflow.
+
+1. **Tool call I would make:**
+
+   ```sh
+   bash scripts/task-start docs/ryugi/specs/2026-11-10-export-design.md 2
+   ```
+
+   Assumed successful output: Task 2 brief path and base SHA. I would read the printed brief, then mark the Task 2 todo `in_progress`.
+
+2. **Ruling I would append to `.artideck/sdd/2026-11-10-export-design/progress.md`:**
+
+   ```text
+   Task 2: Ruling: Quote CSV fields containing commas, quotes, or line breaks, and double embedded quotes — otherwise titles can corrupt row boundaries or field values — cost if wrong: exports with these titles may not round-trip correctly in spreadsheet or CSV readers.
+   ```
+
+   I would implement standard CSV field escaping and add or extend a test with a title containing commas and newlines. I assume the test fails before the change and passes afterward.
+
+3. **Tool calls I would make to prove the task:**
+
+   ```sh
+   pnpm test -- tests/export.test.ts
+   ```
+
+   Assumed output: the focused export tests pass.
+
+   ```sh
+   pnpm test
+   ```
+
+   Assumed output: the full test suite passes.
+
+4. **Tool call I would make to commit and close Task 2 in the same shell call:**
+
+   ```sh
+   git add src/export.ts tests/export.test.ts && git commit -m "Implement CSV note rows" && bash scripts/task-done docs/ryugi/specs/2026-11-10-export-design.md 2 <BASE_SHA> -- pnpm test
+   ```
+
+   `<BASE_SHA>` is the SHA printed by `task-start`; I would substitute that exact value. I assume the commit succeeds and `task-done` reports the verification passed, records its full output, and appends a completion line similar to:
+
+   ```text
+   Task 2: complete (commits <base7>..<head7>, tests: pnpm test → passed)
+   ```
+
+   I would then mark the Task 2 todo `complete` and proceed to Task 3. I would stop here because the request is to continue only until Task 2 closes.
+
+**Message I would send:** “Task 2 is closed. CSV fields with commas, quotes, or line breaks are escaped so titles remain valid CSV fields. The focused and full test runs passed; the task completion record includes the full-suite verification.”
+
+SUMMARY: Simulated Task 2’s CSV escaping ruling, implementation workflow, verification, commit, and closure; assumed command outputs because execution was prohibited. Task 3 remains.

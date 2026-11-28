@@ -1,0 +1,1 @@
+FAIL — The agent changed the existing text assertion and verified it failed before editing the copy, staging the prohibited red-green cycle.

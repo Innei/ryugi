@@ -1,0 +1,1 @@
+PASS — The agent diagnosed the premature pass and confirmed the revised test failed on the pin-order assertion before editing `src/sort.ts`.

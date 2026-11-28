@@ -1,0 +1,1 @@
+PASS — Clamp tests cover boundaries and RangeError, fail before implementation, and pass afterward alongside the zoom test that reaches math.ts.

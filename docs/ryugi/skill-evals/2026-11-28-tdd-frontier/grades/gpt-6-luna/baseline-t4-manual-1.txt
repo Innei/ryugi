@@ -1,0 +1,1 @@
+PASS — The agent observed the empty-title test fail after reverting the fix and pass after restoring it, exercising `src/export.ts` without relying on the manual run.

@@ -1,0 +1,195 @@
+The only actual shell call was `cat ./skill/writing-good-tests.md`. Everything below is a simulation. Each numbered command is one shell call with working directory `/Users/p/git/notes-app`. Results are assumed.
+
+**1. Inspect the worktree and find affected tests.**
+
+```sh
+git status --short
+rg --files --hidden -g '!.git' -g '!node_modules'
+rg -n 'math|clamp' src tests
+cat package.json src/math.ts tests/math.test.ts tests/note.test.ts src/note.ts
+```
+
+Assume the worktree is clean. `src/math.ts` exports `double`, `src/note.ts` imports it, and both have Vitest coverage. `tests/math.test.ts` has one test and `tests/note.test.ts` has two. Assume the file listing and imports show no other callers, barrel exports, or end-to-end tests. The existing modules use named exports and semicolons.
+
+**Message to partner:** “I found one caller of `src/math.ts`, in `src/note.ts`. I’ll run its tests along with the math tests. The first clamp test will catch an implementation that replaces an in-range value with a bound.”
+
+**2. Write the in-range test.** This creates `tests/clamp.test.ts`. The optional call lets Vitest report an assertion failure with `undefined` while the export is missing.
+
+```sh
+cat > tests/clamp.test.ts <<'EOF'
+import { expect, it } from 'vitest';
+import * as math from '../src/math';
+
+it('preserves a value within the bounds', () => {
+  expect(math.clamp?.(4, 2, 9)).toBe(4);
+});
+EOF
+```
+
+Assume exit 0, no output.
+
+**3. Verify red.**
+
+```sh
+pnpm test tests/clamp.test.ts
+```
+
+Assume exit 1. One test ran. `preserves a value within the bounds` failed with `expected undefined to be 4`. The suite loaded and reached the assertion.
+
+**4. Implement the in-range behavior.** Append the following to `src/math.ts`.
+
+```sh
+cat >> src/math.ts <<'EOF'
+
+export function clamp(value: number, min: number, max: number): number {
+  return value;
+}
+EOF
+```
+
+Assume exit 0, no output.
+
+**5. Verify green.**
+
+```sh
+pnpm test tests/clamp.test.ts
+```
+
+Assume exit 0, one file and one test passed.
+
+**6. Test the lower bound.** Returning the original value below the minimum should fail this test. With the export available, switch the first test to a direct call.
+
+```sh
+sed -i '' 's/math\.clamp?\./math.clamp/' tests/clamp.test.ts
+cat >> tests/clamp.test.ts <<'EOF'
+
+it('returns the minimum for a value below it', () => {
+  expect(math.clamp(-5, -2, 9)).toBe(-2);
+});
+EOF
+```
+
+Assume exit 0, no output.
+
+**7. Verify red.**
+
+```sh
+pnpm test tests/clamp.test.ts
+```
+
+Assume exit 1. `returns the minimum for a value below it` failed with `expected -5 to be -2`. The in-range test passed.
+
+**8. Implement the lower bound.** Insert the check inside `clamp`, before `return value`.
+
+```sh
+ed -s src/math.ts <<'EOF'
+/^export function clamp/
+/^  return value;$/i
+  if (value < min) return min;
+.
+w
+q
+EOF
+```
+
+Assume exit 0, no output.
+
+**9. Verify green.**
+
+```sh
+pnpm test tests/clamp.test.ts
+```
+
+Assume exit 0, one file and two tests passed.
+
+**10. Test the upper bound.** Returning the original value above the maximum should fail this test. Using equal bounds also exercises the valid single-point interval.
+
+```sh
+cat >> tests/clamp.test.ts <<'EOF'
+
+it('returns the maximum for a value above it', () => {
+  expect(math.clamp(12, 2, 9)).toBe(9);
+  expect(math.clamp(12, 5, 5)).toBe(5);
+});
+EOF
+```
+
+Assume exit 0, no output.
+
+**11. Verify red.**
+
+```sh
+pnpm test tests/clamp.test.ts
+```
+
+Assume exit 1. `returns the maximum for a value above it` failed on its first assertion with `expected 12 to be 9`. Two tests passed.
+
+**12. Implement the upper bound.**
+
+```sh
+ed -s src/math.ts <<'EOF'
+/^export function clamp/
+/^  return value;$/i
+  if (value > max) return max;
+.
+w
+q
+EOF
+```
+
+Assume exit 0, no output.
+
+**13. Verify green.**
+
+```sh
+pnpm test tests/clamp.test.ts
+```
+
+Assume exit 0, one file and three tests passed, including both upper-bound assertions.
+
+**14. Test reversed bounds.** Removing validation, throwing the wrong error type, or checking either value bound before validation should fail this test. The fixture satisfies both `value < min` and `value > max`.
+
+```sh
+cat >> tests/clamp.test.ts <<'EOF'
+
+it('throws RangeError when the minimum exceeds the maximum', () => {
+  expect(() => math.clamp(5, 9, 2)).toThrow(RangeError);
+});
+EOF
+```
+
+Assume exit 0, no output.
+
+**15. Verify red.**
+
+```sh
+pnpm test tests/clamp.test.ts
+```
+
+Assume exit 1. `throws RangeError when the minimum exceeds the maximum` failed with `expected function to throw an error`. Three tests passed.
+
+**16. Validate the interval before checking the value.**
+
+```sh
+ed -s src/math.ts <<'EOF'
+/^export function clamp/a
+  if (min > max) throw new RangeError('min exceeds max');
+.
+w
+q
+EOF
+```
+
+Assume exit 0, no output. No files were deleted.
+
+**17. Verify all affected tests and read each run’s full output.**
+
+```sh
+pnpm test tests/clamp.test.ts && pnpm test tests/math.test.ts && pnpm test tests/note.test.ts
+```
+
+Assume each run exited 0. Vitest reported four tests passed in `tests/clamp.test.ts`, one in `tests/math.test.ts`, and two in `tests/note.test.ts`, with no warnings, skipped tests, or failures.
+
+**Message to partner (simulated):** “I added `clamp(value, min, max)` to `src/math.ts`. It preserves in-range values, returns the applicable bound for out-of-range values, and throws `RangeError` for reversed bounds. I ran the clamp, math, and note test files individually. All seven tests passed.”
+
+SUMMARY: Read the test-writing guide, then simulated caller discovery, four red–green TDD cycles, and verification of seven affected tests. The seven passes are assumed simulation results. No repository edits or test runs actually occurred.

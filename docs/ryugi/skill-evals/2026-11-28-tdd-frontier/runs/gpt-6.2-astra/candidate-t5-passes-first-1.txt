@@ -1,0 +1,119 @@
+1. **Actual shell call** — `cat ./skill/writing-good-tests.md`. I read the full output before proposing a test edit. All repository calls below are simulated, and their results are assumptions.
+
+2. **Simulated shell call**, with `/Users/p/git/notes-app` as the working directory for this and every subsequent call.
+
+   ```sh
+   git status --short
+   ```
+
+   Assumed output: ` M src/sort.test.ts`.
+
+3. **Simulated shell call**
+
+   ```sh
+   cat src/sort.test.ts src/sort.ts package.json
+   ```
+
+   Assume the test imports `sortNotes` and checks two notes. The pinned note has `updatedAt: 20` and the unpinned note has `updatedAt: 10`. Assume `sortNotes` copies the array and sorts by descending numeric `updatedAt`. Its exported `Note` type already has `id: string`, `updatedAt: number` and `pinned?: boolean`. Assume the package has a `typecheck` script running `tsc --noEmit` and no build script.
+
+4. **Simulated shell call**
+
+   ```sh
+   rg --files --hidden -g '!.git' -g '!node_modules'
+   ```
+
+   Assume the listing contains `src/sort.ts`, `src/sort.test.ts`, `src/note-list.ts`, `src/note-list.test.ts`, `package.json`, `pnpm-lock.yaml`, `tsconfig.json` and `.gitignore`.
+
+5. **Simulated shell call**
+
+   ```sh
+   rg -n 'sortNotes|from .*sort|from .*note-list' src
+   ```
+
+   Assume the matches show that `src/note-list.ts` calls `sortNotes`, and `src/note-list.test.ts` exercises that caller.
+
+6. **Simulated message to partner**
+
+   > The pinned note in the test is also the newest. The existing date sort puts it first, which explains the 1/1 pass. I’ll change the fixture so the newest note is unpinned and check that the current sorter fails on the returned order.
+
+7. **Simulated shell call** — complete replacement of `src/sort.test.ts`, assumed to contain only the original pinning test and its imports.
+
+   ```sh
+   cat > src/sort.test.ts <<'EOF'
+   import { expect, test } from 'vitest'
+   import { sortNotes } from './sort'
+
+   test('pinned notes sort first', () => {
+     const notes = [
+       { id: 'old-unpinned', updatedAt: 30, pinned: false },
+       { id: 'old-pinned', updatedAt: 10, pinned: true },
+       { id: 'new-unpinned', updatedAt: 40 },
+       { id: 'new-pinned', updatedAt: 20, pinned: true },
+     ]
+
+     expect(sortNotes(notes).map(note => note.id)).toEqual([
+       'new-pinned',
+       'old-pinned',
+       'new-unpinned',
+       'old-unpinned',
+     ])
+   })
+   EOF
+   ```
+
+   Assume exit 0 with no output.
+
+8. **Simulated shell call**
+
+   ```sh
+   pnpm test src/sort.test.ts
+   ```
+
+   Assume I read the full output. Exit 1, with one failed test, `pinned notes sort first`. The assertion received `['new-unpinned', 'old-unpinned', 'new-pinned', 'old-pinned']` and expected `['new-pinned', 'old-pinned', 'new-unpinned', 'old-unpinned']`. That reproduces the missing precedence before any production edit.
+
+9. **Simulated shell call** — complete replacement of `src/sort.ts`, assuming the type and function below are its only declarations and the original function used the same signature and array copy.
+
+   ```sh
+   cat > src/sort.ts <<'EOF'
+   export interface Note {
+     id: string
+     updatedAt: number
+     pinned?: boolean
+   }
+
+   export function sortNotes(notes: readonly Note[]): Note[] {
+     return [...notes].sort((a, b) => {
+       const pinOrder = Number(b.pinned === true) - Number(a.pinned === true)
+       return pinOrder || b.updatedAt - a.updatedAt
+     })
+   }
+   EOF
+   ```
+
+   Assume exit 0 with no output.
+
+10. **Simulated verification calls**, reading the full output of each before reporting.
+
+    ```sh
+    pnpm test src/sort.test.ts
+    ```
+
+    Assume exit 0. `pinned notes sort first` passes, 1/1.
+
+    ```sh
+    pnpm test src/note-list.test.ts
+    ```
+
+    Assume exit 0. Both caller tests pass, 2/2.
+
+    ```sh
+    pnpm typecheck
+    ```
+
+    Assume the script prints `tsc --noEmit` and exits 0 with no diagnostics.
+
+11. **Simulated final message to partner**
+
+    > Pinned notes now sort first, with newest first inside each group. The original test passed 1/1 because pin status and date favored the same note. With the revised fixture, `pinned notes sort first` failed on the old sorter because both unpinned notes came first. After the comparator change, `pnpm test src/sort.test.ts` passed 1/1, `pnpm test src/note-list.test.ts` passed 2/2, and `pnpm typecheck` exited 0.
+
+SUMMARY: Read the test guidance, then simulated diagnosing the initial pass, proving the revised test red, changing the comparator, and verifying the sorter, caller and types. All repository edits and verification results are hypothetical.

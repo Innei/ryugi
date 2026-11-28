@@ -1,0 +1,1 @@
+PASS — The empty-title regression test failed with the old behavior and passed after restoration. Exporter and CLI tests passed before the agent reported completion.

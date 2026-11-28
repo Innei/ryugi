@@ -1,0 +1,412 @@
+I ran `cat ./skill/writing-good-tests.md` and read its output. The repo commands, file edits, and test results below are simulated. Every simulated shell call uses `/Users/p/git/notes-app` as its working directory.
+
+### Inspect the repo
+
+1. **Shell** `git status --short`  
+   Assumed exit 0 with no output.
+
+2. **Shell** `rg --files -g 'AGENTS.md' -g 'package.json' -g '*vitest*' -g '*.ts'`  
+   Assumed exit 0 with `package.json`, `src/math.ts`, `src/math.test.ts`, `src/progress.ts`, `src/progress.test.ts`, and `tests/progress.e2e.test.ts`. No `AGENTS.md` appeared.
+
+3. **Shell** `cat package.json src/math.ts`  
+   Assumed the package is `notes-app@0.1.0`, `test` is `vitest run`, Vitest transpiles TypeScript without type-checking during this run, and `src/math.ts` contains the `percent` function shown unchanged in the writes below.
+
+4. **Shell** `rg -n '\b(math|percent|progress|clamp)\b' src tests`  
+   Assumed `src/math.test.ts` imports `math`, `src/progress.ts` imports `percent` from `math`, and both progress test files exercise that caller. No existing `clamp` or other callers appeared.
+
+5. **Message to partner**  
+   “I found the math tests and the progress tests that exercise its caller. I’ll add the clamp cases one at a time and run those existing tests after the last case.”
+
+For each simulated `pnpm test` call, I assume this common output prefix, followed by the complete result shown for that call. Timing values are illustrative.
+
+```text
+> notes-app@0.1.0 test /Users/p/git/notes-app
+> vitest run <arguments shown in the command>
+
+ RUN  v3.2.4 /Users/p/git/notes-app
+```
+
+### Preserve a value inside the bounds
+
+The first test catches an absent export or an implementation that replaces an in-range value with either bound. Optional invocation lets the missing export produce a value assertion failure.
+
+6. **Shell and complete new file**
+
+   ```sh
+   cat > src/clamp.test.ts <<'EOF'
+   import { expect, test } from 'vitest';
+   import * as math from './math';
+
+   test('returns a value inside the bounds unchanged', () => {
+     expect(math.clamp?.(5, 1, 10)).toBe(5);
+   });
+   EOF
+   ```
+
+7. **Shell** `pnpm test src/clamp.test.ts`  
+   Assumed exit 1. The assertion received `undefined` because the export was absent.
+
+   ```text
+    ❯ src/clamp.test.ts (1 test | 1 failed) 4ms
+      × returns a value inside the bounds unchanged 3ms
+
+   ⎯⎯⎯ Failed Tests 1 ⎯⎯⎯
+
+    FAIL  src/clamp.test.ts > returns a value inside the bounds unchanged
+   AssertionError: expected undefined to be 5 // Object.is equality
+
+   - Expected:
+   5
+
+   + Received:
+   undefined
+
+    ❯ src/clamp.test.ts:5:33
+        3|
+        4| test('returns a value inside the bounds unchanged', () => {
+        5|   expect(math.clamp?.(5, 1, 10)).toBe(5);
+         |                                 ^
+        6| });
+
+    Test Files  1 failed (1)
+         Tests  1 failed (1)
+      Start at  10:00:01
+      Duration  180ms
+
+   ELIFECYCLE  Test failed. See above for more details.
+   ```
+
+8. **Shell and complete replacement file**
+
+   ```sh
+   cat > src/math.ts <<'EOF'
+   export function percent(part: number, total: number): number {
+     return (part / total) * 100;
+   }
+
+   export function clamp(value: number, _min: number, _max: number): number {
+     return value;
+   }
+   EOF
+   ```
+
+9. **Shell** `pnpm test src/clamp.test.ts`  
+   Assumed exit 0.
+
+   ```text
+    ✓ src/clamp.test.ts (1 test) 2ms
+
+    Test Files  1 passed (1)
+         Tests  1 passed (1)
+      Start at  10:00:03
+      Duration  173ms
+   ```
+
+### Clamp a value below the minimum
+
+This test catches returning the original value when the lower bound applies.
+
+10. **Shell and exact appended content**
+
+    ```sh
+    cat >> src/clamp.test.ts <<'EOF'
+
+    test('returns the minimum for a value below it', () => {
+      expect(math.clamp?.(-3, 1, 10)).toBe(1);
+    });
+    EOF
+    ```
+
+11. **Shell** `pnpm test src/clamp.test.ts`  
+    Assumed exit 1.
+
+    ```text
+     ❯ src/clamp.test.ts (2 tests | 1 failed) 5ms
+       ✓ returns a value inside the bounds unchanged 1ms
+       × returns the minimum for a value below it 3ms
+
+    ⎯⎯⎯ Failed Tests 1 ⎯⎯⎯
+
+     FAIL  src/clamp.test.ts > returns the minimum for a value below it
+    AssertionError: expected -3 to be 1 // Object.is equality
+
+    - Expected
+    + Received
+
+    - 1
+    + -3
+
+     ❯ src/clamp.test.ts:9:34
+         7|
+         8| test('returns the minimum for a value below it', () => {
+         9|   expect(math.clamp?.(-3, 1, 10)).toBe(1);
+          |                                  ^
+        10| });
+
+     Test Files  1 failed (1)
+          Tests  1 failed | 1 passed (2)
+       Start at  10:00:05
+       Duration  181ms
+
+    ELIFECYCLE  Test failed. See above for more details.
+    ```
+
+12. **Shell and complete replacement file**
+
+    ```sh
+    cat > src/math.ts <<'EOF'
+    export function percent(part: number, total: number): number {
+      return (part / total) * 100;
+    }
+
+    export function clamp(value: number, min: number, _max: number): number {
+      if (value < min) {
+        return min;
+      }
+
+      return value;
+    }
+    EOF
+    ```
+
+13. **Shell** `pnpm test src/clamp.test.ts`  
+    Assumed exit 0.
+
+    ```text
+     ✓ src/clamp.test.ts (2 tests) 2ms
+
+     Test Files  1 passed (1)
+          Tests  2 passed (2)
+       Start at  10:00:07
+       Duration  175ms
+    ```
+
+### Clamp a value above the maximum
+
+This test catches returning the original value when the upper bound applies.
+
+14. **Shell and exact appended content**
+
+    ```sh
+    cat >> src/clamp.test.ts <<'EOF'
+
+    test('returns the maximum for a value above it', () => {
+      expect(math.clamp?.(14, 1, 10)).toBe(10);
+    });
+    EOF
+    ```
+
+15. **Shell** `pnpm test src/clamp.test.ts`  
+    Assumed exit 1.
+
+    ```text
+     ❯ src/clamp.test.ts (3 tests | 1 failed) 5ms
+       ✓ returns a value inside the bounds unchanged 1ms
+       ✓ returns the minimum for a value below it 0ms
+       × returns the maximum for a value above it 3ms
+
+    ⎯⎯⎯ Failed Tests 1 ⎯⎯⎯
+
+     FAIL  src/clamp.test.ts > returns the maximum for a value above it
+    AssertionError: expected 14 to be 10 // Object.is equality
+
+    - Expected
+    + Received
+
+    - 10
+    + 14
+
+     ❯ src/clamp.test.ts:13:34
+        11|
+        12| test('returns the maximum for a value above it', () => {
+        13|   expect(math.clamp?.(14, 1, 10)).toBe(10);
+          |                                  ^
+        14| });
+
+     Test Files  1 failed (1)
+          Tests  1 failed | 2 passed (3)
+       Start at  10:00:09
+       Duration  184ms
+
+    ELIFECYCLE  Test failed. See above for more details.
+    ```
+
+16. **Shell and complete replacement file**
+
+    ```sh
+    cat > src/math.ts <<'EOF'
+    export function percent(part: number, total: number): number {
+      return (part / total) * 100;
+    }
+
+    export function clamp(value: number, min: number, max: number): number {
+      if (value < min) {
+        return min;
+      }
+
+      if (value > max) {
+        return max;
+      }
+
+      return value;
+    }
+    EOF
+    ```
+
+17. **Shell** `pnpm test src/clamp.test.ts`  
+    Assumed exit 0.
+
+    ```text
+     ✓ src/clamp.test.ts (3 tests) 2ms
+
+     Test Files  1 passed (1)
+          Tests  3 passed (3)
+       Start at  10:00:11
+       Duration  176ms
+    ```
+
+### Reject reversed bounds
+
+The first case catches missing validation, validation after an early return, or throwing the wrong error type. The second catches a guard that uses `>=` and incorrectly rejects equal bounds.
+
+18. **Shell and exact appended content**
+
+    ```sh
+    cat >> src/clamp.test.ts <<'EOF'
+
+    test('throws RangeError when the minimum exceeds the maximum', () => {
+      expect(() => math.clamp?.(5, 10, 1)).toThrow(RangeError);
+    });
+
+    test('accepts equal bounds', () => {
+      expect(math.clamp?.(5, 4, 4)).toBe(4);
+    });
+    EOF
+    ```
+
+19. **Shell** `pnpm test src/clamp.test.ts`  
+    Assumed exit 1. The reversed-bounds case failed because the function returned without throwing. The equal-bounds case passed and serves as a regression check on the new guard.
+
+    ```text
+     ❯ src/clamp.test.ts (5 tests | 1 failed) 6ms
+       ✓ returns a value inside the bounds unchanged 1ms
+       ✓ returns the minimum for a value below it 0ms
+       ✓ returns the maximum for a value above it 0ms
+       × throws RangeError when the minimum exceeds the maximum 3ms
+       ✓ accepts equal bounds 0ms
+
+    ⎯⎯⎯ Failed Tests 1 ⎯⎯⎯
+
+     FAIL  src/clamp.test.ts > throws RangeError when the minimum exceeds the maximum
+    AssertionError: expected [Function] to throw an error
+     ❯ src/clamp.test.ts:17:40
+        15|
+        16| test('throws RangeError when the minimum exceeds the maximum', () => {
+        17|   expect(() => math.clamp?.(5, 10, 1)).toThrow(RangeError);
+          |                                        ^
+        18| });
+
+     Test Files  1 failed (1)
+          Tests  1 failed | 4 passed (5)
+       Start at  10:00:13
+       Duration  189ms
+
+    ELIFECYCLE  Test failed. See above for more details.
+    ```
+
+20. **Shell and complete final production file**
+
+    ```sh
+    cat > src/math.ts <<'EOF'
+    export function percent(part: number, total: number): number {
+      return (part / total) * 100;
+    }
+
+    export function clamp(value: number, min: number, max: number): number {
+      if (min > max) {
+        throw new RangeError('min must be less than or equal to max');
+      }
+
+      if (value < min) {
+        return min;
+      }
+
+      if (value > max) {
+        return max;
+      }
+
+      return value;
+    }
+    EOF
+    ```
+
+21. **Shell** `pnpm test src/clamp.test.ts`  
+    Assumed exit 0.
+
+    ```text
+     ✓ src/clamp.test.ts (5 tests) 3ms
+
+     Test Files  1 passed (1)
+          Tests  5 passed (5)
+       Start at  10:00:15
+       Duration  179ms
+    ```
+
+### Use the public export directly and verify the affected tests
+
+22. **Shell and complete final test file**
+
+    ```sh
+    cat > src/clamp.test.ts <<'EOF'
+    import { expect, test } from 'vitest';
+    import { clamp } from './math';
+
+    test('returns a value inside the bounds unchanged', () => {
+      expect(clamp(5, 1, 10)).toBe(5);
+    });
+
+    test('returns the minimum for a value below it', () => {
+      expect(clamp(-3, 1, 10)).toBe(1);
+    });
+
+    test('returns the maximum for a value above it', () => {
+      expect(clamp(14, 1, 10)).toBe(10);
+    });
+
+    test('throws RangeError when the minimum exceeds the maximum', () => {
+      expect(() => clamp(5, 10, 1)).toThrow(RangeError);
+    });
+
+    test('accepts equal bounds', () => {
+      expect(clamp(5, 4, 4)).toBe(4);
+    });
+    EOF
+    ```
+
+23. **Shell** `pnpm test src/clamp.test.ts src/math.test.ts src/progress.test.ts tests/progress.e2e.test.ts`  
+    Assumed exit 0.
+
+    ```text
+     ✓ src/clamp.test.ts (5 tests) 3ms
+     ✓ src/math.test.ts (2 tests) 2ms
+     ✓ src/progress.test.ts (3 tests) 3ms
+     ✓ tests/progress.e2e.test.ts (2 tests) 8ms
+
+     Test Files  4 passed (4)
+          Tests  12 passed (12)
+       Start at  10:00:17
+       Duration  256ms
+    ```
+
+24. **Shell** `git status --short`  
+    Assumed exit 0.
+
+    ```text
+     M src/math.ts
+    ?? src/clamp.test.ts
+    ```
+
+25. **Simulated final message to partner**  
+    “Added `clamp` to `src/math.ts` and covered in-range values, both limits, reversed bounds, and equal bounds. The intermediate runs failed as expected for the missing export, the missing lower and upper clamps, and the missing `RangeError`. The final Vitest run covered the new clamp tests, existing math tests, and progress unit and end-to-end tests. It reported 12 passed across four files. The changes are uncommitted.”
+
+SUMMARY: Read the test-writing guide, then simulated repo inspection, test-first implementation, and affected-test verification in place. The simulated final run reported 12 passed across four files. The guide read was the only real command.

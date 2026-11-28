@@ -1,0 +1,70 @@
+1. **Partner message, sent:** “I’ll read the testing guidance in `./skill/`. All repository commands, edits, and results will be simulated.”
+
+2. **Actual shell call:** `cat ./skill/writing-good-tests.md`. It exited 0, and I read the full output before drafting the tests.
+
+3. **Simulated shell call** to inspect the working tree, find callers and tests, and identify verification commands:
+
+   ```sh
+   cd /Users/p/git/notes-app && git status --short && rg --files --hidden -g '!node_modules' -g '!.git' && cat package.json tsconfig.json src/math.ts && rg -n 'math|clamp' src
+   ```
+
+   Assume a clean tree with `src/math.ts`, `src/math.test.ts`, and `src/notes.test.ts`. Assume `src/math.ts` exports only `square`, its only importer is `src/math.test.ts`, and `clamp` is absent. Assume `package.json` defines `test` as `vitest run` and `typecheck` as `tsc --noEmit`, with no separate build script.
+
+4. **Simulated shell call:** `cd /Users/p/git/notes-app && cat src/math.test.ts`. Assume the file contains the import and `square` test shown below. I’d use literal cases for each return path. Equal bounds catch an accidental `min >= max` guard. The reversed-range cases put the value on either side of the bounds to catch validation performed after an early return.
+
+5. **Simulated shell call** to write the complete test file:
+
+   ```sh
+   cd /Users/p/git/notes-app && cat > src/math.test.ts <<'EOF'
+   import { expect, it } from 'vitest'
+   import { clamp, square } from './math'
+
+   it('squares a number', () => {
+     expect(square(3)).toBe(9)
+   })
+
+   it.each([
+     { value: -5, min: -3, max: 4, want: -3 },
+     { value: 7, min: -3, max: 4, want: 4 },
+     { value: 1.5, min: -3, max: 4, want: 1.5 },
+     { value: -3, min: -3, max: 4, want: -3 },
+     { value: 4, min: -3, max: 4, want: 4 },
+     { value: 9, min: 2, max: 2, want: 2 },
+   ])('clamp($value, $min, $max) returns $want', ({ value, min, max, want }) => {
+     expect(clamp(value, min, max)).toBe(want)
+   })
+
+   it.each([0, 10])('throws RangeError for reversed bounds with value %i', (value) => {
+     expect(() => clamp(value, 5, 2)).toThrow(RangeError)
+   })
+   EOF
+   ```
+
+6. **Simulated shell call:** `cd /Users/p/git/notes-app && pnpm test src/math.test.ts`. Assume I read the full output and it exits 1. The existing `square` test passes. All six return cases fail because `clamp` is not a function. Both reversed-range cases receive that same `TypeError` where they expect `RangeError`. These eight failures establish the missing export before the implementation edit.
+
+7. **Simulated shell call** to write the complete implementation file, preserving the assumed `square` function:
+
+   ```sh
+   cd /Users/p/git/notes-app && cat > src/math.ts <<'EOF'
+   export function square(value: number): number {
+     return value * value
+   }
+
+   export function clamp(value: number, min: number, max: number): number {
+     if (min > max) {
+       throw new RangeError('min must be less than or equal to max')
+     }
+     if (value < min) return min
+     if (value > max) return max
+     return value
+   }
+   EOF
+   ```
+
+8. **Simulated shell call:** `cd /Users/p/git/notes-app && pnpm test src/math.test.ts`. Assume I read the full output and it reports one test file passed, nine tests passed, exit 0.
+
+9. **Simulated shell call:** `cd /Users/p/git/notes-app && pnpm typecheck`. Assume I read the full output and it shows `tsc --noEmit` exiting 0 with no diagnostics.
+
+10. **Simulated final partner message:** “Added `clamp` to `src/math.ts`. It returns the appropriate bound for out-of-range values, preserves values within the inclusive range, and throws `RangeError` when `min > max`. In the simulation, `pnpm test src/math.test.ts` went from eight failures for the missing function to all nine tests passing. `pnpm typecheck` exited 0.”
+
+SUMMARY: Read the testing guidance, then simulated repository inspection, red tests, implementation, and verification in that order. The nine passing tests and clean typecheck are assumed results. No repository command or edit actually ran.
